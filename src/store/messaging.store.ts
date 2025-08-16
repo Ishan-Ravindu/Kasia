@@ -37,6 +37,7 @@ import {
   ContextualMessageResponse,
   HandshakeResponse,
 } from "../service/indexer/generated";
+import { tryBase64ToHex } from "../utils/payload-encoding";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
@@ -168,27 +169,40 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       for (const m of newIndexerMessages) {
         try {
-          const hexStringBytes = m.message_payload.match(/.{1,2}/g);
-          if (!hexStringBytes) continue;
+          const payload = m.message_payload;
+
+          const hexStringBytes = payload.match(/.{1,2}/g);
+          if (!hexStringBytes) {
+            continue;
+          }
+
           const bytes = new Uint8Array(
             hexStringBytes.map((b) => parseInt(b, 16))
           );
-          const decodedMessage = new TextDecoder().decode(bytes);
-          newKasiaTransactions.push({
+          const decodedString = new TextDecoder().decode(bytes);
+
+          // if its base64, decrypt
+          const encryptedHex = tryBase64ToHex(decodedString);
+
+          const decryptedContent = decrypt_message(
+            new EncryptedMessage(encryptedHex),
+            new PrivateKey(privateKeyString)
+          );
+
+          const kasiaTransaction = {
             amount: 0,
-            content: decrypt_message(
-              new EncryptedMessage(decodedMessage),
-              new PrivateKey(privateKeyString)
-            ),
+            content: decryptedContent,
             createdAt: new Date(Number(m.block_time)),
             fee: 0,
-            payload: m.message_payload,
+            payload: payload,
             recipientAddress: myAddress,
             senderAddress: m.sender,
             transactionId: m.tx_id,
-          });
+          };
+
+          newKasiaTransactions.push(kasiaTransaction);
         } catch {
-          //chill
+          // chill
         }
       }
 
