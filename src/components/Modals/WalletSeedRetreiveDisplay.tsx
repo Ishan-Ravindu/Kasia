@@ -92,22 +92,37 @@ export const WalletSeedRetreiveDisplay: FC = () => {
           <p className="mb-2 p-2 text-center font-semibold">
             Enter your password to view seed phrase:
           </p>
-          <div className="flex flex-col items-center">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleViewSeedPhrase();
+            }}
+            className="flex flex-col items-center"
+          >
+            {/* hidden username field for password manager accessibility */}
+            <input
+              type="text"
+              name="username"
+              value="wallet-seed-access"
+              autoComplete="username"
+              style={{ display: "none" }}
+              readOnly
+              tabIndex={-1}
+            />
             <input
               type="password"
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter wallet password"
+              autoComplete="current-password"
               className="border-primary-border bg-primary-bg mb-2 w-full rounded-3xl border px-4 py-2 md:w-3/4"
+              required
             />
-            <Button
-              onClick={handleViewSeedPhrase}
-              variant="primary"
-              className="md:w-3/4"
-            >
+            <Button type="submit" variant="primary" className="md:w-3/4">
               View Seed Phrase
             </Button>
-          </div>
+          </form>
         </div>
       ) : (
         <div>
