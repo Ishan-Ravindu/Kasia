@@ -100,10 +100,30 @@ export const Unlock = ({
           <Loader2 className="my-2 h-14 w-14 animate-spin text-gray-500" />
         </div>
       ) : (
-        <>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onUnlockWallet();
+          }}
+        >
+          {/* hidden username field for password manager accessibility */}
+          <input
+            type="text"
+            name="username"
+            value={wallets.find((w) => w.id === selectedWalletId)?.name || ""}
+            autoComplete="username"
+            style={{ display: "none" }}
+            readOnly
+            tabIndex={-1}
+          />
+
           <div className="mb-3.5">
-            <label className="mb-3.5 block font-medium">Password</label>
+            <label htmlFor="password" className="mb-3.5 block font-medium">
+              Password
+            </label>
             <input
+              id="password"
+              name="password"
               autoComplete="current-password"
               ref={usePasswordRef}
               type="password"
@@ -113,8 +133,8 @@ export const Unlock = ({
                 "focus:!border-kas-primary border-primary-border bg-input-bg w-full rounded-3xl border p-2.5 px-4 text-base transition-all duration-200 focus:outline-none",
                 { "!border-red-500": error }
               )}
-              onKeyDown={(e) => e.key === "Enter" && onUnlockWallet()}
               disabled={unlocking}
+              required
             />
           </div>
 
@@ -122,7 +142,7 @@ export const Unlock = ({
 
           <div className="flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
             <Button
-              onClick={onUnlockWallet}
+              type="submit"
               disabled={unlocking || !isConnected}
               variant="primary"
               title={
@@ -132,11 +152,16 @@ export const Unlock = ({
               Unlock
             </Button>
 
-            <Button onClick={onBack} disabled={unlocking} variant="secondary">
+            <Button
+              type="button"
+              onClick={onBack}
+              disabled={unlocking}
+              variant="secondary"
+            >
               Back
             </Button>
           </div>
-        </>
+        </form>
       )}
     </>
   );
