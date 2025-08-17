@@ -44,7 +44,11 @@ export const MessageContentRouter: FC<MessageContentRouterProps> = ({
           handshakeId={String(event.id)}
         />
       ) : (
-        <MessageContent content={messageToRender} isDecrypting={isDecrypting} />
+        <MessageContent
+          content={messageToRender}
+          isDecrypting={isDecrypting}
+          isOutgoing={isOutgoing}
+        />
       );
 
     case "payment":
@@ -66,7 +70,11 @@ export const MessageContentRouter: FC<MessageContentRouterProps> = ({
           fileData={file}
         />
       ) : (
-        <MessageContent content={messageToRender} isDecrypting={isDecrypting} />
+        <MessageContent
+          content={messageToRender}
+          isDecrypting={isDecrypting}
+          isOutgoing={isOutgoing}
+        />
       );
     }
   }
