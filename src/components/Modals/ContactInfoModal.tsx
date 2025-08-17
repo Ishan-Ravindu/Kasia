@@ -27,7 +27,7 @@ export const ContactInfoModal: FC<ContactInfoModalProps> = ({ oooc }) => (
                 "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+1px)]",
                 "pointer-events-none select-none",
                 "flex h-10 w-10 items-center justify-center",
-                "rounded-full text-sm leading-none font-bold tracking-wide text-[var(--text-secondary)]"
+                "rounded-full text-sm leading-none font-bold tracking-wide text-[var(--text-primary)]/80"
               )}
             >
               {oooc.contact.name.trim()[0].toUpperCase()}

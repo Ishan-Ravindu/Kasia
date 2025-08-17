@@ -166,7 +166,7 @@ export const ContactCard: FC<{
                 "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+1px)]",
                 "pointer-events-none select-none",
                 "flex h-8 w-8 items-center justify-center",
-                "rounded-full text-base leading-none font-bold tracking-wide text-gray-200"
+                "rounded-full text-sm leading-none font-bold tracking-wide text-[var(--text-primary)]/80"
               )}
             >
               {avatarLetter}
@@ -219,7 +219,7 @@ export const ContactCard: FC<{
                   "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+1px)]",
                   "pointer-events-none select-none",
                   "flex h-10 w-10 items-center justify-center",
-                  "rounded-full text-sm leading-none font-bold tracking-wide text-gray-200"
+                  "rounded-full text-sm leading-none font-bold tracking-wide text-[var(--text-primary)]/80"
                 )}
               >
                 {avatarLetter}

@@ -76,7 +76,7 @@ export const AvatarHash: FC<{
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       className={clsx(
-        "rounded-full bg-gray-100 dark:bg-gray-700",
+        "rounded-full bg-[var(--primary-bg)]",
         !selected && "opacity-80",
         className
       )}
