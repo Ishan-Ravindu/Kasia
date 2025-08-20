@@ -121,7 +121,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const sendSelfStash = async () => {
     await sendTransaction({
-      password: unlockedWallet?.password!,
+      password: unlockedWallet?.password ?? "",
       toAddress: walletAddress!,
       payload: toHex(
         PROTOCOL.prefix.type +
