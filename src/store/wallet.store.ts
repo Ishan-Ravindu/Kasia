@@ -19,6 +19,7 @@ import {
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
+import { get } from "http";
 
 export interface WalletStoreSendMessageArgs {
   /**
@@ -113,11 +114,13 @@ type WalletState = {
 
   // wallet operations
   stop: () => void;
-  sendMessageWithContext: (
-    args: WalletStoreSendContextualMessageArgs
-  ) => Promise<TransactionId>;
+
   sendTransaction: (
     args: WalletStoreSendTransactionArgs
+  ) => Promise<TransactionId>;
+
+  sendMessageWithContext: (
+    args: WalletStoreSendContextualMessageArgs
   ) => Promise<TransactionId>;
   getMatureUtxos: () => UtxoEntryReference[];
 
@@ -346,6 +349,21 @@ export const useWalletStore = create<WalletState>((set, get) => {
         priorityFee,
       });
     },
+    sendTransaction: async (args) => {
+      const state = get();
+      if (!state.unlockedWallet || !state.accountService) {
+        throw new Error("Wallet not unlocked or account service not running");
+      }
+      return state.accountService.createTransaction(
+        {
+          address: args.toAddress,
+          amount: args.customAmount ?? BigInt(0),
+          payload: args.payload ?? "",
+          priorityFee: args.priorityFee,
+        },
+        state.unlockedWallet.password
+      );
+    },
     sendMessageWithContext: async ({
       message,
       toAddress,
@@ -375,29 +393,12 @@ export const useWalletStore = create<WalletState>((set, get) => {
         throw error;
       }
     },
-    sendTransaction: async (args) => {
-      const state = get();
-      if (!state.unlockedWallet || !state.accountService) {
-        throw new Error("Wallet not unlocked or account service not running");
-      }
-      return state.accountService.createTransaction(
-        {
-          address: args.toAddress,
-          amount: args.customAmount ?? BigInt(0),
-          payload: args.payload ?? "",
-          priorityFee: args.priorityFee,
-        },
-        state.unlockedWallet.password
-      );
-    },
-
     getMatureUtxos: () => {
       if (!_accountService) {
         throw Error("Account service not initialized.");
       }
       return _accountService.getMatureUtxos();
     },
-
     setSelectedNetwork: (network: NetworkType) =>
       set({ selectedNetwork: network }),
 

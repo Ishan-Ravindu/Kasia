@@ -40,6 +40,7 @@ import {
   ContextualMessageResponse,
   HandshakeResponse,
 } from "../service/indexer/generated";
+import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
