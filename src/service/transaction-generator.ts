@@ -45,6 +45,7 @@ export class TransactionGeneratorService {
 
     if (priorityFee?.feerate && priorityFee.feerate > 1) {
       // Estimate transaction mass (typical message transaction ~2500-3000 grams)
+      // TO DO: Fix this.
       const estimatedMass = 2800; // grams - rough estimate for message transaction
       const baseFeeRate = 1; // sompi per gram
       const additionalFeeRate = priorityFee.feerate - baseFeeRate;
@@ -115,6 +116,7 @@ export class TransactionGeneratorService {
     amount,
     payload,
     priorityFee,
+    isFullBalance,
   }: {
     context: UtxoContext;
     networkId: string;
@@ -123,10 +125,8 @@ export class TransactionGeneratorService {
     amount: bigint;
     payload?: string | Uint8Array;
     priorityFee?: PriorityFeeConfig;
+    isFullBalance?: boolean;
   }): Generator {
-    const matureBalance = context.balance?.mature ?? 0n;
-    const isFullBalance = matureBalance === amount;
-
     // for full balance, use ReceiverPays (no choice). For partial, use SenderPays
     const finalPriorityFee = isFullBalance
       ? { amount: BigInt(0), source: FeeSource.ReceiverPays }

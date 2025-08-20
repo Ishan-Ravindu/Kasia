@@ -109,15 +109,12 @@ export const SendPaymentPopup: FC<{
         .join("");
 
       // Send payment directly to recipient with message payload using new method
-      const txId = await walletStore.accountService.createPaymentWithMessage(
-        {
-          address: new Address(recipientAddress),
-          amount: amountSompi,
-          payload: payloadHex,
-          originalMessage: message, // Pass the original message for outgoing record
-        },
-        walletStore.unlockedWallet.password
-      );
+      const txId = await walletStore.accountService.createPaymentWithMessage({
+        address: new Address(recipientAddress),
+        amount: amountSompi,
+        payload: payloadHex,
+        originalMessage: message, // Pass the original message for outgoing record
+      });
 
       // Create and store outgoing payment message record (simplified)
       const paymentContent = JSON.stringify({

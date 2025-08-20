@@ -249,6 +249,23 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return null;
   }
 
+  private validateTransactionPrerequisites() {
+    if (!this.isStarted || !this.rpcClient.rpc) {
+      throw new Error("Account service is not started");
+    }
+
+    if (!this.receiveAddress) {
+      throw new Error("Receive address not initialized");
+    }
+
+    if (!this.context) {
+      throw new Error("UTXO context not initialized");
+    }
+
+    // ensure password is available
+    this.ensurePasswordSet();
+  }
+
   async start() {
     try {
       // Get the receive address from the wallet
@@ -422,7 +439,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       // Submit the transaction
       console.log("Submitting transaction to network...");
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc);
+      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
       console.log(`Transaction submitted with ID: ${txId}`);
       console.log("========================");
 
@@ -434,16 +451,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async createPaymentWithMessage(
-    paymentTransaction: CreatePaymentWithMessageArgs,
-    password: string
+    paymentTransaction: CreatePaymentWithMessageArgs
   ): Promise<TransactionId> {
-    if (!this.isStarted || !this.rpcClient.rpc) {
-      throw new Error("Account service is not started");
-    }
-
-    if (!this.receiveAddress) {
-      throw new Error("Receive address not initialized");
-    }
+    this.validateTransactionPrerequisites();
 
     if (!paymentTransaction.address) {
       throw new Error("Transaction address is required");
@@ -455,7 +465,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
-      password
+      this.password!
     );
 
     if (!privateKeyGenerator) {
@@ -467,6 +477,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     try {
+      const matureBalance = this.context.balance?.mature ?? 0n;
+      const isFullBalance = matureBalance === paymentTransaction.amount;
       // Use a modified generator that sends to recipient but includes payload
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
         context: this.context,
@@ -476,6 +488,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         amount: paymentTransaction.amount,
         payload: paymentTransaction.payload,
         priorityFee: paymentTransaction.priorityFee,
+        isFullBalance,
       });
 
       const pendingTransaction: PendingTransaction | null =
@@ -513,7 +526,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Submit the transaction
       console.log("Submitting transaction to network...");
 
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc);
+      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
 
       console.log(`Payment with message submitted with ID: ${txId}`);
 
@@ -525,16 +538,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async createWithdrawTransaction(
-    withdrawTransaction: CreateWithdrawTransactionArgs,
-    password: string
+    withdrawTransaction: CreateWithdrawTransactionArgs
   ) {
-    if (!this.isStarted || !this.rpcClient.rpc) {
-      throw new Error("Account service is not started");
-    }
-
-    if (!this.receiveAddress) {
-      throw new Error("Receive address not initialized");
-    }
+    this.validateTransactionPrerequisites();
 
     if (!withdrawTransaction.address) {
       throw new Error("Transaction address is required");
@@ -546,7 +552,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
-      password
+      this.password!
     );
 
     if (!privateKeyGenerator) {
@@ -558,6 +564,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     try {
+      const matureBalance = this.context.balance?.mature ?? 0n;
+      const isFullBalance = matureBalance === withdrawTransaction.amount;
       // Use our optimized generator creation method
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
         context: this.context,
@@ -566,6 +574,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         destinationAddress: withdrawTransaction.address,
         amount: withdrawTransaction.amount,
         priorityFee: withdrawTransaction.priorityFee,
+        isFullBalance: isFullBalance,
       });
 
       const pendingTransaction: PendingTransaction | null =
@@ -594,7 +603,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Sign the transaction
       pendingTransaction.sign(privateKeys);
       // submit
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc);
+      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
 
       console.log(`Transaction submitted with ID: ${txId}`);
 
@@ -606,22 +615,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async createCompoundTransaction() {
-    if (!this.isStarted || !this.rpcClient.rpc) {
-      throw new Error("Account service is not started");
-    }
+    this.validateTransactionPrerequisites();
 
-    if (!this.receiveAddress) {
-      throw new Error("Receive address not initialized");
-    }
-
-    if (!this.context) {
-      throw new Error("UTXO context not initialized");
-    }
-
-    // ensure password is available
-    this.ensurePasswordSet();
-
-    console.log("Consolidating all UTXOs to:", this.receiveAddress.toString());
+    console.log("Consolidating all UTXOs to:", this.receiveAddress!.toString());
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
@@ -672,7 +668,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       pendingTransaction.sign(privateKeys);
 
       // Submit the transaction
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc);
+      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
 
       console.log(`Transaction submitted with ID: ${txId}`);
 
