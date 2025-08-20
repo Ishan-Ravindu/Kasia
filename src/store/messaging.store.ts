@@ -13,10 +13,13 @@ import {
   PrivateKey,
 } from "cipher";
 import { WalletStorageService } from "../service/wallet-storage-service";
-import { Address, NetworkType } from "kaspa-wasm";
+import { Address, kaspaToSompi, NetworkType } from "kaspa-wasm";
 import { ConversationManagerService } from "../service/conversation-manager-service";
 import { useWalletStore } from "./wallet.store";
-import { ConversationEvents } from "src/types/messaging.types";
+import {
+  ConversationEvents,
+  HandshakePayload,
+} from "src/types/messaging.types";
 import { UnlockedWallet } from "src/types/wallet.type";
 import { useDBStore } from "./db.store";
 import {
@@ -28,7 +31,7 @@ import {
   loadLegacyMessages,
   saveMessages,
 } from "../service/storage-encryption";
-import { PROTOCOL } from "../config/protocol";
+import { PROTOCOL, toHex } from "../config/protocol";
 import { Payment } from "./repository/payment.repository";
 import { Message } from "./repository/message.repository";
 import { Handshake } from "./repository/handshake.repository";
@@ -37,7 +40,7 @@ import {
   ContextualMessageResponse,
   HandshakeResponse,
 } from "../service/indexer/generated";
-import { tryBase64ToHex } from "../utils/payload-encoding";
+import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
@@ -182,7 +185,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           const decodedString = new TextDecoder().decode(bytes);
 
           // if its base64, decrypt
-          const encryptedHex = tryBase64ToHex(decodedString);
+          const encryptedHex = tryParseBase64AsHexToHex(decodedString);
 
           const decryptedContent = decrypt_message(
             new EncryptedMessage(encryptedHex),
@@ -358,7 +361,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             for (const handshake of handshakes.sort(
               (a, b) => Number(b.block_time) - Number(a.block_time)
             )) {
-              console.log({ handshake });
               const encryptedMessage = new EncryptedMessage(
                 handshake.message_payload
               );
@@ -626,11 +628,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               return;
             }
 
-            // Process handshake if we're the recipient or if this is a response to our handshake
             if (
-              transaction.recipientAddress === address.toString() || // received handshake
-              (handshakePayload.isResponse &&
-                transaction.senderAddress === address.toString()) // our own response
+              // received handshake
+              transaction.recipientAddress === address.toString()
             ) {
               console.log("Processing handshake message:", {
                 senderAddress: transaction.senderAddress,
@@ -1178,15 +1178,29 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         throw new Error("Wallet not unlocked");
       }
 
-      // Create the handshake payload
-      const { payload, contact, conversation } =
+      // create contact and conversation
+      const { contact, conversation } =
         await manager.initiateHandshake(recipientAddress);
 
+      // Create the handshake payload
+      const handshakePayload: HandshakePayload = {
+        type: "handshake",
+        alias: conversation.myAlias,
+        timestamp: Date.now(),
+        version: 1,
+      };
+
+      const encryptedMessage = encrypt_message(
+        recipientAddress,
+        JSON.stringify(handshakePayload)
+      );
+
+      const payload = `${toHex("ciph_msg:1:handshake:")}${encryptedMessage.to_hex()}`;
       // Send the handshake message
       console.log("Sending handshake message to:", recipientAddress);
       try {
-        const txId = await walletStore.sendMessage({
-          message: payload,
+        const txId = await walletStore.sendTransaction({
+          payload,
           toAddress: new Address(recipientAddress),
           password: walletStore.unlockedWallet.password,
           customAmount,
@@ -1294,22 +1308,31 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         console.log("Using recipient address:", recipientAddress);
 
         // Create handshake response
-        const handshakeResponse = await manager.createHandshakeResponse(
-          conversation.id
-        );
+        await manager.createHandshakeResponse(conversation.id);
 
-        console.log("Handshake response to send:", handshakeResponse);
+        const handshakeResponsePayload: HandshakePayload = {
+          type: "handshake",
+          alias: conversation.myAlias,
+          // create handshake response already check if their alias is set, else it throws
+          theirAlias: conversation.theirAlias!,
+          timestamp: Date.now(),
+          version: 1,
+          isResponse: true,
+        };
+
+        console.log("Handshake response to send:", handshakeResponsePayload);
+
+        const payload = `${toHex("ciph_msg:1:handshake:")}${encrypt_message(recipientAddress, JSON.stringify(handshakeResponsePayload)).to_hex()}`;
 
         try {
-          console.log("Trying", recipientAddress);
           const kaspaAddress = new Address(recipientAddress);
-          console.log("Valid Kaspa address created:", kaspaAddress.toString());
 
           // Send the handshake response
-          const txId = await walletStore.sendMessage({
-            message: handshakeResponse,
+          const txId = await walletStore.sendTransaction({
+            payload,
             toAddress: kaspaAddress,
             password: walletStore.unlockedWallet.password,
+            customAmount: kaspaToSompi("0.2"),
           });
 
           // Update the handshake status in the store

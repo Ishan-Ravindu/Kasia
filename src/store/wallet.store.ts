@@ -19,8 +19,12 @@ import {
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
+import { get } from "http";
 
 export interface WalletStoreSendMessageArgs {
+  /**
+   * message to send, prefix will be added automatically
+   */
   message: string;
   toAddress: Address;
   password: string;
@@ -33,6 +37,17 @@ export interface WalletStoreSendContextualMessageArgs {
   toAddress: Address;
   myAlias: string;
   password: string;
+  priorityFee?: PriorityFeeConfig;
+}
+
+export interface WalletStoreSendTransactionArgs {
+  /**
+   * payload to use for the transaction, if encryption is required, it should be encrypted before passing it here
+   */
+  payload?: string;
+  toAddress: Address;
+  password: string;
+  customAmount?: bigint;
   priorityFee?: PriorityFeeConfig;
 }
 
@@ -99,14 +114,13 @@ type WalletState = {
 
   // wallet operations
   stop: () => void;
-  sendMessage: (args: WalletStoreSendMessageArgs) => Promise<TransactionId>;
+
+  sendTransaction: (
+    args: WalletStoreSendTransactionArgs
+  ) => Promise<TransactionId>;
+
   sendMessageWithContext: (
     args: WalletStoreSendContextualMessageArgs
-  ) => Promise<TransactionId>;
-  sendPreEncryptedMessage: (
-    preEncryptedHex: string,
-    toAddress: Address,
-    password: string
   ) => Promise<TransactionId>;
   getMatureUtxos: () => UtxoEntryReference[];
 
@@ -335,35 +349,20 @@ export const useWalletStore = create<WalletState>((set, get) => {
         priorityFee,
       });
     },
-
-    sendMessage: async ({
-      message,
-      toAddress,
-      password,
-      customAmount,
-      priorityFee,
-    }: WalletStoreSendMessageArgs) => {
+    sendTransaction: async (args) => {
       const state = get();
       if (!state.unlockedWallet || !state.accountService) {
         throw new Error("Wallet not unlocked or account service not running");
       }
-
-      try {
-        // Check if this is a handshake message
-        console.log("Sending protocol message to:", toAddress.toString());
-        const encryptedMessage = encrypt_message(toAddress.toString(), message);
-
-        return await state.accountService.sendMessage({
-          message: encryptedMessage.to_hex(),
-          toAddress,
-          password,
-          amount: customAmount,
-          priorityFee,
-        });
-      } catch (error) {
-        console.error("Error sending message:", error);
-        throw error;
-      }
+      return state.accountService.createTransaction(
+        {
+          address: args.toAddress,
+          amount: args.customAmount ?? BigInt(0),
+          payload: args.payload ?? "",
+          priorityFee: args.priorityFee,
+        },
+        state.unlockedWallet.password
+      );
     },
     sendMessageWithContext: async ({
       message,
@@ -394,24 +393,12 @@ export const useWalletStore = create<WalletState>((set, get) => {
         throw error;
       }
     },
-    sendPreEncryptedMessage: (preEncryptedHex, toAddress, password) => {
-      if (!_accountService) {
-        throw Error("Account service not initialized.");
-      }
-      return _accountService.sendPreEncryptedMessage(
-        toAddress,
-        preEncryptedHex,
-        password
-      );
-    },
-
     getMatureUtxos: () => {
       if (!_accountService) {
         throw Error("Account service not initialized.");
       }
       return _accountService.getMatureUtxos();
     },
-
     setSelectedNetwork: (network: NetworkType) =>
       set({ selectedNetwork: network }),
 
