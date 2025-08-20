@@ -49,9 +49,13 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
     }
   };
 
-  const send = async () => {
+  const send = async (myAlias: string) => {
     if (!recipient) {
       toast.error("Error, please select a contact.");
+      return;
+    }
+    if (!myAlias) {
+      toast.error("Valid Alias needed for sending.");
       return;
     }
     if (!walletStore.unlockedWallet) {
@@ -66,16 +70,6 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
     }
     if (!draft && !attachment) {
       toast.error("Please enter a message or attach a file.");
-      return;
-    }
-
-    // require valid fee state before sending
-    if (
-      !feeState ||
-      feeState.status !== "idle" ||
-      typeof feeState.value !== "number"
-    ) {
-      toast.error("Please wait for fee calculation to complete.");
       return;
     }
 
@@ -104,51 +98,14 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
         }
       }
 
-      // check if we have an active conversation with this recipient
-      const activeConversations =
-        messageStore.getActiveConversationsWithContacts();
-      const existingConversation = activeConversations.find(
-        (conv) => conv.contact.kaspaAddress === recipient
-      );
-
-      let txId: string;
-
-      // if we have an active conversation, use the context-aware sending
-      if (
-        existingConversation &&
-        existingConversation.conversation.theirAlias
-      ) {
-        console.log("Sending message with conversation context:", {
-          recipient,
-          theirAlias: existingConversation.conversation.theirAlias,
-          priorityFee: priority,
-        });
-
-        if (!walletStore.accountService) {
-          throw new Error("Account service not initialized");
-        }
-
-        // use the account service directly for context-aware sending
-        txId = await walletStore.accountService.sendMessageWithContext({
-          toAddress: new Address(recipient),
-          message: messageToSend,
-          password: walletStore.unlockedWallet.password,
-          theirAlias: existingConversation.conversation.theirAlias,
-          priorityFee: priority,
-        });
-      } else {
-        // if no active conversation or no alias, use regular sending
-        console.log(
-          "No active conversation found, sending regular message with priority fee:",
-          priority
-        );
-        txId = await walletStore.sendMessage({
-          message: messageToSend,
-          toAddress: new Address(recipient),
-          password: walletStore.unlockedWallet.password,
-          priorityFee: priority,
-        });
-      }
+      let txId = "";
+      txId = await walletStore.sendMessageWithContext({
+        message: messageToSend,
+        toAddress: new Address(recipient),
+        password: walletStore.unlockedWallet.password,
+        myAlias,
+        priorityFee: priority,
+      });
 
       const event: KasiaTransaction = {
         transactionId: txId,
@@ -161,7 +118,7 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
           ? JSON.stringify(fileDataForStorage)
           : draft,
         amount: 20000000,
-        fee: feeState.value,
+        fee: feeState.value || 0,
         payload: "",
       };
 
@@ -177,5 +134,16 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
     }
   };
 
-  return { send, attach };
+  return {
+    /**
+     * Send a message to the recipient
+     *
+     * param myAlias - My alias (optional)
+     */
+    send,
+    /**
+     * Attach a file to the message
+     */
+    attach,
+  };
 };

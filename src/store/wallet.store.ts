@@ -19,10 +19,31 @@ import {
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
-import { PROTOCOL } from "../config/protocol";
 
 export interface WalletStoreSendMessageArgs {
+  /**
+   * message to send, prefix will be added automatically
+   */
   message: string;
+  toAddress: Address;
+  password: string;
+  customAmount?: bigint;
+  priorityFee?: PriorityFeeConfig;
+}
+
+export interface WalletStoreSendContextualMessageArgs {
+  message: string;
+  toAddress: Address;
+  myAlias: string;
+  password: string;
+  priorityFee?: PriorityFeeConfig;
+}
+
+export interface WalletStoreSendTransactionArgs {
+  /**
+   * payload to use for the transaction, if encryption is required, it should be encrypted before passing it here
+   */
+  payload?: string;
   toAddress: Address;
   password: string;
   customAmount?: bigint;
@@ -92,11 +113,11 @@ type WalletState = {
 
   // wallet operations
   stop: () => void;
-  sendMessage: (args: WalletStoreSendMessageArgs) => Promise<TransactionId>;
-  sendPreEncryptedMessage: (
-    preEncryptedHex: string,
-    toAddress: Address,
-    password: string
+  sendMessageWithContext: (
+    args: WalletStoreSendContextualMessageArgs
+  ) => Promise<TransactionId>;
+  sendTransaction: (
+    args: WalletStoreSendTransactionArgs
   ) => Promise<TransactionId>;
   getMatureUtxos: () => UtxoEntryReference[];
 
@@ -325,14 +346,13 @@ export const useWalletStore = create<WalletState>((set, get) => {
         priorityFee,
       });
     },
-
-    sendMessage: async ({
+    sendMessageWithContext: async ({
       message,
       toAddress,
       password,
-      customAmount,
       priorityFee,
-    }: WalletStoreSendMessageArgs) => {
+      myAlias,
+    }) => {
       const state = get();
       if (!state.unlockedWallet || !state.accountService) {
         throw new Error("Wallet not unlocked or account service not running");
@@ -340,61 +360,34 @@ export const useWalletStore = create<WalletState>((set, get) => {
 
       try {
         // Check if this is a handshake message
-        if (
-          message.startsWith(PROTOCOL.prefix.string) &&
-          message.includes(":handshake:")
-        ) {
-          // Always send handshake messages to the recipient's address
-          console.log("Sending handshake message to:", toAddress.toString());
-          const encryptedMessage = await encrypt_message(
-            toAddress.toString(),
-            message
-          );
-          if (!encryptedMessage) {
-            throw new Error("Failed to encrypt handshake message");
-          }
-          return await state.accountService.sendMessage({
-            message: encryptedMessage.to_hex(),
-            toAddress,
-            password,
-            amount: customAmount,
-            priorityFee,
-          });
-        }
+        console.log("Sending protocol message to:", toAddress.toString());
+        const encryptedMessage = encrypt_message(toAddress.toString(), message);
 
-        // For regular messages, send to recipient
-        console.log(
-          "Sending regular message to recipient:",
-          toAddress.toString()
-        );
-        const encryptedMessage = await encrypt_message(
-          toAddress.toString(),
-          message
-        );
-        if (!encryptedMessage) {
-          throw new Error("Failed to encrypt message");
-        }
-        return await state.accountService.sendMessage({
+        return await state.accountService.sendMessageWithContext({
           message: encryptedMessage.to_hex(),
           toAddress,
           password,
-          amount: customAmount,
+          theirAlias: myAlias,
           priorityFee,
         });
       } catch (error) {
-        console.error("Error sending message:", error);
+        console.error("Error sending contextual message:", error);
         throw error;
       }
     },
-
-    sendPreEncryptedMessage: (preEncryptedHex, toAddress, password) => {
-      if (!_accountService) {
-        throw Error("Account service not initialized.");
+    sendTransaction: async (args) => {
+      const state = get();
+      if (!state.unlockedWallet || !state.accountService) {
+        throw new Error("Wallet not unlocked or account service not running");
       }
-      return _accountService.sendPreEncryptedMessage(
-        toAddress,
-        preEncryptedHex,
-        password
+      return state.accountService.createTransaction(
+        {
+          address: args.toAddress,
+          amount: args.customAmount ?? BigInt(0),
+          payload: args.payload ?? "",
+          priorityFee: args.priorityFee,
+        },
+        state.unlockedWallet.password
       );
     },
 

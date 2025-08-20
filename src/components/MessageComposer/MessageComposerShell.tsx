@@ -15,9 +15,10 @@ import {
 import { SendPaymentPopup } from "../SendPaymentPopup";
 import { MessageInput } from "./MessageInput";
 import { FeeDisplay } from "./FeeDisplay";
-import { useUiStore } from "../../store/ui.store";
 import { useMessagingStore } from "../../store/messaging.store";
 import { useFeeEstimate } from "../../hooks/MessageComposer/useFeeEstimate";
+import { toast } from "../../utils/toast-helper";
+import { MAX_CHAT_INPUT_CHAR } from "../../config/constants";
 
 export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
   const attachment = useComposerSlice((s) => s.attachment);
@@ -38,7 +39,26 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
   const setPriority = useComposerStore((s) => s.setPriority);
   const setSendState = useComposerStore((s) => s.setSendState);
 
-  const { openModal, setSendMessageCallback } = useUiStore();
+  const oooc = useMessagingStore((s) =>
+    recipient
+      ? s.oneOnOneConversations.find(
+          ({ contact }) => contact.kaspaAddress === recipient
+        )
+      : undefined
+  );
+  const conversation = oooc?.conversation;
+  const canCompose =
+    !!conversation &&
+    (conversation.status === "active" ||
+      (conversation.status === "pending" && conversation.initiatedByMe));
+
+  const guardReady = () => {
+    if (!canCompose) {
+      toast.error("Accept or send handshake to chat");
+      return false;
+    }
+    return true;
+  };
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [hasCamera, setHasCamera] = useState(false);
@@ -59,8 +79,27 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
     checkCamera();
   }, []);
 
-  const openFileDialog = () => fileInputRef.current?.click();
-  const openCameraDialog = () => cameraInputRef.current?.click();
+  // check message length and trim if over limit
+  useEffect(() => {
+    console.log(draft.length);
+    if (draft.length > MAX_CHAT_INPUT_CHAR) {
+      toast.removeAll();
+      toast.error(
+        `Over max message length of ${MAX_CHAT_INPUT_CHAR}, message trimmed.`
+      );
+      const trimmedDraft = draft.slice(0, MAX_CHAT_INPUT_CHAR);
+      if (recipient) setDraft(recipient, trimmedDraft);
+    }
+  }, [draft, recipient, setDraft]);
+
+  const openFileDialog = () => {
+    if (!guardReady()) return;
+    fileInputRef.current?.click();
+  };
+  const openCameraDialog = () => {
+    if (!guardReady()) return;
+    cameraInputRef.current?.click();
+  };
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -74,6 +113,7 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
   const handlePaste = async (
     event: React.ClipboardEvent<HTMLTextAreaElement>
   ) => {
+    if (!guardReady()) return;
     const items = event.clipboardData?.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
@@ -101,29 +141,20 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
+    if (!guardReady()) return;
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) await attach(files[0], "Dropped File");
   };
 
   const handleDraftChange = (value: string) => {
+    if (!guardReady()) return;
     if (recipient) setDraft(recipient, value);
     if (sendState.status === "error") setSendState({ status: "idle" });
   };
 
   const onSend = async () => {
-    if (!recipient) return;
-    const active = useMessagingStore
-      .getState()
-      .getActiveConversationsWithContacts();
-    const exists = active.find(
-      ({ contact }) => contact.kaspaAddress === recipient
-    );
-    if (!exists) {
-      setSendMessageCallback(() => send);
-      openModal("warn-costy-send-message");
-      return;
-    }
-    await send();
+    if (!guardReady() || !conversation) return;
+    await send(conversation.myAlias);
   };
 
   return (
@@ -186,13 +217,17 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
 
           <MessageInput
             ref={messageInputRef}
-            value={draft}
+            value={canCompose ? draft : ""}
             onChange={handleDraftChange}
             onDragOver={isDragOver}
             onSend={onSend}
             onPaste={handlePaste}
-            placeholder="Type your message..."
-            disabled={sendState.status === "loading"}
+            placeholder={
+              canCompose
+                ? "Type your message..."
+                : "Accept or send handshake to chat..."
+            }
+            disabled={sendState.status === "loading" || !canCompose}
           />
 
           <div className="absolute right-2 flex h-full items-center gap-1">
