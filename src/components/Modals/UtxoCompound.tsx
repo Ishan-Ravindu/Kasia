@@ -104,10 +104,13 @@ export const UtxoCompound: FC<UtxoCompoundProps> = ({
   return (
     <div className="mt-1">
       <div className="mb-2">
-        <h3 className="mb-1 text-base font-semibold">Compound UTXOs</h3>
-        <p className="text-sm text-[var(--text-secondary)]">
+        <h3 className="mb-1 text-center text-base font-semibold sm:text-left">
+          Compound UTXOs
+        </h3>
+        <p className="text-center text-sm text-[var(--text-secondary)] sm:text-left">
           Combine multiple UTXOs into fewer, larger ones to optimize wallet
-          performance
+          performance. This creates a tx and sends all funds automatically to
+          yourself. Network fees will apply.
         </p>
       </div>
 
@@ -116,7 +119,7 @@ export const UtxoCompound: FC<UtxoCompoundProps> = ({
         <div className="my-2 rounded-lg border border-[var(--accent-yellow)] bg-[var(--secondary-bg)] p-1 sm:my-3">
           <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:text-left">
             <AlertTriangle className="m-0 size-6 text-[var(--accent-yellow)] sm:m-1" />
-            <div className="text-xs">
+            <div className="text-center text-xs sm:text-left">
               <p className="font-medium text-[var(--accent-yellow)]">
                 High UTXO Count Detected
               </p>

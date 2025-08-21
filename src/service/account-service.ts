@@ -538,6 +538,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async createWithdrawTransaction(
+    // remove the external below and follow payment or compound approacgh
     withdrawTransaction: CreateWithdrawTransactionArgs
   ) {
     this.validateTransactionPrerequisites();
