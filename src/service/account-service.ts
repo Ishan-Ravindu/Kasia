@@ -298,78 +298,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return this.password;
   }
 
-  async start() {
-    try {
-      // Get the receive address from the wallet
-      const initialReceiveAddress =
-        this.unlockedWallet.publicKeyGenerator.receiveAddress(
-          this.networkId,
-          0
-        );
-
-      // Ensure it has the proper network prefix
-      this.receiveAddress = new Address(
-        ensureAddressPrefix(initialReceiveAddress.toString(), this.networkId)
-      );
-
-      console.log(
-        "Using primary address for all operations:",
-        this.receiveAddress.toString()
-      );
-
-      // Set up event listeners
-      console.log("Setting up event listeners...");
-      this.processor.addEventListener("balance", async () => {
-        console.log("Balance event received");
-        this._emitBalanceUpdate();
-      });
-
-      // start the processor
-      console.log("Starting UTXO processor...");
-      await this.processor.start();
-
-      // Only track primary address
-      const addressesToTrack = [this.receiveAddress!];
-
-      // Now track addresses in UTXO processor
-      console.log("Starting address tracking for primary address...");
-      await this.context.trackAddresses(addressesToTrack);
-
-      // Set up block subscription with optimized message handling
-      console.log("Setting up block subscription...");
-      await this.rpcClient.subscribeToBlockAdded((event) => {
-        // Fire-and-forget; callback signature remains (event) => void
-        void this.processBlockEvent(event as unknown as BlockAddedData);
-      });
-      console.log("Successfully subscribed to block events");
-
-      this.isStarted = true;
-    } catch (error) {
-      console.error("Failed to start account service:", error);
-      throw error;
-    }
-  }
-
-  async stop() {
-    console.log("Stopping UTXO subscription and processor...");
-    try {
-      // Stop the UTXO processor
-      await this.processor.stop();
-
-      // Clean up our local state
-      this.isStarted = false;
-      console.log("Successfully cleaned up UTXO subscription and processor");
-    } catch (error) {
-      console.error(
-        "Failed to clean up UTXO subscription and processor:",
-        error
-      );
-    }
-  }
-
-  public async createTransaction(
-    transaction: CreateTransactionArgs,
-    password: string
+  private async createTransaction(
+    transaction: CreateTransactionArgs
   ): Promise<TransactionId> {
     this.assertReady();
 
@@ -401,7 +331,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
-      password
+      this.pwd
     );
 
     if (!privateKeyGenerator) {
@@ -471,6 +401,75 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
+    }
+  }
+
+  async start() {
+    try {
+      // Get the receive address from the wallet
+      const initialReceiveAddress =
+        this.unlockedWallet.publicKeyGenerator.receiveAddress(
+          this.networkId,
+          0
+        );
+
+      // Ensure it has the proper network prefix
+      this.receiveAddress = new Address(
+        ensureAddressPrefix(initialReceiveAddress.toString(), this.networkId)
+      );
+
+      console.log(
+        "Using primary address for all operations:",
+        this.receiveAddress.toString()
+      );
+
+      // Set up event listeners
+      console.log("Setting up event listeners...");
+      this.processor.addEventListener("balance", async () => {
+        console.log("Balance event received");
+        this._emitBalanceUpdate();
+      });
+
+      // start the processor
+      console.log("Starting UTXO processor...");
+      await this.processor.start();
+
+      // Only track primary address
+      const addressesToTrack = [this.receiveAddress!];
+
+      // Now track addresses in UTXO processor
+      console.log("Starting address tracking for primary address...");
+      await this.context.trackAddresses(addressesToTrack);
+
+      // Set up block subscription with optimized message handling
+      console.log("Setting up block subscription...");
+      await this.rpcClient.subscribeToBlockAdded((event) => {
+        // Fire-and-forget; callback signature remains (event) => void
+        void this.processBlockEvent(event as unknown as BlockAddedData);
+      });
+      console.log("Successfully subscribed to block events");
+
+      this.isStarted = true;
+    } catch (error) {
+      console.error("Failed to start account service:", error);
+      throw error;
+    }
+  }
+
+  async stop() {
+    console.log("Stopping UTXO subscription and processor...");
+    try {
+      // Stop the UTXO processor
+      await this.processor.stop();
+
+      // Clean up our local state
+      this.isStarted = false;
+      console.log("Successfully cleaned up UTXO subscription and processor");
+    } catch (error) {
+      console.error(
+        "Failed to clean up UTXO subscription and processor:",
+        error
+      );
     }
   }
 
@@ -747,15 +746,12 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     try {
-      const txId = await this.createTransaction(
-        {
-          address: destinationAddress,
-          amount: messageAmount,
-          payload: payload,
-          priorityFee: sendMessage.priorityFee,
-        },
-        sendMessage.password
-      );
+      const txId = await this.createTransaction({
+        address: destinationAddress,
+        amount: messageAmount,
+        payload: payload,
+        priorityFee: sendMessage.priorityFee,
+      });
 
       return txId;
     } catch (error) {
@@ -1148,15 +1144,12 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Always send to our own address for self-send messages
       const destinationAddress = new Address(this.recv.toString());
       // Send to our own address
-      const txId = await this.createTransaction(
-        {
-          address: destinationAddress,
-          amount: minimumAmount,
-          payload: payload,
-          priorityFee: sendMessage.priorityFee,
-        },
-        sendMessage.password
-      );
+      const txId = await this.createTransaction({
+        address: destinationAddress,
+        amount: minimumAmount,
+        payload: payload,
+        priorityFee: sendMessage.priorityFee,
+      });
 
       return txId;
     } catch (error) {
