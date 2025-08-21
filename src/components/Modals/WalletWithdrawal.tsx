@@ -1,5 +1,4 @@
 import { ChangeEvent, FC, useCallback, useState } from "react";
-import { createWithdrawTransaction } from "../../service/account-service";
 import { kaspaToSompi, sompiToKaspaString } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
@@ -7,6 +6,7 @@ import { toast } from "../../utils/toast-helper";
 import { QrScanner } from "../QrScanner";
 import { Clipboard } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
+import { Address, FeeSource } from "kaspa-wasm";
 
 const maxDustAmount = kaspaToSompi("0.19")!;
 
@@ -19,7 +19,9 @@ export const WalletWithdrawal: FC = () => {
 
   const closeModal = useUiStore((s) => s.closeModal);
 
+  const accountService = useWalletStore((store) => store.accountService);
   const balance = useWalletStore((store) => store.balance);
+
   const inputAmountUpdated = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       if (/^-?\d*\.?\d*$/.test(event.target.value) === false) {
@@ -88,6 +90,10 @@ export const WalletWithdrawal: FC = () => {
     try {
       setIsSending(true);
 
+      if (!accountService) {
+        return;
+      }
+
       if (!withdrawAddress || !withdrawAmount) {
         throw new Error("Please enter both Address and Amount");
       }
@@ -116,7 +122,12 @@ export const WalletWithdrawal: FC = () => {
         );
       }
 
-      await createWithdrawTransaction(withdrawAddress, amount);
+      const txId = await accountService.createWithdrawTransaction({
+        address: new Address(withdrawAddress),
+        amount: amount,
+        priorityFee: { amount: BigInt(0), source: FeeSource.SenderPays },
+      }); //withdrawAddress, amount);
+      console.log(`UTXO Compounding succeed, txid: ${txId}`);
       setWithdrawAddress("");
       setWithdrawAmount("");
       toast.success("Withdraw Success");

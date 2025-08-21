@@ -538,7 +538,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async createWithdrawTransaction(
-    // remove the external below and follow payment or compound approacgh
     withdrawTransaction: CreateWithdrawTransactionArgs
   ) {
     this.validateTransactionPrerequisites();
@@ -565,7 +564,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     try {
-      const matureBalance = this.context.balance?.mature ?? 0n;
+      const matureBalance = this.context.balance?.mature;
       const isFullBalance = matureBalance === withdrawTransaction.amount;
       // Use our optimized generator creation method
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
@@ -630,8 +629,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     try {
-      const balance = this.context.balance;
-      if (!balance || balance.mature === 0n) {
+      const matureBalance = this.context.balance?.mature;
+      if (!matureBalance || matureBalance === 0n) {
         throw new Error("No mature UTXOs available for compound transaction");
       }
 
@@ -827,7 +826,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     console.log(`Added prefix to address: ${prefixedAddressString}`);
     return new Address(prefixedAddressString);
-  }
+  } // TODO Utility
 
   private isKasiaTransaction(tx: ITransaction | ExplorerTransaction): boolean {
     return tx?.payload?.startsWith(PROTOCOL.prefix.hex) ?? false;
@@ -1221,46 +1220,3 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 }
-
-export const createWithdrawTransaction = async (
-  toAddress: string,
-  amountSompi: bigint
-): Promise<void> => {
-  try {
-    console.log("Sending withdraw transaction:", {
-      toAddress,
-      amountSompi,
-    });
-
-    const walletStore = useWalletStore.getState();
-    const accountService = walletStore.accountService;
-    const password = walletStore.unlockedWallet?.password;
-
-    if (!accountService) {
-      throw new Error("Account service not initialized");
-    }
-
-    if (!password) {
-      throw new Error("Wallet is locked. Please unlock your wallet first.");
-    }
-
-    // Create and send a native transaction (no payload)
-    await accountService.createWithdrawTransaction(
-      {
-        address: new Address(toAddress),
-        amount: amountSompi,
-        priorityFee: { amount: BigInt(0), source: FeeSource.ReceiverPays },
-      },
-      password
-    );
-
-    console.log("Withdraw transaction sent successfully");
-  } catch (error) {
-    console.error("Send withdraw transaction error:", error);
-    throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Failed to send withdraw transaction"
-    );
-  }
-};
