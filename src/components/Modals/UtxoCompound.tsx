@@ -2,6 +2,7 @@ import { RefreshCw, AlertTriangle, XCircle } from "lucide-react";
 import { FC, useCallback, useEffect, useState } from "react";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
+import { toast } from "../../utils/toast-helper";
 
 type FrozenBalance = {
   matureUtxoCount: number;
@@ -83,15 +84,14 @@ export const UtxoCompound: FC<UtxoCompoundProps> = ({
 
     try {
       const txId = await accountService.createCompoundTransaction();
-
       console.log(`UTXO Compounding succeed, txid: ${txId}`);
-      setFrozenBalance(null); // Clear frozen balance on complete
     } catch (err) {
       console.error("UTXO compounding failed:", err);
       setError(getUserFriendlyErrorMessage(err));
       setFrozenBalance(null); // Clear frozen balance on error
     } finally {
       setIsCompounding(false);
+      toast.success("Success: Funds Compounded");
     }
   };
 

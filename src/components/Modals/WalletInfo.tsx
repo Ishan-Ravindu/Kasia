@@ -43,41 +43,42 @@ export const WalletInfo = () => {
         </div>
       </div>
 
-      {!frozenBalance &&
-        ((currentBalance?.matureUtxoCount ?? 0) > 0 ||
-          (currentBalance?.pendingUtxoCount ?? 0) > 0) && (
-          <div className="border-primary-border bg-primary-bg mb-4 rounded-2xl border p-4">
-            <h4 className="text-text-primary mb-2 text-center font-bold sm:text-left">
-              UTXO Information
-            </h4>
-            <ul className="my-0 flex list-none flex-col gap-1 p-0 text-sm">
+      {((currentBalance?.matureUtxoCount ?? 0) > 0 ||
+        (currentBalance?.pendingUtxoCount ?? 0) > 0) && (
+        <div className="border-primary-border bg-primary-bg mb-4 rounded-2xl border p-4">
+          <h4 className="text-text-primary mb-2 text-center font-bold sm:text-left">
+            UTXO Information
+          </h4>
+          <ul className="my-0 flex list-none flex-col gap-1 p-0 text-sm">
+            <li className="flex flex-col items-center sm:flex-row sm:justify-start">
+              <strong className="me-2">Mature UTXOs:</strong>{" "}
+              <span className="rounded-xl bg-[var(--kas-primary)] px-2 font-bold text-[var(--text-primary)]">
+                {frozenBalance?.matureUtxoCount ??
+                  currentBalance?.matureUtxoCount ??
+                  "-"}
+              </span>
+            </li>
+            <li className="flex flex-col items-center sm:flex-row sm:justify-start">
+              <strong className="me-2">Pending UTXOs:</strong>{" "}
+              <span className="rounded-xl bg-[var(--kas-primary)] px-2 font-bold text-[var(--text-primary)]">
+                {currentBalance?.pendingUtxoCount ?? "-"}
+              </span>
+            </li>
+            {((currentBalance?.matureUtxoCount ?? 0) > 0 ||
+              (currentBalance?.pendingUtxoCount ?? 0) > 0) && (
               <li className="flex flex-col items-center sm:flex-row sm:justify-start">
-                <strong className="me-2">Mature UTXOs:</strong>{" "}
-                <span className="rounded-xl bg-[var(--kas-primary)] px-2 font-bold text-[var(--text-primary)]">
-                  {currentBalance?.matureUtxoCount ?? "-"}
+                <strong className="me-2">Status:</strong>{" "}
+                <span className="status">
+                  {!currentBalance?.matureUtxoCount
+                    ? "Initializing..."
+                    : "Ready"}
                 </span>
               </li>
-              <li className="flex flex-col items-center sm:flex-row sm:justify-start">
-                <strong className="me-2">Pending UTXOs:</strong>{" "}
-                <span className="rounded-xl bg-[var(--kas-primary)] px-2 font-bold text-[var(--text-primary)]">
-                  {currentBalance?.pendingUtxoCount ?? "-"}
-                </span>
-              </li>
-              {((currentBalance?.matureUtxoCount ?? 0) > 0 ||
-                (currentBalance?.pendingUtxoCount ?? 0) > 0) && (
-                <li className="flex flex-col items-center sm:flex-row sm:justify-start">
-                  <strong className="me-2">Status:</strong>{" "}
-                  <span className="status">
-                    {!currentBalance?.matureUtxoCount
-                      ? "Initializing..."
-                      : "Ready"}
-                  </span>
-                </li>
-              )}
-            </ul>
-            <UtxoCompound onFrozenBalanceChange={setFrozenBalance} />
-          </div>
-        )}
+            )}
+          </ul>
+          <UtxoCompound onFrozenBalanceChange={setFrozenBalance} />
+        </div>
+      )}
     </div>
   );
 };
