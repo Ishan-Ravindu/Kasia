@@ -121,6 +121,25 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   // Add password field
   private password: string | null = null;
 
+  private get rpc() {
+    if (!this.rpcClient.rpc) throw new Error("RPC client is not initialized");
+    return this.rpcClient.rpc;
+  }
+  private get recv(): Address {
+    if (!this.receiveAddress)
+      throw new Error("Receive address not initialized");
+    return this.receiveAddress;
+  }
+  private get ctx(): UtxoContext {
+    if (!this.context) throw new Error("UTXO context not initialized");
+    return this.context;
+  }
+  private get pwd(): string {
+    if (!this.password)
+      throw new Error("Password not set - cannot perform operation");
+    return this.password;
+  }
+
   constructor(
     private readonly rpcClient: KaspaClient,
     private readonly unlockedWallet: UnlockedWallet
@@ -143,15 +162,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     if (unlockedWallet.password) {
       this.password = unlockedWallet.password;
     }
-  }
-
-  // Add method to set password
-  public setPassword(password: string) {
-    if (!password) {
-      throw new Error("Password cannot be empty");
-    }
-    console.log("Setting password in AccountService");
-    this.password = password;
   }
 
   private _emitBalanceUpdate() {
@@ -251,25 +261,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     if (!this.context) throw new Error("UTXO context not initialized");
     if (!this.password)
       throw new Error("Password not set - cannot perform operation");
-  }
-
-  private get rpc() {
-    if (!this.rpcClient.rpc) throw new Error("RPC client is not initialized");
-    return this.rpcClient.rpc;
-  }
-  private get recv(): Address {
-    if (!this.receiveAddress)
-      throw new Error("Receive address not initialized");
-    return this.receiveAddress;
-  }
-  private get ctx(): UtxoContext {
-    if (!this.context) throw new Error("UTXO context not initialized");
-    return this.context;
-  }
-  private get pwd(): string {
-    if (!this.password)
-      throw new Error("Password not set - cannot perform operation");
-    return this.password;
   }
 
   private async createTransaction(
@@ -442,6 +433,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         error
       );
     }
+  }
+
+  // Add method to set password
+  public setPassword(password: string) {
+    if (!password) {
+      throw new Error("Password cannot be empty");
+    }
+    console.log("Setting password in AccountService");
+    this.password = password;
   }
 
   public async createPaymentWithMessage(
