@@ -11,6 +11,7 @@ import {
   sompiToKaspaString,
   kaspaToSompi,
   ITransactionOutput,
+  PrivateKeyGenerator,
 } from "kaspa-wasm";
 import { KaspaClient } from "./kaspa-client";
 import {
@@ -341,6 +342,53 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return null;
   }
 
+  private validateTransactionFee(feeAmount: bigint): void {
+    if (feeAmount > MAX_TX_FEE) {
+      throw new Error(
+        `Fee cannot exceed ${Number(MAX_TX_FEE) / 100_000_000} KAS`
+      );
+    }
+  }
+
+  private async signAndSubmitTransaction(
+    pendingTransaction: PendingTransaction,
+    privateKeyGenerator: PrivateKeyGenerator
+  ): Promise<string> {
+    // Validate transaction fee (to make sure its not super high!) before proceeding
+    this.validateTransactionFee(pendingTransaction.feeAmount);
+
+    // Log the addresses that need signing
+    const addressesToSign = pendingTransaction.addresses();
+    console.log(
+      `Transaction requires signing ${addressesToSign.length} addresses:`
+    );
+    addressesToSign.forEach((addr, i) => {
+      console.log(`  Address ${i + 1}: ${addr.toString()}`);
+    });
+
+    // Always use receive key for all addresses since we only use primary address
+    const privateKeys = pendingTransaction.addresses().map(() => {
+      console.log("Using primary address key for signing");
+      const key = privateKeyGenerator.receiveKey(0);
+      if (!key) {
+        throw new Error("Failed to generate private key for signing");
+      }
+      return key;
+    });
+
+    // Sign the transaction
+    console.log("Signing transaction...");
+    pendingTransaction.sign(privateKeys);
+
+    // Submit the transaction
+    console.log("Submitting transaction to network...");
+    const txId: string = await pendingTransaction.submit(this.rpc);
+    console.log(`Transaction submitted with ID: ${txId}`);
+    console.log("========================");
+
+    return txId;
+  }
+
   private async createTransaction(
     transaction: CreateTransactionArgs
   ): Promise<TransactionId> {
@@ -405,42 +453,10 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         throw new Error("Unexpected multiple transaction generation");
       }
 
-      if (pendingTransaction.feeAmount > MAX_TX_FEE) {
-        throw new Error(
-          `Fee cannot exceed ${Number(MAX_TX_FEE) / 100_000_000} KAS`
-        );
-      }
-
-      // Log the addresses that need signing
-      const addressesToSign = pendingTransaction.addresses();
-      console.log(
-        `Transaction requires signing ${addressesToSign.length} addresses:`
+      return this.signAndSubmitTransaction(
+        pendingTransaction,
+        privateKeyGenerator
       );
-      addressesToSign.forEach((addr, i) => {
-        console.log(`  Address ${i + 1}: ${addr.toString()}`);
-      });
-
-      // Always use receive key for all addresses since we only use primary address
-      const privateKeys = pendingTransaction.addresses().map(() => {
-        console.log("Using primary address key for signing");
-        const key = privateKeyGenerator.receiveKey(0);
-        if (!key) {
-          throw new Error("Failed to generate private key for signing");
-        }
-        return key;
-      });
-
-      // Sign the transaction
-      console.log("Signing transaction...");
-      pendingTransaction.sign(privateKeys);
-
-      // Submit the transaction
-      console.log("Submitting transaction to network...");
-      const txId: string = await pendingTransaction.submit(this.rpc);
-      console.log(`Transaction submitted with ID: ${txId}`);
-      console.log("========================");
-
-      return txId;
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
@@ -911,35 +927,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         throw new Error("Unexpected multiple transaction generation");
       }
 
-      // Log the addresses that need signing
-      const addressesToSign = pendingTransaction.addresses();
-      console.log(
-        `Transaction requires signing ${addressesToSign.length} addresses:`
+      // Sign and send the transaction
+      return this.signAndSubmitTransaction(
+        pendingTransaction,
+        privateKeyGenerator
       );
-      addressesToSign.forEach((addr, i) => {
-        console.log(`  Address ${i + 1}: ${addr.toString()}`);
-      });
-
-      // Always use receive key for all addresses since we only use primary address
-      const privateKeys = pendingTransaction.addresses().map(() => {
-        const key = privateKeyGenerator.receiveKey(0);
-        if (!key) {
-          throw new Error("Failed to generate private key for signing");
-        }
-        return key;
-      });
-
-      // Sign the transaction
-      pendingTransaction.sign(privateKeys);
-
-      // Submit the transaction
-      console.log("Submitting transaction to network...");
-
-      const txId: string = await pendingTransaction.submit(this.rpc);
-
-      console.log(`Payment with message submitted with ID: ${txId}`);
-
-      return txId;
     } catch (error) {
       console.error("Error creating payment with message:", error);
       throw error;
@@ -989,30 +981,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         throw new Error("Failed to generate transaction");
       }
 
-      // Log the addresses that need signing
-      const addressesToSign = pendingTransaction.addresses();
-
-      addressesToSign.forEach((addr, i) => {
-        console.log(`  Address ${i + 1}: ${addr.toString()}`);
-      });
-
-      // Always use receive key for all addresses since we only use primary address
-      const privateKeys = pendingTransaction.addresses().map(() => {
-        const key = privateKeyGenerator.receiveKey(0);
-        if (!key) {
-          throw new Error("Failed to generate private key for signing");
-        }
-        return key;
-      });
-
-      // Sign the transaction
-      pendingTransaction.sign(privateKeys);
-      // submit
-      const txId: string = await pendingTransaction.submit(this.rpc);
-
-      console.log(`Transaction submitted with ID: ${txId}`);
-
-      return txId;
+      // Sign and send the transaction
+      return this.signAndSubmitTransaction(
+        pendingTransaction,
+        privateKeyGenerator
+      );
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
@@ -1053,31 +1026,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         throw new Error("Failed to generate transaction");
       }
 
-      // Log the addresses that need signing
-      const addressesToSign = pendingTransaction.addresses();
-
-      addressesToSign.forEach((addr, i) => {
-        console.log(`  Address ${i + 1}: ${addr.toString()}`);
-      });
-
-      // Always use receive key for all addresses since we only use primary address
-      const privateKeys = pendingTransaction.addresses().map(() => {
-        const key = privateKeyGenerator.receiveKey(0);
-        if (!key) {
-          throw new Error("Failed to generate private key for signing");
-        }
-        return key;
-      });
-
       // Sign the transaction
-      pendingTransaction.sign(privateKeys);
-
-      // Submit the transaction
-      const txId: string = await pendingTransaction.submit(this.rpc);
-
-      console.log(`Transaction submitted with ID: ${txId}`);
-
-      return txId;
+      return this.signAndSubmitTransaction(
+        pendingTransaction,
+        privateKeyGenerator
+      );
     } catch (error) {
       console.error("Error creating compound transaction:", error);
       throw error;
