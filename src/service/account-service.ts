@@ -249,21 +249,53 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return null;
   }
 
-  private validateTransactionPrerequisites() {
-    if (!this.isStarted || !this.rpcClient.rpc) {
+  // private validateTransactionPrerequisites() {
+  //   if (!this.isStarted || !this.rpcClient.rpc) {
+  //     throw new Error("Account service is not started");
+  //   }
+
+  //   if (!this.receiveAddress) {
+  //     throw new Error("Receive address not initialized");
+  //   }
+
+  //   if (!this.context) {
+  //     throw new Error("UTXO context not initialized");
+  //   }
+
+  //   // ensure password is available
+  //   this.ensurePasswordSet();
+  // }
+
+  private assertReady(): asserts this is AccountService & {
+    receiveAddress: Address;
+    context: UtxoContext;
+  } {
+    if (!this.isStarted || !this.rpcClient.rpc)
       throw new Error("Account service is not started");
-    }
-
-    if (!this.receiveAddress) {
+    if (!this.receiveAddress)
       throw new Error("Receive address not initialized");
-    }
+    if (!this.context) throw new Error("UTXO context not initialized");
+    if (!this.password)
+      throw new Error("Password not set - cannot perform operation");
+  }
 
-    if (!this.context) {
-      throw new Error("UTXO context not initialized");
-    }
-
-    // ensure password is available
-    this.ensurePasswordSet();
+  private get rpc() {
+    if (!this.rpcClient.rpc) throw new Error("RPC client is not initialized");
+    return this.rpcClient.rpc;
+  }
+  private get recv(): Address {
+    if (!this.receiveAddress)
+      throw new Error("Receive address not initialized");
+    return this.receiveAddress;
+  }
+  private get ctx(): UtxoContext {
+    if (!this.context) throw new Error("UTXO context not initialized");
+    return this.context;
+  }
+  private get pwd(): string {
+    if (!this.password)
+      throw new Error("Password not set - cannot perform operation");
+    return this.password;
   }
 
   async start() {
@@ -339,13 +371,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     transaction: CreateTransactionArgs,
     password: string
   ): Promise<TransactionId> {
-    if (!this.isStarted || !this.rpcClient.rpc) {
-      throw new Error("Account service is not started");
-    }
-
-    if (!this.receiveAddress) {
-      throw new Error("Receive address not initialized");
-    }
+    this.assertReady();
 
     if (!transaction.address) {
       throw new Error("Transaction address is required");
@@ -356,7 +382,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     console.log("=== CREATING TRANSACTION ===");
-    const primaryAddress = this.receiveAddress;
+    const primaryAddress = this.recv;
     console.log(
       "Creating transaction from primary address:",
       primaryAddress.toString()
@@ -382,16 +408,12 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       throw new Error("Failed to generate private key");
     }
 
-    if (!this.context) {
-      throw new Error("UTXO context not initialized");
-    }
-
     try {
       // Use our optimized generator creation method
       const generator = TransactionGeneratorService.createForTransaction({
-        context: this.context,
+        context: this.ctx,
         networkId: this.networkId,
-        receiveAddress: this.receiveAddress!,
+        receiveAddress: this.recv,
         destinationAddress: transaction.address,
         amount: transaction.amount,
         payload: transaction.payload,
@@ -441,7 +463,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       // Submit the transaction
       console.log("Submitting transaction to network...");
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
+      const txId: string = await pendingTransaction.submit(this.rpc);
       console.log(`Transaction submitted with ID: ${txId}`);
       console.log("========================");
 
@@ -455,7 +477,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   public async createPaymentWithMessage(
     paymentTransaction: CreatePaymentWithMessageArgs
   ): Promise<TransactionId> {
-    this.validateTransactionPrerequisites();
+    this.assertReady();
 
     if (!paymentTransaction.address) {
       throw new Error("Transaction address is required");
@@ -467,25 +489,21 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
-      this.password!
+      this.pwd
     );
 
     if (!privateKeyGenerator) {
       throw new Error("Failed to generate private key");
     }
 
-    if (!this.context) {
-      throw new Error("UTXO context not initialized");
-    }
-
     try {
-      const matureBalance = this.context.balance?.mature ?? 0n;
+      const matureBalance = this.ctx.balance?.mature ?? 0n;
       const isFullBalance = matureBalance === paymentTransaction.amount;
       // Use a modified generator that sends to recipient but includes payload
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
-        context: this.context,
+        context: this.ctx,
         networkId: this.networkId,
-        receiveAddress: this.receiveAddress!,
+        receiveAddress: this.recv,
         destinationAddress: paymentTransaction.address,
         amount: paymentTransaction.amount,
         payload: paymentTransaction.payload,
@@ -528,7 +546,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Submit the transaction
       console.log("Submitting transaction to network...");
 
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
+      const txId: string = await pendingTransaction.submit(this.rpc);
 
       console.log(`Payment with message submitted with ID: ${txId}`);
 
@@ -542,7 +560,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   public async createWithdrawTransaction(
     withdrawTransaction: CreateWithdrawTransactionArgs
   ) {
-    this.validateTransactionPrerequisites();
+    this.assertReady();
 
     if (!withdrawTransaction.address) {
       throw new Error("Transaction address is required");
@@ -554,25 +572,21 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
-      this.password!
+      this.pwd
     );
 
     if (!privateKeyGenerator) {
       throw new Error("Failed to generate private key");
     }
 
-    if (!this.context) {
-      throw new Error("UTXO context not initialized");
-    }
-
     try {
-      const matureBalance = this.context.balance?.mature;
+      const matureBalance = this.ctx.balance?.mature;
       const isFullBalance = matureBalance === withdrawTransaction.amount;
       // Use our optimized generator creation method
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
-        context: this.context,
+        context: this.ctx,
         networkId: this.networkId,
-        receiveAddress: this.receiveAddress!,
+        receiveAddress: this.recv,
         destinationAddress: withdrawTransaction.address,
         amount: withdrawTransaction.amount,
         priorityFee: withdrawTransaction.priorityFee,
@@ -605,7 +619,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Sign the transaction
       pendingTransaction.sign(privateKeys);
       // submit
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
+      const txId: string = await pendingTransaction.submit(this.rpc);
 
       console.log(`Transaction submitted with ID: ${txId}`);
 
@@ -617,13 +631,13 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async createCompoundTransaction() {
-    this.validateTransactionPrerequisites();
+    this.assertReady();
 
-    console.log("Consolidating all UTXOs to:", this.receiveAddress!.toString());
+    console.log("Consolidating all UTXOs to:", this.recv.toString());
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
-      this.password!
+      this.pwd
     );
 
     if (!privateKeyGenerator) {
@@ -631,16 +645,16 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
 
     try {
-      const matureBalance = this.context.balance?.mature;
+      const matureBalance = this.ctx.balance?.mature;
       if (!matureBalance || matureBalance === 0n) {
         throw new Error("No mature UTXOs available for compound transaction");
       }
 
       // Use our simple compound transaction generator
       const generator = TransactionGeneratorService.createForCompound({
-        context: this.context,
+        context: this.ctx,
         networkId: this.networkId,
-        receiveAddress: this.receiveAddress!,
+        receiveAddress: this.recv,
       });
 
       const pendingTransaction: PendingTransaction | null =
@@ -670,7 +684,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       pendingTransaction.sign(privateKeys);
 
       // Submit the transaction
-      const txId: string = await pendingTransaction.submit(this.rpcClient.rpc!);
+      const txId: string = await pendingTransaction.submit(this.rpc);
 
       console.log(`Transaction submitted with ID: ${txId}`);
 
@@ -754,6 +768,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   public async estimateSendMessageFees(
     sendMessage: EstimateSendMessageFeesArgs
   ): Promise<GeneratorSummary> {
+    this.assertReady();
+
     if (!sendMessage.toAddress) {
       throw new Error("Destination address is required");
     }
@@ -787,9 +803,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     try {
       return TransactionGeneratorService.createForTransaction({
-        context: this.context,
+        context: this.ctx,
         networkId: this.networkId,
-        receiveAddress: this.receiveAddress!,
+        receiveAddress: this.recv,
         destinationAddress: destinationAddress,
         amount: BigInt(0.2 * 100_000_000),
         payload: payload,
@@ -802,11 +818,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public getMatureUtxos() {
-    if (!this.isStarted) {
-      throw new Error("Account service is not started");
-    }
-
-    return this.context.getMatureRange(0, this.context.matureLength);
+    this.assertReady();
+    return this.ctx.getMatureRange(0, this.ctx.matureLength);
   }
 
   private isKasiaTransaction(tx: ITransaction | ExplorerTransaction): boolean {
@@ -967,12 +980,40 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       try {
         const privateKey = privateKeyGenerator.receiveKey(0);
-
+======RESOLVE +
         const decryptedContent = decrypt_message(
           new EncryptedMessage(encryptedHex),
           new PrivateKey(privateKey.toString())
-        );
+      const parsed = parseKaspaMessagePayload(tx.payload);
+      let messageType = parsed.type;
+      const targetAlias = parsed.alias;
 
+      const hexEncryptedPayload = tryBase64ToHex(parsed.encryptedHex);
+
+      const encryptedHex = hexEncryptedPayload;
+      let isHandshake = parsed.type === PROTOCOL.headers.HANDSHAKE.type;
+
+      const isMonitoredAddress =
+        (senderAddress && this.monitoredAddresses.has(senderAddress)) ||
+        (recipientAddress && this.monitoredAddresses.has(recipientAddress));
+      const isCommForUs =
+        messageType === PROTOCOL.headers.COMM.type &&
+        targetAlias &&
+        this.monitoredConversations.has(targetAlias);
+
+      // For payments, check if the sender address is one we're monitoring
+      // (i.e., we have a conversation with them OR they sent us a payment)
+      const isPaymentForUs =
+        messageType === PROTOCOL.headers.PAYMENT.type &&
+        (isMonitoredAddress ||
+          recipientAddress === this.receiveAddress?.toString());
+
+      try {
+        const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
+          this.unlockedWallet,
+          this.pwd
+        );
+======RESOLVE +
         decryptionSuccess = true;
 
         if (decryptionSuccess) {
@@ -1044,12 +1085,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   }
 
   public async sendMessageWithContext(sendMessage: SendMessageWithContextArgs) {
-    this.ensurePasswordSet();
-
-    // Ensure we have our receive address
-    if (!this.receiveAddress) {
-      throw new Error("Receive address not initialized");
-    }
+    this.assertReady();
 
     const minimumAmount = kaspaToSompi("0.2");
 
@@ -1091,9 +1127,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     console.log("Encryption details:", {
       conversationPartnerAddress: conversationWithContact.contact.kaspaAddress,
-      ourAddress: this.receiveAddress?.toString(),
+      ourAddress: this.recv.toString(),
       theirAlias: sendMessage.theirAlias,
-      destinationAddress: this.receiveAddress?.toString(),
+      destinationAddress: this.recv.toString(),
       conversation: conversationWithContact,
     });
 
@@ -1110,7 +1146,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     try {
       // Always send to our own address for self-send messages
-      const destinationAddress = new Address(this.receiveAddress.toString());
+      const destinationAddress = new Address(this.recv.toString());
       // Send to our own address
       const txId = await this.createTransaction(
         {
