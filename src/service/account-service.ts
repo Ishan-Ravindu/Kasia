@@ -64,7 +64,6 @@ type AccountServiceEvents = {
 type SendMessageArgs = {
   toAddress: Address;
   message: string;
-  password: string;
   amount?: bigint; // Optional custom amount, defaults to 0.2 KAS
   priorityFee?: PriorityFeeConfig; // Add priority fee support
 };
@@ -78,7 +77,6 @@ type EstimateSendMessageFeesArgs = {
 type SendMessageWithContextArgs = {
   toAddress: Address;
   message: string;
-  password: string;
   theirAlias: string;
   priorityFee?: PriorityFeeConfig; // Add priority fee support
 };
@@ -154,13 +152,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
     console.log("Setting password in AccountService");
     this.password = password;
-  }
-
-  // Add method to check if password is set
-  private ensurePasswordSet() {
-    if (!this.password) {
-      throw new Error("Password not set - cannot perform operation");
-    }
   }
 
   private _emitBalanceUpdate() {
@@ -248,23 +239,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
     return null;
   }
-
-  // private validateTransactionPrerequisites() {
-  //   if (!this.isStarted || !this.rpcClient.rpc) {
-  //     throw new Error("Account service is not started");
-  //   }
-
-  //   if (!this.receiveAddress) {
-  //     throw new Error("Receive address not initialized");
-  //   }
-
-  //   if (!this.context) {
-  //     throw new Error("UTXO context not initialized");
-  //   }
-
-  //   // ensure password is available
-  //   this.ensurePasswordSet();
-  // }
 
   private assertReady(): asserts this is AccountService & {
     receiveAddress: Address;
@@ -435,10 +409,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       await this.processor.start();
 
       // Only track primary address
-      const addressesToTrack = [this.receiveAddress!];
-
-      // Now track addresses in UTXO processor
-      console.log("Starting address tracking for primary address...");
+      const addressesToTrack = [this.receiveAddress];
       await this.context.trackAddresses(addressesToTrack);
 
       // Set up block subscription with optimized message handling
@@ -697,7 +668,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   public async sendMessage(
     sendMessage: SendMessageArgs
   ): Promise<TransactionId> {
-    this.ensurePasswordSet();
+    this.assertReady();
     // Use custom amount if provided, otherwise default to 0.2 KAS
     const defaultAmount = kaspaToSompi("0.2");
     const messageAmount = sendMessage.amount || defaultAmount;
@@ -712,10 +683,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     if (!sendMessage.message) {
       throw new Error("Message is required");
-    }
-
-    if (!sendMessage.password) {
-      throw new Error("Password is required");
     }
 
     const destinationAddress = new Address(
@@ -784,11 +751,12 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       addressString,
       sendMessage.message
     );
-    const bytesData = hexToBytes(encryptedMessage.to_hex());
-    const base64Data = btoa(String.fromCharCode(...bytesData));
     if (!encryptedMessage) {
       throw new Error("Failed to encrypt message");
     }
+    const bytesData = hexToBytes(encryptedMessage.to_hex());
+    const base64Data = btoa(String.fromCharCode(...bytesData));
+
     // Build the full protocol string with all components to match sendMessageWithContext
     const protocolString = `ciph_msg:1:comm:${PLACEHOLDER_ALIAS}:${base64Data}`;
     const payload = getEncoder().encode(protocolString);
@@ -827,6 +795,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     blockTime: number,
     maxRetries = 10
   ) {
+    if (!this.password) return;
+
     const payload = tx.payload;
     if (!payload.startsWith(PROTOCOL.prefix.hex)) {
       return;
@@ -908,7 +878,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         const prevTxId = input.previousOutpoint.transactionId;
         const prevOutputIndex = input.previousOutpoint.index;
 
-        if (prevTxId) {
+            if (prevTxId) {
           try {
             const prevTx = await this._fetchTransactionDetails(
               prevTxId,
@@ -929,11 +899,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       }
     }
 
-    try {
-      this.ensurePasswordSet();
-    } catch {
-      return;
-    }
+      // Process the message
+      const payload = getTransactionPayload(tx);
+      if (!payload.startsWith(PROTOCOL.prefix.hex)) {
+        return;
+      }
 
     const parsed = parseKaspaMessagePayload(tx.payload);
 
@@ -1095,10 +1065,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     if (!sendMessage.message) {
       throw new Error("Message is required");
-    }
-
-    if (!sendMessage.password) {
-      throw new Error("Password is required");
     }
 
     if (!sendMessage.theirAlias) {

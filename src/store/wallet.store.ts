@@ -27,7 +27,6 @@ export interface WalletStoreSendMessageArgs {
    */
   message: string;
   toAddress: Address;
-  password: string;
   customAmount?: bigint;
   priorityFee?: PriorityFeeConfig;
 }
@@ -36,7 +35,17 @@ export interface WalletStoreSendContextualMessageArgs {
   message: string;
   toAddress: Address;
   myAlias: string;
+  priorityFee?: PriorityFeeConfig;
+}
+
+export interface WalletStoreSendTransactionArgs {
+  /**
+   * payload to use for the transaction, if encryption is required, it should be encrypted before passing it here
+   */
+  payload?: string;
+  toAddress: Address;
   password: string;
+  customAmount?: bigint;
   priorityFee?: PriorityFeeConfig;
 }
 
@@ -360,14 +369,12 @@ export const useWalletStore = create<WalletState>((set, get) => {
           amount: args.customAmount ?? BigInt(0),
           payload: args.payload ?? "",
           priorityFee: args.priorityFee,
-        },
-        state.unlockedWallet.password
+        }
       );
     },
     sendMessageWithContext: async ({
       message,
       toAddress,
-      password,
       priorityFee,
       myAlias,
     }) => {
@@ -384,7 +391,6 @@ export const useWalletStore = create<WalletState>((set, get) => {
         return await state.accountService.sendMessageWithContext({
           message: encryptedMessage.to_hex(),
           toAddress,
-          password,
           theirAlias: myAlias,
           priorityFee,
         });
