@@ -32,7 +32,6 @@ import {
   getTransactionId,
 } from "../types/transactions";
 import { useMessagingStore } from "../store/messaging.store";
-import { useWalletStore } from "../store/wallet.store";
 import { useDBStore } from "../store/db.store";
 import { PROTOCOL, toHex } from "../config/protocol";
 import { PLACEHOLDER_ALIAS } from "../config/constants";
@@ -45,6 +44,7 @@ import {
 import { WalletStorageService } from "./wallet-storage-service";
 import { TransactionGeneratorService } from "./transaction-generator";
 import { MAX_TX_FEE } from "../config/constants";
+import { ensureAddressPrefix } from "../utils/network";
 
 // strictly typed events
 type AccountServiceEvents = {
@@ -276,7 +276,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         );
 
       // Ensure it has the proper network prefix
-      this.receiveAddress = this.ensureAddressPrefix(initialReceiveAddress);
+      this.receiveAddress = new Address(
+        ensureAddressPrefix(initialReceiveAddress.toString(), this.networkId)
+      );
 
       console.log(
         "Using primary address for all operations:",
@@ -703,7 +705,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       throw new Error("Password is required");
     }
 
-    const destinationAddress = this.ensureAddressPrefix(sendMessage.toAddress);
+    const destinationAddress = new Address(
+      ensureAddressPrefix(sendMessage.toAddress.toString(), this.networkId)
+    );
     const addressString = destinationAddress.toString();
 
     // Check if the message is already encrypted (hex format)
@@ -758,7 +762,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       throw new Error("Message is required");
     }
 
-    const destinationAddress = this.ensureAddressPrefix(sendMessage.toAddress);
+    const destinationAddress = new Address(
+      ensureAddressPrefix(sendMessage.toAddress.toString(), this.networkId)
+    );
     const addressString = destinationAddress.toString();
     // Message needs to be encrypted
 
@@ -802,31 +808,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     return this.context.getMatureRange(0, this.context.matureLength);
   }
-
-  /**
-   * Helper method to ensure an address has the proper network prefix
-   */
-  private ensureAddressPrefix(address: Address): Address {
-    const addressString = address.toString();
-
-    // If address already has a prefix, return it unchanged
-    if (addressString.includes(":")) {
-      return address;
-    }
-
-    // Add appropriate prefix based on network
-    let prefixedAddressString = addressString;
-    if (this.networkId === "testnet-10" || this.networkId === "testnet-11") {
-      prefixedAddressString = `kaspatest:${addressString}`;
-    } else if (this.networkId === "mainnet") {
-      prefixedAddressString = `kaspa:${addressString}`;
-    } else if (this.networkId === "devnet") {
-      prefixedAddressString = `kaspadev:${addressString}`;
-    }
-
-    console.log(`Added prefix to address: ${prefixedAddressString}`);
-    return new Address(prefixedAddressString);
-  } // TODO Utility
 
   private isKasiaTransaction(tx: ITransaction | ExplorerTransaction): boolean {
     return tx?.payload?.startsWith(PROTOCOL.prefix.hex) ?? false;
