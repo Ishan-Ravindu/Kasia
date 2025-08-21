@@ -24,7 +24,8 @@ export const useFeeEstimate = ({
     priority,
     sendState: { status: sendStatus },
   } = useComposerStore();
-  const { unlockedWallet, estimateSendMessageFees, address } = useWalletStore();
+  const { unlockedWallet, estimateSendMessageFees, address, balance } =
+    useWalletStore();
 
   useEffect(() => {
     // when toSelf is true, we need user's address; otherwise we need recipient
@@ -37,6 +38,15 @@ export const useFeeEstimate = ({
       sendStatus === "loading"
     ) {
       setFeeState({ status: "idle" });
+      return;
+    }
+
+    // check if we have funds available
+    if (!balance || balance.mature === 0n) {
+      setFeeState({
+        status: "error",
+        error: new Error("No funds available for fee estimation"),
+      });
       return;
     }
 
@@ -88,6 +98,7 @@ export const useFeeEstimate = ({
     sendStatus,
     unlockedWallet,
     estimateSendMessageFees,
+    balance,
   ]);
 
   return feeState;

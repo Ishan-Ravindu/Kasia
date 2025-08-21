@@ -4,6 +4,7 @@ import { PriorityFeeSelector } from "../PriorityFeeSelector";
 import { PriorityFeeConfig } from "../../types/all";
 import { Attachment } from "../../store/message-composer.store";
 import { FeeState } from "../../types/all";
+import { useWalletStore } from "../../store/wallet.store";
 
 // fee levels for color coding
 // need to extract this and make it setable from the settings
@@ -37,10 +38,15 @@ export const FeeDisplay = ({
   priority,
   onPriorityChange,
 }: FeeDisplayProps) => {
+  const balance = useWalletStore((state) => state.balance);
+
   // only show fee display when we have a recipient and either draft or attachment
   if (!recipient || (!draft && !attachment)) {
     return null;
   }
+
+  // check if there are funds available
+  const hasFunds = balance && balance.mature > 0n;
 
   return (
     <div className="absolute -top-7.5 right-4 flex items-center gap-2">
@@ -50,13 +56,17 @@ export const FeeDisplay = ({
           feeState.value && getFeeClasses(feeState.value)
         )}
       >
-        {feeState.status === "loading"
-          ? feeState.value != null
-            ? `Updating fee… ${formatKasAmount(feeState.value)} KAS`
-            : "Estimating fee…"
-          : feeState.value != null
-            ? `Estimated fee: ${formatKasAmount(feeState.value)} KAS`
-            : "Calculating fee…"}
+        {!hasFunds
+          ? "No funds available"
+          : feeState.status === "loading"
+            ? feeState.value != null
+              ? `Updating fee… ${formatKasAmount(feeState.value)} KAS`
+              : "Estimating fee…"
+            : feeState.value != null
+              ? `Estimated fee: ${formatKasAmount(feeState.value)} KAS`
+              : feeState.status === "error"
+                ? "Fee estimation failed"
+                : "Calculating fee…"}
       </div>
 
       <PriorityFeeSelector
