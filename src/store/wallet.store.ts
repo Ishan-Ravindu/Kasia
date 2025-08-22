@@ -19,7 +19,6 @@ import {
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
-import { get } from "http";
 
 export interface WalletStoreSendMessageArgs {
   /**
@@ -363,14 +362,12 @@ export const useWalletStore = create<WalletState>((set, get) => {
       if (!state.unlockedWallet || !state.accountService) {
         throw new Error("Wallet not unlocked or account service not running");
       }
-      return state.accountService.createTransaction(
-        {
-          address: args.toAddress,
-          amount: args.customAmount ?? BigInt(0),
-          payload: args.payload ?? "",
-          priorityFee: args.priorityFee,
-        }
-      );
+      return state.accountService.sendMessage({
+        toAddress: args.toAddress,
+        message: args.payload ?? "",
+        amount: args.customAmount ?? BigInt(0),
+        priorityFee: args.priorityFee,
+      });
     },
     sendMessageWithContext: async ({
       message,
