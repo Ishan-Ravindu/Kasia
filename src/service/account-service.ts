@@ -392,80 +392,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return txId;
   }
 
-  private async createTransaction(
-    transaction: CreateTransactionArgs
-  ): Promise<TransactionId> {
-    this.assertReady();
-
-    if (!transaction.address) {
-      throw new Error("Transaction address is required");
-    }
-
-    if (transaction.amount === null || transaction.amount === undefined) {
-      throw new Error("Transaction amount is required");
-    }
-
-    console.log("=== CREATING TRANSACTION ===");
-    const primaryAddress = this.recv;
-    console.log(
-      "Creating transaction from primary address:",
-      primaryAddress.toString()
-    );
-    console.log(
-      "Change will go back to primary address:",
-      primaryAddress.toString()
-    );
-    console.log(`Destination: ${transaction.address.toString()}`);
-    console.log(
-      `Amount: ${Number(transaction.amount) / 100000000} KAS (${
-        transaction.amount
-      } sompi)`
-    );
-    console.log(`Payload length: ${transaction.payload.length / 2} bytes`);
-
-    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-      this.unlockedWallet,
-      this.pwd
-    );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
-
-    try {
-      // Use our optimized generator creation method
-      const generator = TransactionGeneratorService.createForTransaction({
-        context: this.ctx,
-        networkId: this.networkId,
-        receiveAddress: this.recv,
-        destinationAddress: transaction.address,
-        amount: transaction.amount,
-        payload: transaction.payload,
-        priorityFee: transaction.priorityFee,
-      });
-
-      console.log("Generating transaction...");
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
-      }
-
-      if ((await generator.next()) !== null) {
-        throw new Error("Unexpected multiple transaction generation");
-      }
-
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
-    } catch (error) {
-      console.error("Error creating transaction:", error);
-      throw error;
-    }
-  }
-
   private updateMonitoredConversations() {
     try {
       const messagingStore = useMessagingStore.getState();
@@ -761,6 +687,80 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 
+  public async createTransaction(
+    transaction: CreateTransactionArgs
+  ): Promise<TransactionId> {
+    this.assertReady();
+
+    if (!transaction.address) {
+      throw new Error("Transaction address is required");
+    }
+
+    if (transaction.amount === null || transaction.amount === undefined) {
+      throw new Error("Transaction amount is required");
+    }
+
+    console.log("=== CREATING TRANSACTION ===");
+    const primaryAddress = this.recv;
+    console.log(
+      "Creating transaction from primary address:",
+      primaryAddress.toString()
+    );
+    console.log(
+      "Change will go back to primary address:",
+      primaryAddress.toString()
+    );
+    console.log(`Destination: ${transaction.address.toString()}`);
+    console.log(
+      `Amount: ${Number(transaction.amount) / 100000000} KAS (${
+        transaction.amount
+      } sompi)`
+    );
+    console.log(`Payload length: ${transaction.payload.length / 2} bytes`);
+
+    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
+      this.unlockedWallet,
+      this.pwd
+    );
+
+    if (!privateKeyGenerator) {
+      throw new Error("Failed to generate private key");
+    }
+
+    try {
+      // Use our optimized generator creation method
+      const generator = TransactionGeneratorService.createForTransaction({
+        context: this.ctx,
+        networkId: this.networkId,
+        receiveAddress: this.recv,
+        destinationAddress: transaction.address,
+        amount: transaction.amount,
+        payload: transaction.payload,
+        priorityFee: transaction.priorityFee,
+      });
+
+      console.log("Generating transaction...");
+      const pendingTransaction: PendingTransaction | null =
+        await generator.next();
+
+      if (!pendingTransaction) {
+        throw new Error("Failed to generate transaction");
+      }
+
+      if ((await generator.next()) !== null) {
+        throw new Error("Unexpected multiple transaction generation");
+      }
+
+      return this.signAndSubmitTransaction(
+        pendingTransaction,
+        privateKeyGenerator
+      );
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      throw error;
+    }
+  }
+
   public async createPaymentWithMessage(
     paymentTransaction: CreatePaymentWithMessageArgs
   ): Promise<TransactionId> {
@@ -1000,20 +1000,21 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     );
     const addressString = destinationAddress.toString();
     // Message needs to be encrypted
-
     const encryptedMessage = encrypt_message(
       addressString,
       sendMessage.message
     );
+
     if (!encryptedMessage) {
       throw new Error("Failed to encrypt message");
     }
-    const bytesData = hexToBytes(encryptedMessage.to_hex());
-    const base64Data = btoa(String.fromCharCode(...bytesData));
 
-    // Build the full protocol string with all components to match sendMessageWithContext
-    const protocolString = `ciph_msg:1:comm:${PLACEHOLDER_ALIAS}:${base64Data}`;
-    const payload = getEncoder().encode(protocolString);
+    const payload = `${PROTOCOL.prefix.string}${PROTOCOL.headers.COMM.string}${PLACEHOLDER_ALIAS}:${encryptedMessage.to_hex()}`;
+
+    const payloadHex = payload
+      .split("")
+      .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
+      .join("");
 
     if (!payload) {
       throw new Error("Failed to create message payload");
@@ -1026,7 +1027,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         receiveAddress: this.recv,
         destinationAddress: destinationAddress,
         amount: BigInt(0.2 * 100_000_000),
-        payload: payload,
+        payload: payloadHex,
         priorityFee: sendMessage.priorityFee,
       }).estimate();
     } catch (error) {

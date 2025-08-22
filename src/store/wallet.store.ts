@@ -362,9 +362,9 @@ export const useWalletStore = create<WalletState>((set, get) => {
       if (!state.unlockedWallet || !state.accountService) {
         throw new Error("Wallet not unlocked or account service not running");
       }
-      return state.accountService.sendMessage({
-        toAddress: args.toAddress,
-        message: args.payload ?? "",
+      return state.accountService.createTransaction({
+        address: args.toAddress,
+        payload: args.payload ?? "",
         amount: args.customAmount ?? BigInt(0),
         priorityFee: args.priorityFee,
       });
