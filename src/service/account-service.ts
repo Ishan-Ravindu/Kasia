@@ -275,10 +275,18 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     try {
       // Stop the UTXO processor
       await this.processor.stop();
+      await this.context.clear();
+
+      // Unsubscribe from block events using the RpcClient method
+      if (this.rpcClient.rpc) {
+        await this.rpcClient.rpc.unsubscribeBlockAdded();
+      }
 
       // Clean up our local state
       this.isStarted = false;
-      console.log("Successfully cleaned up UTXO subscription and processor");
+      console.log(
+        "Successfully cleaned up UTXO subscription, processor and context"
+      );
     } catch (error) {
       console.error(
         "Failed to clean up UTXO subscription and processor:",
