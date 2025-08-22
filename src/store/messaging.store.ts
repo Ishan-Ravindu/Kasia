@@ -19,6 +19,7 @@ import { useWalletStore } from "./wallet.store";
 import {
   ConversationEvents,
   HandshakePayload,
+  SavedHandshakePayload,
 } from "src/types/messaging.types";
 import { UnlockedWallet } from "src/types/wallet.type";
 import { useDBStore } from "./db.store";
@@ -283,12 +284,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const initLazyHistoricalHandshakeLoad = () => {
         _historicalSyncer = new HistoricalSyncer(address);
 
-        const _handshakesPromise: Promise<HandshakeResponse[]> =
-          _historicalSyncer.initialLoad();
+        const _handshakesPromise = _historicalSyncer.initialLoad();
 
-        const getHistoricalHandshakes = async (): Promise<
-          HandshakeResponse[]
-        > => {
+        const getHistoricalHandshakes = async () => {
           return await _handshakesPromise;
         };
 
@@ -304,9 +302,14 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       // 2. hydrate events on these loaded conversations, this load in memory one on one conversation
       await g().hydrateOneonOneConversations();
 
-      // 3. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
-      // possible optimization improvement: get last event block time and only fetch events after that time
+      // 3. process historical saved handshakes (that were lazily loaded), this will create new conversations locally if needed
+      // possible optimization improvement: get last saved handshake block time and only fetch saved handshakes upsteam after that time
       const handshakeReponses = await getHistoricalHandshakes();
+
+      // @TODO: implement and figure out a proper way of handling both send/received
+
+      // 4. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
+      // possible optimization improvement: get last event block time and only fetch events after that time
 
       const repositories = useDBStore.getState().repositories;
 
@@ -326,7 +329,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const handshakesBySenderAddress: Map<string, HandshakeResponse[]> =
         new Map();
 
-      for (const handshake of handshakeReponses) {
+      for (const handshake of handshakeReponses.receivedHandshakes) {
         const handshakes = handshakesBySenderAddress.get(handshake.sender);
         if (!handshakes) {
           handshakesBySenderAddress.set(handshake.sender, [handshake]);
@@ -491,7 +494,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         oneOnOneConversations: Array.from(ooocsByAddress.values()),
       });
 
-      // 4. lazily trigger historical polling of events for each conversation
+      // 5. lazily trigger historical polling of events for each conversation
       console.log("Lazy historical polling of events for each conversation");
 
       Promise.all(
@@ -1190,27 +1193,29 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         version: 1,
       };
 
-      const encryptedMessage = encrypt_message(
+      // their payload
+      const encryptedMessageForThem = encrypt_message(
         recipientAddress,
         JSON.stringify(handshakePayload)
       );
 
-      const payload = `${toHex("ciph_msg:1:handshake:")}${encryptedMessage.to_hex()}`;
+      const theirPayload = `${toHex("ciph_msg:1:handshake:")}${encryptedMessageForThem.to_hex()}`;
+
       // Send the handshake message
       console.log("Sending handshake message to:", recipientAddress);
       try {
-        const txId = await walletStore.sendTransaction({
-          payload,
+        const theirTxId = await walletStore.sendTransaction({
+          payload: theirPayload,
           toAddress: new Address(recipientAddress),
           password: walletStore.unlockedWallet.password,
           customAmount,
         });
 
-        console.log("Handshake message sent, transaction ID:", txId);
+        console.log("Handshake message sent, transaction ID:", theirTxId);
 
         // Create a message object for the handshake
         const kasiaTransaction: KasiaTransaction = {
-          transactionId: txId,
+          transactionId: theirTxId,
           senderAddress: walletStore.address.toString(),
           recipientAddress: recipientAddress,
           createdAt: new Date(),
@@ -1218,12 +1223,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           fee: 0,
           content: "Handshake initiated",
           amount: Number(customAmount || 20000000n) / 100000000, // Convert bigint to KAS number
-          payload: payload,
+          payload: theirPayload,
         };
 
         const handshake: Handshake = {
           __type: "handshake",
-          id: `${walletStore.unlockedWallet.id}_${txId}`,
+          id: `${walletStore.unlockedWallet.id}_${theirTxId}`,
           tenantId: walletStore.unlockedWallet.id,
           amount: kasiaTransaction.amount,
           contactId: contact.id,
@@ -1250,6 +1255,38 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
         set({
           oneOnOneConversations,
+        });
+
+        // my payload
+        const address = WalletStorageService.getPrivateKeyGenerator(
+          walletStore.unlockedWallet,
+          walletStore.unlockedWallet.password
+        )
+          .receiveKey(0)
+          .toAddress(useWalletStore.getState().selectedNetwork)
+          .toString();
+
+        const encryptedMessageForMe = encrypt_message(
+          address,
+          JSON.stringify({
+            ...handshakePayload,
+            version: 1,
+            recipientAddress: recipientAddress,
+          } satisfies SavedHandshakePayload)
+        );
+
+        const myPayload = `${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
+
+        console.log("Saving handshake...");
+        const myTxId = await walletStore.sendTransaction({
+          payload: myPayload,
+          toAddress: new Address(address),
+          password: walletStore.unlockedWallet.password,
+          customAmount: BigInt(0),
+        });
+
+        await repositories.savedHandshakeRepository.saveSavedHandshake({
+          id: `${walletStore.unlockedWallet.id}_${myTxId}`,
         });
       } catch (error) {
         console.error("Error sending handshake message:", error);

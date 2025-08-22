@@ -700,6 +700,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
           } else if (parsed.type === "payment") {
             // payment payload should be the raw decrypted JSON content
             hackedContent = decryptedContent;
+          } else if (parsed.type === "self_stash") {
+            // self_stash payload is expected to be hex encoded
+            hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${parsed.scope ? toHex(parsed.scope) : ""}:${decryptedContent}`;
           }
 
           const kasiaTransaction: KasiaTransaction = {
@@ -720,6 +723,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
           const messagingStore = useMessagingStore.getState();
           if (messagingStore) {
+            // @TODO: should saved hanshake be processed as a kasia transactions like the others
+            // or should we handle it separately?
             await messagingStore.storeKasiaTransactions([kasiaTransaction]);
           }
         }

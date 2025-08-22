@@ -13,8 +13,12 @@ import { ContactRepository, DbContact } from "./contact.repository";
 import { DbHandshake, HandshakeRepository } from "./handshake.repository";
 import { DbPayment, PaymentRepository } from "./payment.repository";
 import { KasiaConversationEvent } from "../../types/all";
+import {
+  DbSavedHandshake,
+  SavedHandhshakeRepository,
+} from "./saved-handshake.repository";
 
-const CURRENT_DB_VERSION = 1;
+const CURRENT_DB_VERSION = 2;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -83,6 +87,13 @@ export interface KasiaDBSchema extends DBSchema {
     value: DbContact;
     indexes: {
       "by-tenant-id": string;
+    };
+  };
+  savedHandshakes: {
+    key: string;
+    value: DbSavedHandshake;
+    indexes: {
+      "by-id": string;
     };
   };
 }
@@ -177,6 +188,16 @@ export const openDatabase = async (): Promise<KasiaDB> => {
 
         console.log("Database schema created successfully with all indexes");
       }
+
+      if (oldVersion <= 1) {
+        // SAVES HANDSHAKEs
+        const savedHandshakesStore = db.createObjectStore("savedHandshakes", {
+          keyPath: "id",
+        });
+        savedHandshakesStore.createIndex("by-id", "id", { unique: true });
+
+        console.log("Database schema migrated to v2");
+      }
     },
   });
 };
@@ -188,6 +209,7 @@ export class Repositories {
   public readonly paymentRepository: PaymentRepository;
   public readonly messageRepository: MessageRepository;
   public readonly handshakeRepository: HandshakeRepository;
+  public readonly savedHandshakeRepository: SavedHandhshakeRepository;
 
   constructor(
     readonly db: KasiaDB,
@@ -229,6 +251,10 @@ export class Repositories {
       tenantId,
       walletPassword
     );
+
+    // no tenant id or wallet password
+    // tenancy handled by id prefix, and there is no encryption/decryption
+    this.savedHandshakeRepository = new SavedHandhshakeRepository(db);
   }
 
   getKasiaEventsByConversationId(
@@ -254,6 +280,9 @@ export class Repositories {
         .doesExistsById(`${this.tenantId}_${id}`)
         .catch(() => false),
       this.handshakeRepository
+        .doesExistsById(`${this.tenantId}_${id}`)
+        .catch(() => false),
+      this.savedHandshakeRepository
         .doesExistsById(`${this.tenantId}_${id}`)
         .catch(() => false),
     ]).then(([message, payment, handshake]) => {

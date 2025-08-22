@@ -8,6 +8,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   test: {
     printConsoleTrace: true,
+    // mock kaspa wasm and cipher globally
+    setupFiles: ["src/vitest.setup.ts"],
   },
   plugins: [
     react({

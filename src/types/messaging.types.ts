@@ -12,6 +12,10 @@ export interface HandshakePayload {
   isResponse?: boolean; // Flag to indicate this is a response
 }
 
+export type SavedHandshakePayload = HandshakePayload & {
+  recipientAddress: string;
+};
+
 export interface PaymentPayload {
   type: "payment";
   message: string;
