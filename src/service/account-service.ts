@@ -1165,7 +1165,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     this.assertReady();
     return this.ctx.getMatureRange(0, this.ctx.matureLength);
   }
-=== Staging below
+  //=== Staging below
   private isKasiaTransaction(tx: ITransaction | ExplorerTransaction): boolean {
     return tx?.payload?.startsWith(PROTOCOL.prefix.hex) ?? false;
   }
@@ -1376,7 +1376,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
             console.debug(`Failed to decrypt with receive key:`, error);
           }
         }
-        === Staging ABOVE
+        //=== Staging ABOVE
         if (!decryptionSuccess) {
           try {
             const privateKey = privateKeyGenerator.changeKey(0);
@@ -1583,6 +1583,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 
+  // note: account service should not be responsible for handling block added logic
   private async processBlockEvent(event: BlockAddedData) {
     try {
       const blockTime =
@@ -1597,6 +1598,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         }
       });
 
+      // note: this should be optimized, account service shouldn't be the owner of that
+      // it shouldn't be needed to refresh computation here if the owner of this would be the
+      // maintainer of the shared state
       this.updateMonitoredConversations();
 
       for (const tx of transactions) {
@@ -1604,6 +1608,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         if (!txId || this.processedMessageIds.has(txId)) continue;
 
         if (this.isKasiaTransaction(tx)) {
+          console.log("found a kasia transaction", { tx });
           // mark the txId as processed to avoid duplicate processing
           this.processedMessageIds.add(txId);
           if (this.processedMessageIds.size > this.MAX_PROCESSED_MESSAGES) {
@@ -1615,7 +1620,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
           }
 
           try {
-            // Process message transaction silently
             await this.processMessageTransaction(tx, blockTime);
           } catch (error) {
             if (process.env.NODE_ENV === "development") {
