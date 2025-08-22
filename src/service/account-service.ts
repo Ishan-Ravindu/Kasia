@@ -578,7 +578,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     // @TODO: check how to do hex manipulation properly, currently parsed.encryptedHex is a hex
     // if we want to handle base64, it would need to find a way to do from/to hex properly in JS
     // from my tests, it seems that the utils alters the hex
-    const hexEncryptedPayload = tryParseBase64AsHexToHex(parsed.encryptedHex);
+    // ONLY apply base64 parsing for comm (message) transactions, not for payments/handshakes
+    let hexEncryptedPayload = parsed.encryptedHex;
+    if (parsed.type === PROTOCOL.headers.COMM.type) {
+      hexEncryptedPayload = tryParseBase64AsHexToHex(parsed.encryptedHex);
+    }
 
     const encryptedHex = hexEncryptedPayload;
     const isHandshake = parsed.type === PROTOCOL.headers.HANDSHAKE.type;
@@ -651,8 +655,8 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
             // message payload is expected to be hex encoded
             hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${toHex(parsed.alias ?? "UNKNOWN")}:${decryptedContent}`;
           } else if (parsed.type === "payment") {
-            // payment payload is expected to be hex encoded
-            hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.PAYMENT.hex}${decryptedContent}`;
+            // payment payload should be the raw decrypted JSON content
+            hackedContent = decryptedContent;
           }
 
           const kasiaTransaction: KasiaTransaction = {

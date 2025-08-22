@@ -57,8 +57,9 @@ export function parseKaspaMessagePayload(
     // 1:payment:xyz
     if (parts.length >= 3) {
       type = PROTOCOL.headers.PAYMENT.type;
+      // extract the encrypted hex part after "1:payment:"
       encryptedHex = payloadWithoutPrefix.substr(
-        PROTOCOL.headers.PAYMENT.hex.length + 2
+        PROTOCOL.headers.PAYMENT.hex.length
       );
     }
   }
