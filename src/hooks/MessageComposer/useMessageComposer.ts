@@ -102,7 +102,6 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
       txId = await walletStore.sendMessageWithContext({
         message: messageToSend,
         toAddress: new Address(recipient),
-        password: walletStore.unlockedWallet.password,
         myAlias,
         priorityFee: priority,
       });
@@ -130,6 +129,7 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
       setSendState({ status: "idle" });
     } catch (error) {
       setSendState({ status: "error", error: error as Error });
+      toast.removeAll();
       toast.error(`Failed to send message: ${unknownErrorToErrorLike(error)}`);
     }
   };
