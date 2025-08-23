@@ -33,11 +33,27 @@ export const WalletInfo = () => {
           <h4 className="text-text-primary me-2 font-bold">Wallet Name:</h4>
           <div className="text-base font-semibold">{unlockedWalletName}</div>
         </div>
-        <div className="flex flex-col items-center sm:flex-row sm:justify-start">
-          <h4 className="text-text-primary me-2 font-bold">Balance:</h4>
-          <div>
+        <div className="flex flex-col space-y-1">
+          <div className="flex flex-col items-center sm:flex-row sm:items-center">
+            <h4 className="text-text-primary me-2 font-bold">Balance:</h4>
             <span className="font-semibold text-[var(--accent-green)]">
               {currentBalance?.matureDisplay} KAS
+            </span>
+          </div>
+          <div className="flex flex-col items-center sm:flex-row sm:items-center">
+            <h5 className="text-text-primary me-2 text-sm font-bold">
+              Pending:
+            </h5>
+            <span className="text-base font-semibold text-[var(--accent-green)]">
+              {currentBalance?.pendingDisplay} KAS
+            </span>
+          </div>
+          <div className="flex flex-col items-center sm:flex-row sm:items-center">
+            <h5 className="text-text-primary me-2 text-sm font-bold">
+              Outgoing:
+            </h5>
+            <span className="text-base font-semibold text-[var(--accent-green)]">
+              {currentBalance?.outgoingDisplay} KAS
             </span>
           </div>
         </div>

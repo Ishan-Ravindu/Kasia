@@ -207,6 +207,20 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     });
   }
 
+  // this is a hacky approach needed to clear context and retract
+  // should only be used after emptying the full wallet
+  // we use this because generator / wasm doesn't have a graceful and clean solution
+  private async retrackAfterFullSend() {
+    if (!this.processor || !this.recv) return;
+    try {
+      this.context.free();
+    } catch (error) {
+      console.error("Error in retrackAfterFullSend:", error);
+    }
+    this.context = new UtxoContext({ processor: this.processor });
+    await this.context.trackAddresses([this.recv]);
+  }
+
   // Add method to set password
   public setPassword(password: string) {
     if (!password) {
@@ -769,28 +783,22 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     paymentTransaction: CreatePaymentWithMessageArgs
   ): Promise<TransactionId> {
     this.assertReady();
-
-    if (!paymentTransaction.address) {
+    if (!paymentTransaction.address)
       throw new Error("Transaction address is required");
-    }
-
-    if (!paymentTransaction.amount) {
+    if (!paymentTransaction.amount)
       throw new Error("Transaction amount is required");
-    }
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
       this.pwd
     );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
+    if (!privateKeyGenerator) throw new Error("Failed to generate private key");
 
     try {
-      const matureBalance = this.ctx.balance?.mature ?? 0n;
-      const isFullBalance = matureBalance === paymentTransaction.amount;
-      // Use a modified generator that sends to recipient but includes payload
+      // added boolean type to prevent full assignment
+      const rawMature = this.ctx.balance?.mature ?? 0n;
+      const isFullBalance: boolean = rawMature === paymentTransaction.amount;
+
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
         context: this.ctx,
         networkId: this.networkId,
@@ -804,20 +812,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       const pendingTransaction: PendingTransaction | null =
         await generator.next();
-
-      if (!pendingTransaction) {
+      if (!pendingTransaction)
         throw new Error("Failed to generate transaction");
-      }
 
-      if ((await generator.next()) !== null) {
-        throw new Error("Unexpected multiple transaction generation");
-      }
-
-      // Sign and send the transaction
-      return this.signAndSubmitTransaction(
+      const txid = await this.signAndSubmitTransaction(
         pendingTransaction,
         privateKeyGenerator
       );
+      if (isFullBalance) await this.retrackAfterFullSend();
+      return txid;
     } catch (error) {
       console.error("Error creating payment with message:", error);
       throw error;
@@ -828,28 +831,22 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     withdrawTransaction: CreateWithdrawTransactionArgs
   ) {
     this.assertReady();
-
-    if (!withdrawTransaction.address) {
+    if (!withdrawTransaction.address)
       throw new Error("Transaction address is required");
-    }
-
-    if (!withdrawTransaction.amount) {
+    if (!withdrawTransaction.amount)
       throw new Error("Transaction amount is required");
-    }
 
     const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
       this.unlockedWallet,
       this.pwd
     );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
+    if (!privateKeyGenerator) throw new Error("Failed to generate private key");
 
     try {
-      const matureBalance = this.ctx.balance?.mature;
-      const isFullBalance = matureBalance === withdrawTransaction.amount;
-      // Use our optimized generator creation method
+      // added boolean type to prevent full assignment
+      const rawMature = this.ctx.balance?.mature ?? 0n;
+      const isFullBalance: boolean = rawMature === withdrawTransaction.amount;
+
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
         context: this.ctx,
         networkId: this.networkId,
@@ -857,21 +854,19 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         destinationAddress: withdrawTransaction.address,
         amount: withdrawTransaction.amount,
         priorityFee: withdrawTransaction.priorityFee,
-        isFullBalance: isFullBalance,
+        isFullBalance,
       });
 
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
+      let pending: PendingTransaction | null;
+      while ((pending = await generator.next())) {
+        const txid = await this.signAndSubmitTransaction(
+          pending,
+          privateKeyGenerator
+        );
+        if (isFullBalance) await this.retrackAfterFullSend();
+        return txid;
       }
-
-      // Sign and send the transaction
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      throw new Error("Failed to generate transaction");
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
