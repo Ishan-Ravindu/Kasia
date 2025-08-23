@@ -1,5 +1,5 @@
 import { it, describe, expect } from "vitest";
-import { tryParseBase64AsHexToHex } from "../payload-encoding";
+import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 
 describe("tryParseBase64AsHexToHex", () => {
   it("should decode base64 input", () => {
