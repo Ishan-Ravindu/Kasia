@@ -104,7 +104,6 @@ export class TransactionGeneratorService {
 
     return new Generator(settings);
   }
-
   /**
    * Create generator for payment and withdrawal transactions
    */

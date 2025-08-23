@@ -22,6 +22,10 @@ export const MAX_PAYLOAD_SIZE = 17.7 * 1024;
 // rough (heuristic) for char limit on messages
 export const MAX_CHAT_INPUT_CHAR = 18000;
 
+// Triggers a warn in the wallet to withdraw to cold storage.
+// Settings at 30KAS
+export const BALANCE_WARN = BigInt(30 * 100_000_000);
+
 export const DEFAULT_FEE_BUCKETS: FeeBucket[] = [
   {
     label: "Low",

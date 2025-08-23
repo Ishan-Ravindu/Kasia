@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useWalletStore } from "../../store/wallet.store";
 import { UtxoCompound } from "./UtxoCompound";
+import { BALANCE_WARN } from "../../config/constants";
 
 type FrozenBalance = {
   matureUtxoCount: number;
@@ -25,7 +26,6 @@ export const WalletInfo = () => {
         matureDisplay: frozenBalance.matureDisplay,
       }
     : walletBalance;
-
   return (
     <div className="m-2 sm:m-4">
       <div className="border-kas-secondary bg-kas-secondary/5 mb-4 rounded-2xl border p-4">
@@ -33,14 +33,37 @@ export const WalletInfo = () => {
           <h4 className="text-text-primary me-2 font-bold">Wallet Name:</h4>
           <div className="text-base font-semibold">{unlockedWalletName}</div>
         </div>
-        <div className="flex flex-col items-center sm:flex-row sm:justify-start">
-          <h4 className="text-text-primary me-2 font-bold">Balance:</h4>
-          <div>
+        <div className="mb-2 flex flex-col space-y-1">
+          <div className="flex flex-col items-center sm:flex-row sm:items-center">
+            <h4 className="text-text-primary me-2 font-bold">Balance:</h4>
             <span className="font-semibold text-[var(--accent-green)]">
               {currentBalance?.matureDisplay} KAS
             </span>
           </div>
+          <div className="flex flex-col items-center sm:flex-row sm:items-center">
+            <h5 className="text-text-primary me-2 text-sm font-bold">
+              Pending:
+            </h5>
+            <span className="text-base font-semibold text-[var(--accent-green)]">
+              {currentBalance?.pendingDisplay} KAS
+            </span>
+          </div>
+          <div className="flex flex-col items-center sm:flex-row sm:items-center">
+            <h5 className="text-text-primary me-2 text-sm font-bold">
+              Outgoing:
+            </h5>
+            <span className="text-base font-semibold text-[var(--accent-green)]">
+              {currentBalance?.outgoingDisplay} KAS
+            </span>
+          </div>
         </div>
+        {(currentBalance?.mature ?? 0) > BALANCE_WARN && (
+          <span className="text-text-secondary text-center text-sm font-semibold sm:text-start">
+            <p>That's a lot of KAS!</p>
+            <p>Consider withdrawing some to cold storage. </p>
+            <p>Remember, Kasia is a messaging app!</p>
+          </span>
+        )}
       </div>
 
       {((currentBalance?.matureUtxoCount ?? 0) > 0 ||

@@ -11,6 +11,7 @@ import {
   kaspaToSompi,
   ITransactionOutput,
   PrivateKeyGenerator,
+  Generator,
 } from "kaspa-wasm";
 import { KaspaClient } from "./kaspa-client";
 import {
@@ -207,6 +208,20 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     });
   }
 
+  // this is a hacky approach needed to clear context and retract
+  // should only be used after emptying the full wallet
+  // we use this because generator / wasm doesn't have a graceful and clean solution
+  private async retrackAfterFullSend() {
+    if (!this.processor || !this.recv) return;
+    try {
+      this.context.free();
+    } catch (error) {
+      console.error("Error in retrackAfterFullSend:", error);
+    }
+    this.context = new UtxoContext({ processor: this.processor });
+    await this.context.trackAddresses([this.recv]);
+  }
+
   // Add method to set password
   public setPassword(password: string) {
     if (!password) {
@@ -351,6 +366,33 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         `Fee cannot exceed ${Number(MAX_TX_FEE) / 100_000_000} KAS`
       );
     }
+  }
+
+  private async processGeneratorTransactions(
+    generator: Generator,
+    postTransactionCallback?: () => Promise<void>
+  ): Promise<string> {
+    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
+      this.unlockedWallet,
+      this.pwd
+    );
+
+    if (!privateKeyGenerator) {
+      throw new Error("Failed to generate private key");
+    }
+
+    let pending: PendingTransaction | null;
+    while ((pending = await generator.next())) {
+      const txid = await this.signAndSubmitTransaction(
+        pending,
+        privateKeyGenerator
+      );
+      if (postTransactionCallback) {
+        await postTransactionCallback();
+      }
+      return txid;
+    }
+    throw new Error("Failed to generate transaction");
   }
 
   private async signAndSubmitTransaction(
@@ -722,17 +764,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     );
     console.log(`Payload length: ${transaction.payload.length / 2} bytes`);
 
-    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-      this.unlockedWallet,
-      this.pwd
-    );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
-
     try {
-      // Use our optimized generator creation method
       const generator = TransactionGeneratorService.createForTransaction({
         context: this.ctx,
         networkId: this.networkId,
@@ -744,21 +776,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       });
 
       console.log("Generating transaction...");
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
-      }
-
-      if ((await generator.next()) !== null) {
-        throw new Error("Unexpected multiple transaction generation");
-      }
-
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      return this.processGeneratorTransactions(generator);
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
@@ -769,28 +787,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     paymentTransaction: CreatePaymentWithMessageArgs
   ): Promise<TransactionId> {
     this.assertReady();
-
-    if (!paymentTransaction.address) {
+    if (!paymentTransaction.address)
       throw new Error("Transaction address is required");
-    }
-
-    if (!paymentTransaction.amount) {
+    if (!paymentTransaction.amount)
       throw new Error("Transaction amount is required");
-    }
-
-    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-      this.unlockedWallet,
-      this.pwd
-    );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
 
     try {
-      const matureBalance = this.ctx.balance?.mature ?? 0n;
-      const isFullBalance = matureBalance === paymentTransaction.amount;
-      // Use a modified generator that sends to recipient but includes payload
+      const rawMature = this.ctx.balance?.mature ?? 0n;
+      const isFullBalance: boolean = rawMature === paymentTransaction.amount;
+
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
         context: this.ctx,
         networkId: this.networkId,
@@ -802,22 +807,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         isFullBalance,
       });
 
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
+      const postCallback = isFullBalance
+        ? () => this.retrackAfterFullSend()
+        : undefined;
 
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
-      }
-
-      if ((await generator.next()) !== null) {
-        throw new Error("Unexpected multiple transaction generation");
-      }
-
-      // Sign and send the transaction
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      return this.processGeneratorTransactions(generator, postCallback);
     } catch (error) {
       console.error("Error creating payment with message:", error);
       throw error;
@@ -828,28 +822,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     withdrawTransaction: CreateWithdrawTransactionArgs
   ) {
     this.assertReady();
-
-    if (!withdrawTransaction.address) {
+    if (!withdrawTransaction.address)
       throw new Error("Transaction address is required");
-    }
-
-    if (!withdrawTransaction.amount) {
+    if (!withdrawTransaction.amount)
       throw new Error("Transaction amount is required");
-    }
-
-    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-      this.unlockedWallet,
-      this.pwd
-    );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
 
     try {
-      const matureBalance = this.ctx.balance?.mature;
-      const isFullBalance = matureBalance === withdrawTransaction.amount;
-      // Use our optimized generator creation method
+      const rawMature = this.ctx.balance?.mature ?? 0n;
+      const isFullBalance: boolean = rawMature === withdrawTransaction.amount;
+
       const generator = TransactionGeneratorService.createForPaymentOrWithdraw({
         context: this.ctx,
         networkId: this.networkId,
@@ -857,21 +838,14 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         destinationAddress: withdrawTransaction.address,
         amount: withdrawTransaction.amount,
         priorityFee: withdrawTransaction.priorityFee,
-        isFullBalance: isFullBalance,
+        isFullBalance,
       });
 
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
+      const postCallback = isFullBalance
+        ? () => this.retrackAfterFullSend()
+        : undefined;
 
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
-      }
-
-      // Sign and send the transaction
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      return this.processGeneratorTransactions(generator, postCallback);
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
@@ -883,40 +857,19 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     console.log("Consolidating all UTXOs to:", this.recv.toString());
 
-    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-      this.unlockedWallet,
-      this.pwd
-    );
-
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
-    }
-
     try {
       const matureBalance = this.ctx.balance?.mature;
       if (!matureBalance || matureBalance === 0n) {
         throw new Error("No mature UTXOs available for compound transaction");
       }
 
-      // Use our simple compound transaction generator
       const generator = TransactionGeneratorService.createForCompound({
         context: this.ctx,
         networkId: this.networkId,
         receiveAddress: this.recv,
       });
 
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
-      }
-
-      // Sign the transaction
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      return this.processGeneratorTransactions(generator);
     } catch (error) {
       console.error("Error creating compound transaction:", error);
       throw error;
