@@ -758,21 +758,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       });
 
       console.log("Generating transaction...");
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
+      let pending: PendingTransaction | null;
+      while ((pending = await generator.next())) {
+        const txid = await this.signAndSubmitTransaction(
+          pending,
+          privateKeyGenerator
+        );
+        return txid;
       }
-
-      if ((await generator.next()) !== null) {
-        throw new Error("Unexpected multiple transaction generation");
-      }
-
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      throw new Error("Failed to generate transaction");
     } catch (error) {
       console.error("Error creating transaction:", error);
       throw error;
@@ -810,17 +804,16 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         isFullBalance,
       });
 
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-      if (!pendingTransaction)
-        throw new Error("Failed to generate transaction");
-
-      const txid = await this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
-      if (isFullBalance) await this.retrackAfterFullSend();
-      return txid;
+      let pending: PendingTransaction | null;
+      while ((pending = await generator.next())) {
+        const txid = await this.signAndSubmitTransaction(
+          pending,
+          privateKeyGenerator
+        );
+        if (isFullBalance) await this.retrackAfterFullSend();
+        return txid;
+      }
+      throw new Error("Failed to generate transaction");
     } catch (error) {
       console.error("Error creating payment with message:", error);
       throw error;
@@ -900,18 +893,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         receiveAddress: this.recv,
       });
 
-      const pendingTransaction: PendingTransaction | null =
-        await generator.next();
-
-      if (!pendingTransaction) {
-        throw new Error("Failed to generate transaction");
+      let pending: PendingTransaction | null;
+      while ((pending = await generator.next())) {
+        const txid = await this.signAndSubmitTransaction(
+          pending,
+          privateKeyGenerator
+        );
+        return txid;
       }
-
-      // Sign the transaction
-      return this.signAndSubmitTransaction(
-        pendingTransaction,
-        privateKeyGenerator
-      );
+      throw new Error("Failed to generate transaction");
     } catch (error) {
       console.error("Error creating compound transaction:", error);
       throw error;
