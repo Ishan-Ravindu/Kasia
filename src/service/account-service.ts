@@ -1012,13 +1012,12 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     if (!encryptedMessage) {
       throw new Error("Failed to encrypt message");
     }
+    const bytesData = hexToBytes(encryptedMessage.to_hex());
+    const base64Data = btoa(String.fromCharCode(...bytesData));
 
-    const payload = `${PROTOCOL.prefix.string}${PROTOCOL.headers.COMM.string}${PLACEHOLDER_ALIAS}:${encryptedMessage.to_hex()}`;
-
-    const payloadHex = payload
-      .split("")
-      .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
-      .join("");
+    // Build the full protocol string with all components to match sendMessageWithContext
+    const protocolString = `ciph_msg:1:comm:${PLACEHOLDER_ALIAS}:${base64Data}`;
+    const payload = getEncoder().encode(protocolString);
 
     if (!payload) {
       throw new Error("Failed to create message payload");
@@ -1031,7 +1030,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         receiveAddress: this.recv,
         destinationAddress: destinationAddress,
         amount: BigInt(0.2 * 100_000_000),
-        payload: payloadHex,
+        payload: payload,
         priorityFee: sendMessage.priorityFee,
       }).estimate();
     } catch (error) {
