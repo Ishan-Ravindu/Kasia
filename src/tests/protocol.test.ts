@@ -23,5 +23,19 @@ it("should parse message", async () => {
   const parsed = parseKaspaMessagePayload(message);
 
   expect(parsed.encryptedHex).toBe(encryptedHex);
+  expect(parsed.type).toBe("comm");
   expect(parsed.alias).toBe(expectedAlias);
+});
+
+it("should parse payment", async () => {
+  const message =
+    "636970685f6d73673a313a7061796d656e743a7b2274797065223a227061796d656e74222c226d657373616765223a2268656c6c6f20776f726c64222c22616d6f756e74223a302e35323334353637382c2274696d657374616d70223a313735353930373739333033322c2276657273696f6e223a317d";
+  const encryptedHex =
+    "7b2274797065223a227061796d656e74222c226d657373616765223a2268656c6c6f20776f726c64222c22616d6f756e74223a302e35323334353637382c2274696d657374616d70223a313735353930373739333033322c2276657273696f6e223a317d";
+
+  const parsed = parseKaspaMessagePayload(message);
+
+  expect(parsed.encryptedHex).toBe(encryptedHex);
+  expect(parsed.type).toBe("payment");
+  expect(parsed.alias).toBe(undefined);
 });
