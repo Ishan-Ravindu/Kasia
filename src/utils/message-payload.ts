@@ -1,5 +1,7 @@
 import { PROTOCOL } from "../config/protocol";
 import { hexToString } from "./format";
+import { ITransaction } from "wasm/kaspa";
+import { ExplorerTransaction } from "../types/transactions";
 
 export type ParsedKaspaMessagePayload = {
   type: string;
@@ -55,11 +57,18 @@ export function parseKaspaMessagePayload(
     // 1:payment:xyz
     if (parts.length >= 3) {
       type = PROTOCOL.headers.PAYMENT.type;
+      // extract the encrypted hex part after "1:payment:"
       encryptedHex = payloadWithoutPrefix.substr(
-        PROTOCOL.headers.PAYMENT.hex.length + 2
+        PROTOCOL.headers.PAYMENT.hex.length
       );
     }
   }
 
   return { type, alias, encryptedHex };
+}
+
+export function isKasiaTransaction(
+  tx: ITransaction | ExplorerTransaction
+): boolean {
+  return tx?.payload?.startsWith(PROTOCOL.prefix.hex) ?? false;
 }

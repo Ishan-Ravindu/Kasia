@@ -34,7 +34,12 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
-  const feeState = useFeeEstimate(recipient, draft, attachment);
+  const feeState = useFeeEstimate({
+    toSelf: true,
+    recipient,
+    draft,
+    attachment,
+  });
   const { send, attach } = useMessageComposer(feeState, recipient);
   const setPriority = useComposerStore((s) => s.setPriority);
   const setSendState = useComposerStore((s) => s.setSendState);
@@ -81,7 +86,6 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
 
   // check message length and trim if over limit
   useEffect(() => {
-    console.log(draft.length);
     if (draft.length > MAX_CHAT_INPUT_CHAR) {
       toast.removeAll();
       toast.error(

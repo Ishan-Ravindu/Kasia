@@ -33,13 +33,6 @@ export const tryParseBase64AsHexToHex = (input: string): string => {
   return base64ToHex(content);
 };
 
-// check if payload is a message transaction (both hex and base64 formats)
-export const isMessagePayload = (p: string | Uint8Array): boolean =>
-  !!p &&
-  (typeof p === "string"
-    ? p.startsWith(PROTOCOL.prefix.hex) || p.startsWith("ciph_msg:")
-    : false);
-
 // get encoder singleton for reuse
 export const getEncoder = () => _encoder;
 

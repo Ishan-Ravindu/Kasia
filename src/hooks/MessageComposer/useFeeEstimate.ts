@@ -7,22 +7,32 @@ import { useWalletStore } from "../../store/wallet.store";
 import { Address } from "kaspa-wasm";
 import { FeeState } from "../../types/all";
 
-export const useFeeEstimate = (
-  recipient?: string,
-  draft?: string,
-  attachment?: Attachment
-) => {
+export const useFeeEstimate = ({
+  toSelf = false,
+  recipient,
+  draft,
+  attachment,
+}: {
+  toSelf?: boolean;
+  recipient?: string;
+  draft?: string;
+  attachment?: Attachment;
+}) => {
   const [feeState, setFeeState] = useState<FeeState>({ status: "idle" });
 
   const {
     priority,
     sendState: { status: sendStatus },
   } = useComposerStore();
-  const { unlockedWallet, estimateSendMessageFees } = useWalletStore();
+  const { unlockedWallet, estimateSendMessageFees, address, balance } =
+    useWalletStore();
 
   useEffect(() => {
+    // when toSelf is true, we need user's address; otherwise we need recipient
+    const targetAddress = toSelf ? address?.toString() : recipient;
+
     if (
-      !recipient ||
+      !targetAddress ||
       (!draft && !attachment) ||
       !unlockedWallet ||
       sendStatus === "loading"
@@ -31,13 +41,22 @@ export const useFeeEstimate = (
       return;
     }
 
-    let address: Address;
+    // check if we have funds available
+    if (!balance || balance.mature === 0n) {
+      setFeeState({
+        status: "error",
+        error: new Error("No funds available for fee estimation"),
+      });
+      return;
+    }
+
+    let parsedAddress: Address;
     try {
-      address = new Address(recipient);
+      parsedAddress = new Address(targetAddress);
     } catch {
       setFeeState({
         status: "error",
-        error: new Error("Invalid recipient address"),
+        error: new Error("Invalid address"),
       });
       return;
     }
@@ -50,7 +69,7 @@ export const useFeeEstimate = (
       // use attachment content if available, otherwise use draft text
       const messageContent = attachment ? attachment.content : draft || "";
 
-      estimateSendMessageFees(messageContent, address, priority)
+      estimateSendMessageFees(messageContent, parsedAddress, priority)
         .then((estimate) => {
           if (!isCancelled) {
             const fee = Number(estimate.fees) / 100_000_000;
@@ -70,13 +89,16 @@ export const useFeeEstimate = (
       clearTimeout(timeoutId);
     };
   }, [
+    toSelf,
     recipient,
+    address,
     draft,
     attachment,
     priority,
     sendStatus,
     unlockedWallet,
     estimateSendMessageFees,
+    balance,
   ]);
 
   return feeState;

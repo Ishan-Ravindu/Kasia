@@ -19,7 +19,6 @@ import {
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
-import { get } from "http";
 
 export interface WalletStoreSendMessageArgs {
   /**
@@ -27,7 +26,6 @@ export interface WalletStoreSendMessageArgs {
    */
   message: string;
   toAddress: Address;
-  password: string;
   customAmount?: bigint;
   priorityFee?: PriorityFeeConfig;
 }
@@ -36,7 +34,17 @@ export interface WalletStoreSendContextualMessageArgs {
   message: string;
   toAddress: Address;
   myAlias: string;
+  priorityFee?: PriorityFeeConfig;
+}
+
+export interface WalletStoreSendTransactionArgs {
+  /**
+   * payload to use for the transaction, if encryption is required, it should be encrypted before passing it here
+   */
+  payload?: string;
+  toAddress: Address;
   password: string;
+  customAmount?: bigint;
   priorityFee?: PriorityFeeConfig;
 }
 
@@ -354,20 +362,16 @@ export const useWalletStore = create<WalletState>((set, get) => {
       if (!state.unlockedWallet || !state.accountService) {
         throw new Error("Wallet not unlocked or account service not running");
       }
-      return state.accountService.createTransaction(
-        {
-          address: args.toAddress,
-          amount: args.customAmount ?? BigInt(0),
-          payload: args.payload ?? "",
-          priorityFee: args.priorityFee,
-        },
-        state.unlockedWallet.password
-      );
+      return state.accountService.createTransaction({
+        address: args.toAddress,
+        payload: args.payload ?? "",
+        amount: args.customAmount ?? BigInt(0),
+        priorityFee: args.priorityFee,
+      });
     },
     sendMessageWithContext: async ({
       message,
       toAddress,
-      password,
       priorityFee,
       myAlias,
     }) => {
@@ -384,7 +388,6 @@ export const useWalletStore = create<WalletState>((set, get) => {
         return await state.accountService.sendMessageWithContext({
           message: encryptedMessage.to_hex(),
           toAddress,
-          password,
           theirAlias: myAlias,
           priorityFee,
         });

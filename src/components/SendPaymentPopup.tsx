@@ -99,25 +99,16 @@ export const SendPaymentPopup: FC<{
         throw new Error("Failed to encrypt payment message");
       }
 
-      // Create the simplified payment protocol payload (no alias needed)
-      const payload = `${PROTOCOL.prefix.string}${PROTOCOL.headers.PAYMENT.string}${encryptedMessage.to_hex()}`;
-
-      // Convert the payload to hex
-      const payloadHex = payload
-        .split("")
-        .map((c) => c.charCodeAt(0).toString(16).padStart(2, "0"))
-        .join("");
+      // Create the payment protocol payload using HEX headers (not string headers)
+      const payloadHex = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.PAYMENT.hex}${encryptedMessage.to_hex()}`;
 
       // Send payment directly to recipient with message payload using new method
-      const txId = await walletStore.accountService.createPaymentWithMessage(
-        {
-          address: new Address(recipientAddress),
-          amount: amountSompi,
-          payload: payloadHex,
-          originalMessage: message, // Pass the original message for outgoing record
-        },
-        walletStore.unlockedWallet.password
-      );
+      const txId = await walletStore.accountService.createPaymentWithMessage({
+        address: new Address(recipientAddress),
+        amount: amountSompi,
+        payload: payloadHex,
+        originalMessage: message, // Pass the original message for outgoing record
+      });
 
       // Create and store outgoing payment message record (simplified)
       const paymentContent = JSON.stringify({
