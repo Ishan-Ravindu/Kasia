@@ -294,12 +294,14 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
         className={clsx(
           "flex cursor-pointer items-center gap-1 text-sm font-medium",
           {
-            "text-red-400": getCurrentBucketLabel() === "Priority",
-            "text-blue-400": getCurrentBucketLabel() === "Normal",
-            "text-green-400": getCurrentBucketLabel() === "Low",
-            "text-[#49EACB]": !["Priority", "Normal", "Low"].includes(
-              getCurrentBucketLabel()
-            ),
+            "text-[var(--accent-red)]": getCurrentBucketLabel() === "Priority",
+            "text-[var(--accent-blue)]": getCurrentBucketLabel() === "Normal",
+            "text-[var(--accent-green)]": getCurrentBucketLabel() === "Low",
+            "text-[var(--kas-secondary)]": ![
+              "Priority",
+              "Normal",
+              "Low",
+            ].includes(getCurrentBucketLabel()),
           },
           className
         )}
