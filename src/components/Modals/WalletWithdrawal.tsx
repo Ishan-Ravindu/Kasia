@@ -184,16 +184,20 @@ export const WalletWithdrawal: FC = () => {
             Max
           </button>
         </div>
-
+        <div className="mt-1 flex items-start justify-start">
+          <span className="text-text-secondary me-2">Funds Available:</span>
+          <span className="text-text-secondary">
+            {balance?.matureDisplay} KAS
+          </span>
+        </div>
         <Button
           onClick={handleWithdraw}
           disabled={isSending || amountInputError !== null}
           variant="primary"
-          className="mt-4 w-full"
+          className="mt-2 w-full"
         >
           {isSending ? "Sending..." : "Send"}
         </Button>
-
         {amountInputError && (
           <div className="mt-2 text-center text-sm text-red-500">
             {amountInputError}

@@ -9,11 +9,26 @@ import { useWalletStore } from "../../store/wallet.store";
 // fee levels for color coding
 // need to extract this and make it setable from the settings
 const FEE_LEVELS = [
-  { limit: 0.00002, classes: "text-green-400 border-green-400" },
-  { limit: 0.00005, classes: "text-blue-400  border-blue-400" },
-  { limit: 0.0005, classes: "text-yellow-400 border-yellow-400" },
-  { limit: 0.001, classes: "text-orange-400 border-orange-400" },
-  { limit: Infinity, classes: "text-red-400 border-red-400" },
+  {
+    limit: 0.00002,
+    classes: "text-[var(--accent-green)] border-[var(--accent-green)]",
+  },
+  {
+    limit: 0.00005,
+    classes: "text-[var(--accent-blue)] border-[var(--accent-blue)]",
+  },
+  {
+    limit: 0.0005,
+    classes: "text-[var(--accent-yellow)] border-[var(--accent-yellow)]",
+  },
+  {
+    limit: 0.001,
+    classes: "text-[var(--accent-orange)] border-[var(--accent-orange)]",
+  },
+  {
+    limit: Infinity,
+    classes: "text-[var(--accent-red)] border-[var(--accent-red)]",
+  },
 ];
 
 function getFeeClasses(fee: number) {
@@ -52,8 +67,10 @@ export const FeeDisplay = ({
     <div className="absolute -top-7.5 right-4 flex items-center gap-2">
       <div
         className={clsx(
-          "inline-block rounded-md border bg-white/10 px-3 py-1 text-right text-xs text-gray-400 transition-opacity duration-300 ease-out",
-          feeState.value && getFeeClasses(feeState.value)
+          "inline-block rounded-md border bg-[var(--secondary-bg)]/20 px-3 py-1 text-right text-xs transition-opacity duration-300 ease-out",
+          feeState.value
+            ? getFeeClasses(feeState.value)
+            : "text-[var(--text-secondary)]"
         )}
       >
         {!hasFunds

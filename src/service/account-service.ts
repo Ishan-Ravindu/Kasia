@@ -283,9 +283,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   async stop() {
     console.log("Stopping UTXO subscription and processor...");
     try {
+      await this.context.clear();
       // Stop the UTXO processor
       await this.processor.stop();
-      await this.context.clear();
 
       // Unsubscribe from block events using the RpcClient method
       if (this.rpcClient.rpc) {
@@ -428,6 +428,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     // Submit the transaction
     console.log("Submitting transaction to network...");
     const txId: string = await pendingTransaction.submit(this.rpc);
+
     console.log(`Transaction submitted with ID: ${txId}`);
     console.log("========================");
 

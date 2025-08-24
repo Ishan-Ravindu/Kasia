@@ -337,12 +337,12 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
       <>
         <h3 className="m-0 mb-5 text-[1.2rem] font-bold">Confirm Handshake</h3>
         <div className="mb-5 text-sm leading-normal">
-          <p>
+          <div>
             <strong>Recipient:</strong>
             <div className="flex justify-start break-all">
               {recipientDisplay}
             </div>
-          </p>
+          </div>
           {detectedRecipientInputValueFormat === "kns" &&
             resolvedRecipientAddress &&
             knsDomainId && (
@@ -353,7 +353,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
           <p className="my-2">
             <strong>Amount:</strong> {handshakeAmount} KAS
           </p>
-          <p className="my-2">
+          <p className="mt-1">
             <strong>Your Balance:</strong> {balance?.matureDisplay || "0"} KAS
           </p>
           {parseFloat(handshakeAmount) > 0.2 && (
@@ -368,7 +368,9 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
               {recipientWarning}
             </p>
           )}
-          <p>This will initiate a handshake conversation. Continue?</p>
+          <p className="mt-1">
+            This will initiate a handshake conversation. Continue?
+          </p>
         </div>
         <div className="flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
           <Button
