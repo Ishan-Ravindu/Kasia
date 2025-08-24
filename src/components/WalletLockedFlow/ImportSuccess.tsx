@@ -1,13 +1,15 @@
 import { Button } from "../Common/Button";
 
-type UnlockedProps = {
+type ImportSuccessProps = {
   onBack: () => void;
 };
 
-export const Unlocked = ({ onBack }: UnlockedProps) => {
+export const ImportSuccess = ({ onBack }: ImportSuccessProps) => {
   return (
     <>
-      <h2 className="text-center text-lg font-bold">Wallet Unlocked</h2>
+      <h2 className="text-center text-lg font-bold">
+        Wallet Imported Successfully
+      </h2>
       <div className="mt-5 flex justify-center">
         <Button
           onClick={onBack}

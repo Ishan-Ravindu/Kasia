@@ -13,7 +13,7 @@ import { Home } from "../components/WalletLockedFlow/Home";
 import { Import } from "../components/WalletLockedFlow/Import";
 import { Unlock } from "../components/WalletLockedFlow/Unlock";
 import { Migrate } from "../components/WalletLockedFlow/Migrate";
-import { Unlocked } from "../components/WalletLockedFlow/Unlocked";
+import { ImportSuccess } from "../components/WalletLockedFlow/ImportSuccess";
 import { SeedPhraseDisplay } from "../components/WalletLockedFlow/SeedDisplay";
 
 export type Step = {
@@ -186,7 +186,7 @@ export const WalletLockedFlowContainer = ({
       )}
 
       {step.type === "success" && (
-        <Unlocked onBack={() => onStepChange("home")} />
+        <ImportSuccess onBack={() => onStepChange("home")} />
       )}
 
       {step.type === "migrate" && (

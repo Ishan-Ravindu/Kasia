@@ -17,7 +17,6 @@ export const WalletInfo = () => {
     (state) => state.unlockedWallet?.name
   );
   const walletBalance = useWalletStore((s) => s.balance);
-
   // use frozen balance if available, otherwise use current balance
   const currentBalance = frozenBalance
     ? {
