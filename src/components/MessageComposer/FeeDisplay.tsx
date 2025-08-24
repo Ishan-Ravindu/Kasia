@@ -38,10 +38,11 @@ function getFeeClasses(fee: number) {
 interface FeeDisplayProps {
   recipient?: string;
   draft?: string;
-  attachment: Attachment | null;
+  attachment?: Attachment | null;
   feeState: FeeState;
   priority: PriorityFeeConfig;
   onPriorityChange: (priority: PriorityFeeConfig) => void;
+  isBroadcast?: boolean;
 }
 
 // this displayes the fee above the message box and colors it!
@@ -52,11 +53,12 @@ export const FeeDisplay = ({
   feeState,
   priority,
   onPriorityChange,
+  isBroadcast = false,
 }: FeeDisplayProps) => {
   const balance = useWalletStore((state) => state.balance);
 
-  // only show fee display when we have a recipient and either draft or attachment
-  if (!recipient || (!draft && !attachment)) {
+  // show fee display when we have either a recipient (for direct messages) or a draft/attachment (for broadcasts)
+  if (!draft || (!isBroadcast && !recipient && !attachment)) {
     return null;
   }
 

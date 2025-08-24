@@ -123,7 +123,11 @@ export const MessageDisplay: FC<MessageDisplayProps> = ({
         onClick={() => setShowMeta((prev) => !prev)}
         className={clsx(
           "my-0.5 text-base leading-relaxed",
-          shouldUseBubble && generateBubbleClasses(isOutgoing, groupPosition)
+          shouldUseBubble &&
+            generateBubbleClasses({
+              isOutgoing,
+              groupPosition,
+            })
         )}
       >
         {renderMessageContent()}

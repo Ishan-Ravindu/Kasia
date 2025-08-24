@@ -1,5 +1,5 @@
-import { useMessagingStore } from "../store/messaging.store";
-import { useWalletStore } from "../store/wallet.store";
+import { useMessagingStore } from "../../store/messaging.store";
+import { useWalletStore } from "../../store/wallet.store";
 import React, {
   useState,
   useCallback,
@@ -9,13 +9,13 @@ import React, {
 } from "react";
 import { kaspaToSompi } from "kaspa-wasm";
 import clsx from "clsx";
-import { knsIntegrationService_getDomainResolution } from "../service/integrations/kns-integration-service";
-import { unknownErrorToErrorLike } from "../utils/errors";
-import { KaspaAddress } from "./KaspaAddress";
+import { knsIntegrationService_getDomainResolution } from "../../service/integrations/kns-integration-service";
+import { unknownErrorToErrorLike } from "../../utils/errors";
+import { KaspaAddress } from "../KaspaAddress";
 import { Textarea } from "@headlessui/react";
-import { Button } from "./Common/Button";
-import { QrScanner } from "./QrScanner";
-import { StringCopy } from "./Common/StringCopy";
+import { Button } from "../Common/Button";
+import { QrScanner } from "../QrScanner";
+import { StringCopy } from "../Common/StringCopy";
 import { Clipboard } from "lucide-react";
 
 interface NewChatFormProps {

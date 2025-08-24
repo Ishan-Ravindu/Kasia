@@ -1,20 +1,20 @@
 import { FC, useMemo, useEffect, useState, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Pencil, Info, Copy, Check, UserCog } from "lucide-react";
-import { FetchApiMessages } from "../components/FetchApiMessages";
-import { MessagesList } from "../components/MessageDisplay/MessagesList";
-import { MessageComposerShell } from "../components/MessageComposer/MessageComposerShell";
-import { useMessagingStore } from "../store/messaging.store";
-import { useWalletStore } from "../store/wallet.store";
-import { KaspaAddress } from "../components/KaspaAddress";
+import { FetchApiMessages } from "../FetchApiMessages";
+import { MessagesList } from "../MessageDisplay/MessagesList";
+import { MessageComposerShell } from "../MessageComposer/MessageComposerShell";
+import { useMessagingStore } from "../../store/messaging.store";
+import { useWalletStore } from "../../store/wallet.store";
+import { KaspaAddress } from "../KaspaAddress";
 import clsx from "clsx";
-import { useIsMobile } from "../hooks/useIsMobile";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
-import { EditNicknamePopover } from "../components/EditNicknamePopover";
-import { useUiStore } from "../store/ui.store";
-import { copyToClipboard } from "../utils/copy-to-clipboard";
-import { Contact } from "../store/repository/contact.repository";
-import { Button } from "../components/Common/Button";
+import { EditNicknamePopover } from "../EditNicknamePopover";
+import { useUiStore } from "../../store/ui.store";
+import { copyToClipboard } from "../../utils/copy-to-clipboard";
+import { Contact } from "../../store/repository/contact.repository";
+import { Button } from "../Common/Button";
 
 export const MessageSection: FC<{
   mobileView: "contacts" | "messages";
@@ -178,8 +178,6 @@ export const MessageSection: FC<{
       : nickname;
   }
 
-  const finalClassName = `flex flex-[2] flex-col overflow-x-hidden ${isMobile ? "" : "border-l border-primary-border"} ${isMobile && mobileView === "contacts" ? "hidden" : ""}`;
-
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
 
@@ -188,7 +186,7 @@ export const MessageSection: FC<{
     if (!popoverOpen) setIsEditingInPopover(false);
   }, [popoverOpen]);
 
-  const openModal = useUiStore((s) => s.openModal);
+  const openModal = useUiStore((state) => state.openModal);
   const setOneOnOneConversation = useUiStore((s) => s.setOneOnOneConversation);
 
   if (!oneOnOneConversation) {
@@ -254,7 +252,7 @@ export const MessageSection: FC<{
                 <Button
                   variant="primary"
                   onClick={() => {
-                    messageStore.setIsCreatingNewChat(true);
+                    openModal("new-chat");
                     messageStore.setContactNickname(
                       knsMovedContact.kaspaAddress,
                       formatOldDomainNickname(knsMovedDomain || "")
@@ -331,7 +329,7 @@ export const MessageSection: FC<{
                     }
                     return (
                       <>
-                        <PopoverButton className="cursor-pointer rounded p-1 text-[var(--button-primary)] hover:text-[var(--button-primary)]/80 focus:outline-none">
+                        <PopoverButton className="cursor-pointer rounded p-1 text-[var(--button-primary)] hover:scale-110 focus:outline-none">
                           <UserCog className="size-6 sm:size-5" />
                         </PopoverButton>
                         <PopoverPanel

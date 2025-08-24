@@ -157,7 +157,7 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
   };
 
   const onSend = async () => {
-    if (!guardReady() || !conversation) return;
+    if (!guardReady() || !conversation || !canCompose) return;
     await send(conversation.myAlias);
   };
 

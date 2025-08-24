@@ -17,6 +17,8 @@ import { PriorityFeeConfig } from "../types/all";
 import { UnlockedWallet } from "../types/wallet.type";
 import { TransactionId } from "../types/transactions";
 import { useMessagingStore } from "../store/messaging.store";
+import { useBroadcastStore } from "../store/broadcast.store";
+import { useDBStore } from "../store/db.store";
 import { PROTOCOL } from "../config/protocol";
 import { PLACEHOLDER_ALIAS } from "../config/constants";
 import { hexToBytes, getEncoder } from "../utils/payload-encoding";
@@ -47,10 +49,14 @@ type SendMessageArgs = {
   priorityFee?: PriorityFeeConfig; // Add priority fee support
 };
 
-type EstimateSendMessageFeesArgs = {
+type EstimateSendFeesArgs = {
   toAddress: Address;
   message: string;
   priorityFee?: PriorityFeeConfig; // Add priority fee support
+};
+
+type EstimateSendBroadcastFeesArgs = EstimateSendFeesArgs & {
+  channelName: string;
 };
 
 type SendMessageWithContextArgs = {
@@ -72,6 +78,12 @@ type CreateTransactionArgs = {
 type CreateWithdrawTransactionArgs = {
   address: Address;
   amount: bigint;
+  priorityFee?: PriorityFeeConfig; // Add priority fee support
+};
+
+type CreateBroadcastTransactionArgs = {
+  channelName: string;
+  message: string;
   priorityFee?: PriorityFeeConfig; // Add priority fee support
 };
 
@@ -495,6 +507,64 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 
+  public async createBroadcastTransaction(
+    broadcastTransaction: CreateBroadcastTransactionArgs
+  ): Promise<TransactionId> {
+    this.assertReady();
+
+    if (!broadcastTransaction.channelName) {
+      throw new Error("Channel name is required for broadcast");
+    }
+
+    if (!broadcastTransaction.message.trim()) {
+      throw new Error("Message content is required for broadcast");
+    }
+
+    console.log("=== CREATING BROADCAST TRANSACTION ===");
+    const primaryAddress = this.recv;
+    console.log(
+      "Broadcasting from primary address:",
+      primaryAddress.toString()
+    );
+    console.log(
+      "Destination: Self (broadcast to own address)",
+      primaryAddress.toString()
+    );
+    console.log(`Channel: #${broadcastTransaction.channelName}`);
+    console.log(`Message: ${broadcastTransaction.message}`);
+
+    try {
+      // Create broadcast payload: ciph_msg:1:bcast:{channelName}:{messageContent}
+      // Note: Broadcasts are never encrypted - they're plain text in the payload
+      const protocolString = `ciph_msg:1:bcast:${broadcastTransaction.channelName.toLowerCase()}:${broadcastTransaction.message}`;
+      const payloadBytes = getEncoder().encode(protocolString);
+
+      console.log(`Broadcast payload length: ${payloadBytes.length} bytes`);
+
+      // Use default broadcast amount (0.2 KAS)
+      const broadcastAmount = kaspaToSompi("0.2");
+      if (!broadcastAmount) {
+        throw new Error("Failed to convert broadcast amount");
+      }
+
+      const generator = TransactionGeneratorService.createForTransaction({
+        context: this.ctx,
+        networkId: this.networkId,
+        receiveAddress: this.recv,
+        destinationAddress: this.recv, // Broadcast to self
+        amount: broadcastAmount,
+        payload: payloadBytes,
+        priorityFee: broadcastTransaction.priorityFee,
+      });
+
+      console.log("Generating broadcast transaction...");
+      return this.processGeneratorTransactions(generator);
+    } catch (error) {
+      console.error("Error creating broadcast transaction:", error);
+      throw error;
+    }
+  }
+
   public async sendMessage(
     sendMessage: SendMessageArgs
   ): Promise<TransactionId> {
@@ -559,7 +629,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
   // estimation with context 1:1 base64
   public async estimateSendMessageFees(
-    sendMessage: EstimateSendMessageFeesArgs
+    sendMessage: EstimateSendFeesArgs
   ): Promise<GeneratorSummary> {
     this.assertReady();
 
@@ -575,7 +645,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       ensureAddressPrefix(sendMessage.toAddress.toString(), this.networkId)
     );
     const addressString = destinationAddress.toString();
+
+    console.log("sendMessage:", {
+      message: sendMessage.message,
+      toAddress: sendMessage.toAddress.toString(),
+      networkId: this.networkId,
+    });
+
     // Message needs to be encrypted
+    console.log("Encrypting message...");
     const encryptedMessage = encrypt_message(
       addressString,
       sendMessage.message
@@ -589,7 +667,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     // Build the full protocol string with all components to match sendMessageWithContext
     const protocolString = `ciph_msg:1:comm:${PLACEHOLDER_ALIAS}:${base64Data}`;
+    console.log("Encrypted protocol string:", protocolString);
+
+    console.log("Final protocol string:", protocolString);
     const payload = getEncoder().encode(protocolString);
+    console.log("Encoded payload:", payload);
 
     if (!payload) {
       throw new Error("Failed to create message payload");
@@ -604,6 +686,60 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         amount: BigInt(0.2 * 100_000_000),
         payload: payload,
         priorityFee: sendMessage.priorityFee,
+      }).estimate();
+    } catch (error) {
+      console.error("Error estimating transaction fees:", error);
+      throw error;
+    }
+  }
+
+  // estimation for unencrypted broadcast 1:1
+  public async estimateSendBroadcastFees(
+    sendBroadcast: EstimateSendBroadcastFeesArgs
+  ): Promise<GeneratorSummary> {
+    this.assertReady();
+
+    if (!sendBroadcast.toAddress) {
+      throw new Error("Destination address is required");
+    }
+
+    if (!sendBroadcast.message) {
+      throw new Error("Message is required");
+    }
+
+    const destinationAddress = new Address(
+      ensureAddressPrefix(sendBroadcast.toAddress.toString(), this.networkId)
+    );
+
+    console.log("sendMessage:", {
+      message: sendBroadcast.message,
+      toAddress: sendBroadcast.toAddress.toString(),
+      networkId: this.networkId,
+    });
+
+    // Message needs to be encrypted
+
+    // Handle unencrypted message
+    const protocolString = `ciph_msg:1:bcast:${sendBroadcast.channelName}:${sendBroadcast.message}`;
+    console.log("Unencrypted protocol string:", protocolString);
+
+    console.log("Final protocol string:", protocolString);
+    const payload = getEncoder().encode(protocolString);
+    console.log("Encoded payload:", payload);
+
+    if (!payload) {
+      throw new Error("Failed to create message payload");
+    }
+
+    try {
+      return TransactionGeneratorService.createForTransaction({
+        context: this.ctx,
+        networkId: this.networkId,
+        receiveAddress: this.recv,
+        destinationAddress: destinationAddress,
+        amount: BigInt(0.2 * 100_000_000),
+        payload: payload,
+        priorityFee: sendBroadcast.priorityFee,
       }).estimate();
     } catch (error) {
       console.error("Error estimating transaction fees:", error);
@@ -715,5 +851,151 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         this.processor.removeEventListener("maturity", oneTimeListen);
       }, 10_000);
     });
+  }
+    /*
+   * Check if broadcasts are enabled and we should process broadcast messages
+   */
+  private shouldProcessBroadcasts(): boolean {
+    try {
+      const broadcastStore = useBroadcastStore.getState();
+      return (
+        broadcastStore.isBroadcastMode && broadcastStore.channels.length > 0
+      );
+    } catch (error) {
+      console.error("Error checking broadcast status:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Process broadcast messages with the :bcast: prefix
+   */
+  private async processBroadcastTransaction(
+    tx: ITransaction,
+    blockTime: number
+  ) {
+    const payload = tx.payload;
+    if (!payload.startsWith(PROTOCOL.prefix.hex)) {
+      return;
+    }
+
+    // Check if this is a broadcast message
+    if (!payload.includes(PROTOCOL.headers.BROADCAST.hex)) {
+      return;
+    }
+
+    const txId = getTransactionId(tx);
+    if (!txId) {
+      console.warn("Transaction ID is missing in broadcast processing");
+      return;
+    }
+
+    // Check if we already processed this transaction
+    if (
+      await useDBStore.getState().repositories.doesKasiaEventExistsById(txId)
+    ) {
+      console.log(`Broadcast transaction ${txId} already processed`);
+      return;
+    }
+
+    try {
+      // Parse the broadcast payload: ciph_msg:1:bcast:{channelName}:{content}
+      // Convert hex payload to string (browser-compatible)
+      const hexBytes = hexToBytes(payload);
+      const payloadString = new TextDecoder().decode(hexBytes);
+      console.log(`Broadcast payload string: ${payloadString}`);
+      const parts = payloadString.split(":");
+
+      console.log(`Broadcast payload parts:`, parts);
+
+      if (parts.length < 5 || parts[2] !== "bcast") {
+        console.log(
+          `Invalid broadcast format: parts.length=${parts.length}, parts[2]=${parts[2]}`
+        );
+        return; // Not a valid broadcast message
+      }
+
+      const channelName = parts[3]?.toLowerCase();
+      console.log(`Extracted channel name: ${channelName}`);
+      if (!channelName) {
+        console.warn("No channel name found in broadcast message");
+        return;
+      }
+
+      // Check if we're subscribed to this channel
+      const broadcastStore = useBroadcastStore.getState();
+      console.log(
+        `Available channels:`,
+        broadcastStore.channels.map((c) => c.channelName)
+      );
+      const isSubscribed = broadcastStore.channels.some(
+        (channel) => channel.channelName === channelName
+      );
+
+      console.log(`Is subscribed to channel ${channelName}: ${isSubscribed}`);
+      if (!isSubscribed) {
+        console.log(`Not subscribed to broadcast channel: ${channelName}`);
+        return;
+      }
+
+      // Get sender address from transaction inputs
+      let senderAddress = "Unknown";
+      if (tx.inputs && tx.inputs.length > 0) {
+        const input = tx.inputs[0];
+        const prevTxId = input.previousOutpoint?.transactionId;
+        const prevOutputIndex = input.previousOutpoint?.index;
+
+        if (prevTxId && typeof prevOutputIndex === "number") {
+          try {
+            const prevTx = await this._fetchTransactionDetails(prevTxId, 5);
+            if (prevTx?.outputs && prevTx.outputs[prevOutputIndex]) {
+              const output = prevTx.outputs[prevOutputIndex];
+              senderAddress = output.script_public_key_address;
+            }
+          } catch (error) {
+            console.error("Error getting sender address for broadcast:", error);
+          }
+        }
+      }
+
+      // Extract message content (everything after the channel name)
+      const messageContent = parts.slice(4).join(":");
+      console.log(`Extracted message content: ${messageContent}`);
+
+      // Check if we have a pending message with this transaction ID
+      const existingPendingMessage =
+        broadcastStore.findPendingMessageByTxId(txId);
+
+      if (existingPendingMessage) {
+        // Update existing pending message to confirmed
+        console.log(
+          `Updating existing pending message to confirmed: ${existingPendingMessage.id}`
+        );
+        broadcastStore.updateMessageStatus(
+          existingPendingMessage.id,
+          "confirmed",
+          txId
+        );
+      } else {
+        // Add new message to store (broadcasts are never encrypted)
+        console.log(
+          `Adding new message to broadcast store for channel: ${channelName}`
+        );
+        broadcastStore.addMessage({
+          channelName,
+          senderAddress,
+          content: messageContent,
+          timestamp: new Date(blockTime),
+          transactionId: txId,
+          status: "confirmed",
+        });
+      }
+
+      console.log(
+        `Successfully processed broadcast message for channel: ${channelName}`
+      );
+    } catch (error) {
+      console.error(`Error processing broadcast transaction ${txId}:`, error);
+    }
   }
 }

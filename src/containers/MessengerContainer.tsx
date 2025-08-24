@@ -6,9 +6,11 @@ import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
 import { unknownErrorToErrorLike } from "../utils/errors";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { ContactSection } from "./ContactSection";
-import { MessageSection } from "./MessagesSection";
+import { SidebarSection } from "../components/SideBarPane/SidebarSection";
+import { MessageSection } from "../components/MessagesPane/MessagesSection";
+import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
 import { Contact } from "../store/repository/contact.repository";
+import { useBroadcastStore } from "../store/broadcast.store";
 
 export const MessengerContainer: FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -19,9 +21,9 @@ export const MessengerContainer: FC = () => {
   const [mobileView, setMobileView] = useState<"contacts" | "messages">(
     "contacts"
   );
-
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
+  const { isBroadcastMode } = useBroadcastStore();
 
   const isMobile = useIsMobile();
   const { closeAllModals } = useUiStore();
@@ -87,7 +89,6 @@ export const MessengerContainer: FC = () => {
       closeAllModals();
 
       messageStore.setOpenedRecipient(null);
-      messageStore.setIsCreatingNewChat(false);
     };
   }, []);
 
@@ -170,7 +171,6 @@ export const MessengerContainer: FC = () => {
         return;
       }
 
-      messageStore.setIsCreatingNewChat(false);
       messageStore.setOpenedRecipient(contact.kaspaAddress);
     },
     [messageStore, walletStore.address]
@@ -185,11 +185,10 @@ export const MessengerContainer: FC = () => {
           messageStore.isLoaded &&
           walletStore.isAccountServiceRunning ? (
             <>
-              <ContactSection
+              <SidebarSection
                 contacts={messageStore.oneOnOneConversations.map(
                   (oooc) => oooc.contact
                 )}
-                onNewChatClicked={onNewChatClicked}
                 onContactClicked={onContactClicked}
                 openedRecipient={messageStore.openedRecipient}
                 walletAddress={walletStore.address?.toString()}
@@ -198,10 +197,17 @@ export const MessengerContainer: FC = () => {
                 setContactsCollapsed={setContactsCollapsed}
                 setMobileView={setMobileView}
               />
-              <MessageSection
-                mobileView={mobileView}
-                setMobileView={setMobileView}
-              />
+              {isBroadcastMode ? (
+                <BroadcastSection
+                  mobileView={mobileView}
+                  setMobileView={setMobileView}
+                />
+              ) : (
+                <MessageSection
+                  mobileView={mobileView}
+                  setMobileView={setMobileView}
+                />
+              )}
             </>
           ) : isWalletReady ? (
             <div className="flex w-full flex-col items-center text-xs">

@@ -85,6 +85,20 @@ export function parseKaspaMessagePayload(
         );
       }
     }
+  } else if (payloadWithoutPrefix.startsWith(PROTOCOL.headers.BROADCAST.hex)) {
+    const payloadWithoutPrefixStr = hexToString(payloadWithoutPrefix);
+    const parts = payloadWithoutPrefixStr.split(":");
+
+    // 1:bcast:channelName:messageContent
+    if (parts.length >= 4) {
+      type = PROTOCOL.headers.BROADCAST.type;
+      // For broadcasts, we don't need alias or encryptedHex since they're plain text
+      // But we'll extract the channel name for reference
+      const channelName = parts[2];
+      encryptedHex = payloadWithoutPrefix.substr(
+        PROTOCOL.headers.BROADCAST.hex.length + 2 + channelName.length * 2
+      );
+    }
   }
 
   return { type, alias, encryptedHex, scope };

@@ -137,6 +137,13 @@ type WalletState = {
     priorityFee?: PriorityFeeConfig
   ) => Promise<GeneratorSummary>;
 
+  estimateSendBroadcastFees: (
+    message: string,
+    toAddress: Address,
+    channelName: string,
+    priorityFee?: PriorityFeeConfig
+  ) => Promise<GeneratorSummary>;
+
   // Actions
   setSelectedNetwork: (network: NetworkType) => void;
   setRpc: (client: RpcClient | null) => void;
@@ -353,6 +360,24 @@ export const useWalletStore = create<WalletState>((set, get) => {
         message,
         toAddress,
         priorityFee,
+      });
+    },
+    estimateSendBroadcastFees: async (
+      message: string,
+      toAddress: Address,
+      channelName: string,
+      priorityFee?: PriorityFeeConfig
+    ) => {
+      const state = get();
+      if (!state.unlockedWallet || !state.accountService) {
+        throw new Error("Wallet not unlocked or account service not running");
+      }
+
+      return state.accountService.estimateSendBroadcastFees({
+        message,
+        toAddress,
+        priorityFee,
+        channelName,
       });
     },
     sendTransaction: async (args) => {

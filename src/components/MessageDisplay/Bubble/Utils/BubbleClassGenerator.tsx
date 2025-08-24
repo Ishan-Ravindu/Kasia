@@ -2,13 +2,23 @@ import clsx from "clsx";
 
 type GroupPosition = "single" | "top" | "middle" | "bottom";
 
-export const generateBubbleClasses = (
-  isOutgoing: boolean,
-  groupPosition: GroupPosition,
-  className?: string,
-  noBubble?: boolean
-) => {
+type BubbleClassOptions = {
+  isOutgoing: boolean;
+  groupPosition: GroupPosition;
+  className?: string;
+  noBubble?: boolean;
+  status?: "pending" | "confirmed" | "failed";
+};
+
+export const generateBubbleClasses = ({
+  isOutgoing,
+  groupPosition,
+  className,
+  noBubble,
+  status = "confirmed",
+}: BubbleClassOptions) => {
   if (noBubble) return;
+
   // determine the 'chat' style that we apply
   const bubbleClass = (() => {
     if (isOutgoing) {
@@ -28,11 +38,23 @@ export const generateBubbleClasses = (
     }
   })();
 
+  // determine background based on status
+  const getBackgroundClass = () => {
+    if (isOutgoing) {
+      if (status === "pending")
+        return "border border-[var(--button-primary)]/30 bg-[var(--button-primary)]/5";
+      if (status === "failed")
+        return "border border-[var(--accent-red)] bg-[var(--accent-red)]/10";
+      // confirmed or default
+      return "border border-[var(--button-primary)] bg-[var(--button-primary)]/20";
+    } else {
+      return "bg-[var(--secondary-bg)]";
+    }
+  };
+
   return clsx(
     "relative z-0 max-w-[70%] cursor-pointer px-4 py-1 text-left break-words hyphens-auto",
-    isOutgoing
-      ? "border border-[var(--button-primary)] bg-[var(--button-primary)]/20"
-      : "bg-[var(--secondary-bg)]",
+    getBackgroundClass(),
     bubbleClass,
     className
   );

@@ -38,8 +38,7 @@ export const Modal: FC<{
         {
           "opacity-0": !mounted,
           "opacity-100": mounted,
-        },
-        className
+        }
       )}
       onClick={handleClose}
     >
@@ -49,7 +48,8 @@ export const Modal: FC<{
           {
             "translate-y-0 opacity-100": mounted,
             "-translate-y-5 opacity-0": !mounted,
-          }
+          },
+          className
         )}
         onClick={(e) => e.stopPropagation()}
       >

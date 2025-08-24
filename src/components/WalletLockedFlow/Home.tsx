@@ -2,6 +2,7 @@ import { Settings, Trash2 } from "lucide-react";
 import { NetworkSelector } from "../NetworkSelector";
 import { TrustMessage } from "../Layout/TrustMessage";
 import { Button } from "../Common/Button";
+import { HoldToDelete } from "../Common/HoldToDelete";
 import { Wallet } from "../../types/wallet.type";
 import { NetworkType } from "../../types/all";
 import { ModalType } from "../../store/ui.store";
@@ -70,19 +71,15 @@ export const Home = ({
           <div
             key={w.id}
             onClick={() => onSelectWallet(w)}
-            className="hover:border-kas-secondary border-primary-border relative flex cursor-pointer flex-col items-start gap-2 rounded-lg border bg-[var(--primary-bg)] p-4 hover:bg-[var(--primary-bg)]/50 sm:flex-row sm:items-center sm:justify-between"
+            className="hover:border-kas-secondary border-primary-border group relative flex cursor-pointer flex-col items-start gap-2 rounded-lg border bg-[var(--primary-bg)] p-4 hover:bg-[var(--primary-bg)]/50 sm:flex-row sm:items-center sm:justify-between"
           >
-            {/* delete icon top-right */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteWallet(w.id);
-              }}
-              className="absolute top-2 right-2 cursor-pointer rounded-md bg-[var(--accent-red)]/10 p-[2px] text-[var(--accent-red)]/50 hover:scale-110"
-              title="Delete"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            {/* delete icon positioned on the right */}
+            <HoldToDelete
+              onComplete={() => onDeleteWallet(w.id)}
+              size="md"
+              className="absolute top-1/2 right-2 z-10 -translate-y-1/2 opacity-100 transition-all hover:text-[var(--accent-red)]/80 sm:opacity-0 sm:group-hover:opacity-100"
+              title="Click and hold to delete wallet"
+            />
 
             <div className="flex w-full flex-col gap-1">
               <div className="font-semibold text-[var(--text-primary)]">

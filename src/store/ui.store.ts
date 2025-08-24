@@ -17,7 +17,10 @@ export type ModalType =
   | "seed"
   | "settings"
   | "contact-info-modal"
-  | "image";
+  | "image"
+  | "new-chat"
+  | "new-broadcast"
+  | "broadcast-participant-info";
 type Theme = "light" | "dark" | "system" | "custom";
 
 type UiState = {

@@ -1,6 +1,6 @@
 import { useUiStore } from "../../store/ui.store";
 import { useWalletStore } from "../../store/wallet.store";
-import { useMessagingStore } from "../../store/messaging.store";
+import { NewBroadcast } from "../Modals/NewBroadcast";
 import { Modal } from "../Common/modal";
 import { MessageBackup } from "../Modals/MessageBackup";
 import { WalletAddressSection } from "../Modals/WalletAddressSection";
@@ -9,9 +9,12 @@ import { WalletSeedRetreiveDisplay } from "../Modals/WalletSeedRetreiveDisplay";
 import { WalletWithdrawal } from "../Modals/WalletWithdrawal";
 import { LockedSettingsModal } from "../Modals/LockedSettingsModal";
 import { ContactInfoModal } from "../Modals/ContactInfoModal";
-import { NewChatForm } from "../NewChatForm";
+import { NewChatForm } from "../Modals/NewChatForm";
 import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
+import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
+import { useState } from "react";
+import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
 // based on the current state. It's React Compiler friendly because it has
@@ -23,10 +26,11 @@ export const ModalHost = () => {
   const closeModal = useUiStore((state) => state.closeModal);
   const oneOnOneConversation = useUiStore((s) => s.oneOnOneConversation);
   const setOneOnOneConversation = useUiStore((s) => s.setOneOnOneConversation);
-  const sendMessageCallback = useUiStore((state) => state.sendMessageCallback);
-
   const walletStore = useWalletStore();
-  const messageStore = useMessagingStore();
+  const broadcastParticipant = useBroadcastStore(
+    (state) => state.selectedParticipant
+  );
+  const { setSelectedParticipant } = useBroadcastStore();
 
   return (
     <>
@@ -102,11 +106,35 @@ export const ModalHost = () => {
         </Modal>
       )}
 
-      {/* New Chat Form Modal (from messaging store) */}
-      {messageStore.isCreatingNewChat && (
-        <Modal onClose={() => messageStore.setIsCreatingNewChat(false)}>
-          <NewChatForm
-            onClose={() => messageStore.setIsCreatingNewChat(false)}
+      {/* New Chat Form Modal */}
+      {modals["new-chat"] && (
+        <Modal onClose={() => closeModal("new-chat")}>
+          <NewChatForm onClose={() => closeModal("new-chat")} />
+        </Modal>
+      )}
+
+      {/* New brocast channel */}
+      {modals["new-broadcast"] && (
+        <Modal onClose={() => closeModal("new-broadcast")}>
+          <NewBroadcast onClose={() => closeModal("new-broadcast")} />
+        </Modal>
+      )}
+
+      {/* Broadcast Participant Info Modal */}
+      {modals["broadcast-participant-info"] && broadcastParticipant && (
+        <Modal
+          onClose={() => {
+            closeModal("broadcast-participant-info");
+            setSelectedParticipant(null);
+          }}
+        >
+          <BroadcastParticipantInfo
+            address={broadcastParticipant.address}
+            nickname={broadcastParticipant.nickname}
+            onClose={() => {
+              closeModal("broadcast-participant-info");
+              setSelectedParticipant(null);
+            }}
           />
         </Modal>
       )}

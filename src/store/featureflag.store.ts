@@ -1,13 +1,15 @@
 import { create } from "zustand";
-import { Coins, LucideIcon } from "lucide-react";
+import { Coins, LucideIcon, Radio } from "lucide-react";
 
 export enum FeatureFlags {
+  BROADCAST = "broadcast",
   CUSTOM_FEE = "customfee",
 }
 
 export type FeatureFlagsTable = Record<FeatureFlags, boolean>;
 
 const defaultFeatureFlagsTable: FeatureFlagsTable = {
+  [FeatureFlags.BROADCAST]: false,
   [FeatureFlags.CUSTOM_FEE]: false,
 };
 
@@ -20,6 +22,11 @@ export interface FeatureDescription {
 export type FeatureFlips = Record<FeatureFlags, FeatureDescription>;
 
 const featureFlips: FeatureFlips = {
+  [FeatureFlags.BROADCAST]: {
+    label: "Broadcasts",
+    desc: "Unencrypted open messages",
+    icon: Radio,
+  },
   [FeatureFlags.CUSTOM_FEE]: {
     label: "Custom Priority Fee",
     desc: "Turn on to set custom priority fee in chat.",

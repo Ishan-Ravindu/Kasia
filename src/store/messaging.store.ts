@@ -82,7 +82,6 @@ interface MessagingState {
 
   openedRecipient: string | null;
   setOpenedRecipient: (contact: string | null) => void;
-  setIsCreatingNewChat: (isCreatingNewChat: boolean) => void;
 
   load: (address: string) => Promise<void>;
   stop: () => void;
@@ -1167,9 +1166,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           );
         }
       }
-    },
-    setIsCreatingNewChat: (isCreatingNewChat) => {
-      set({ isCreatingNewChat });
     },
     exportMessages: async (wallet, password) => {
       const backup = await exportData(useDBStore.getState().repositories);

@@ -51,6 +51,7 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
   };
 
   const send = async (myAlias: string) => {
+    toast.removeAll();
     if (!recipient) {
       toast.error("Error, please select a contact.");
       return;
@@ -132,7 +133,6 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
       setSendState({ status: "idle" });
     } catch (error) {
       setSendState({ status: "error", error: error as Error });
-      toast.removeAll();
       toast.error(`Failed to send message: ${unknownErrorToErrorLike(error)}`);
     }
   };
