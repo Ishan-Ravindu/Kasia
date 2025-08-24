@@ -43,6 +43,7 @@ import {
   SelfStashResponse,
 } from "../service/indexer/generated";
 import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
+import { hexToString } from "../utils/format";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
@@ -196,7 +197,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
           const kasiaTransaction = {
             amount: 0,
-            content: decryptedContent,
+            content: `${PROTOCOL.prefix.hex + PROTOCOL.headers.COMM.hex + hexToString(m.alias)}:${decryptedContent}`,
             createdAt: new Date(Number(m.block_time)),
             fee: 0,
             payload: payload,
@@ -204,7 +205,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             senderAddress: m.sender,
             transactionId: m.tx_id,
           };
-
+          console.log("kasia transaction from message", { kasiaTransaction });
           newKasiaTransactions.push(kasiaTransaction);
         } catch {
           // chill
@@ -220,12 +221,16 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             hexStringBytes.map((b) => parseInt(b, 16))
           );
           const decodedMessage = new TextDecoder().decode(bytes);
+
+          const paymentPayload = decrypt_message(
+            new EncryptedMessage(decodedMessage),
+            new PrivateKey(privateKeyString)
+          );
+
+          console.log("payment historical", { decodedMessage, paymentPayload });
           newKasiaTransactions.push({
             amount: 0,
-            content: decrypt_message(
-              new EncryptedMessage(decodedMessage),
-              new PrivateKey(privateKeyString)
-            ),
+            content: paymentPayload,
             createdAt: new Date(Number(p.block_time)),
             fee: 0,
             payload:
@@ -944,8 +949,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         }
 
         if (
-          transaction.payload.startsWith(PROTOCOL.prefix.hex) &&
-          transaction.payload.includes(PROTOCOL.headers.COMM.hex)
+          transaction.content.startsWith(PROTOCOL.prefix.hex) &&
+          transaction.content.includes(PROTOCOL.headers.COMM.hex)
         ) {
           // block incoming messages unless conversation is accepted and alias known
           if (
@@ -957,12 +962,14 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             continue;
           }
 
+          const decryptedContent = transaction.content.split(":")[1];
+
           const message: Message = {
             __type: "message",
             amount: transaction.amount,
             contactId: existingConversationWithContact.contact.id,
             conversationId: existingConversationWithContact.conversation.id,
-            content: transaction.content ?? "",
+            content: decryptedContent ?? "",
             createdAt: transaction.createdAt,
             fromMe: transaction.senderAddress === address.toString(),
             id: `${unlockedWallet.id}_${transaction.transactionId}`,

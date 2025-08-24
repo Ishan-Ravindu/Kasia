@@ -702,7 +702,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
             hackedContent = decryptedContent;
           } else if (parsed.type === "self_stash") {
             // self_stash payload is expected to be hex encoded
-            hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${parsed.scope ? toHex(parsed.scope) : ""}:${decryptedContent}`;
+            hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${parsed.scope ? `${toHex(parsed.scope)}:` : ""}${decryptedContent}`;
           }
 
           const kasiaTransaction: KasiaTransaction = {
