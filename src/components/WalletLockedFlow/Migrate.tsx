@@ -58,15 +58,14 @@ export const Migrate = ({
       </h2>
       <div className="border-primary-border mb-4 rounded-lg border bg-[var(--primary-bg)] p-4">
         <p className="mb-2 font-semibold text-[var(--text-primary)]">
-          Migrating wallet:{" "}
-          <strong className="text-[var(--accent-blue)]">{walletName}</strong>
+          Migrating wallet: <strong className="font-bold">{walletName}</strong>
         </p>
         <p className="my-2 text-[var(--text-secondary)]">
           This will create a new wallet using the standard Kaspa derivation path
           (m/44'/111111'/0') that is compatible with Kaspium and other standard
           wallets.
         </p>
-        <div className="mt-5 mb-1 flex flex-col items-center rounded-lg border border-[#2a3042] bg-[#1a1f2e] p-4 text-center text-amber-300">
+        <div className="mt-5 mb-1 flex flex-col items-center rounded-lg border border-[var(--secondary-bg)] bg-[var(--secondary-bg)] p-4 text-center text-[var(--accent-yellow)]">
           <AlertTriangle className="h-5 w-5" /> Your original wallet will remain
           unchanged. You'll need to transfer funds to the new wallet addresses.
         </div>
@@ -82,7 +81,7 @@ export const Migrate = ({
           placeholder={`${walletName} (Standard)`}
           defaultValue={`${walletName} (Standard)`}
           onChange={handleInputChange}
-          className="focus:!border-kas-primary border-primary-border w-full rounded border bg-slate-900 p-2.5 text-base text-slate-100 transition-all duration-200 focus:!bg-slate-800 focus:outline-none"
+          className="focus:!border-kas-primary border-primary-border w-full rounded border bg-[var(--primary-bg)] p-2.5 text-base text-[var(--text-primary)] transition-all duration-200 focus:outline-none"
         />
       </div>
 
@@ -95,7 +94,7 @@ export const Migrate = ({
           type="password"
           placeholder="Enter your current wallet password"
           onChange={handleInputChange}
-          className="focus:!border-kas-primary border-primary-border w-full rounded border bg-slate-900 p-2.5 text-base text-slate-100 transition-all duration-200 focus:!bg-slate-800 focus:outline-none"
+          className="focus:!border-kas-primary border-primary-border w-full rounded border bg-[var(--primary-bg)] p-2.5 text-base text-[var(--text-primary)] transition-all duration-200 focus:outline-none"
         />
       </div>
 
