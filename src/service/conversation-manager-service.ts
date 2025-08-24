@@ -1,6 +1,7 @@
 import {
   ConversationEvents,
   HandshakePayload,
+  SavedHandshakePayload,
 } from "src/types/messaging.types";
 import { v4 as uuidv4 } from "uuid";
 import { ALIAS_LENGTH } from "../config/constants";
@@ -126,11 +127,14 @@ export class ConversationManagerService {
           conversationAndContact &&
           conversationAndContact.conversation.status === "pending"
         ) {
-          // Update last activity to show it's still active
           conversationAndContact.conversation.lastActivityAt = new Date();
           this.inMemorySyncronization(
             conversationAndContact.conversation,
             conversationAndContact.contact
+          );
+
+          this.repositories.conversationRepository.saveConversation(
+            conversationAndContact.conversation
           );
 
           // Note: Not triggering onHandshakeInitiated again since it's a retry
@@ -164,36 +168,16 @@ export class ConversationManagerService {
       const payload = this.parseHandshakePayload(payloadString);
       this.validateHandshakePayload(payload);
 
-      // STEP 1 – look up strictly by conversationId only
+      // STEP 1 – look up strictly by sender address only
       const existingConversationAndContactByAddress =
         this.getConversationWithContactByAddress(senderAddress);
 
       console.log("conversation manager - processing handshake", { payload });
 
       if (existingConversationAndContactByAddress) {
-        // ------- this is a replay of a message we already handled -------
-        // keep the guard so we don't downgrade on refresh
-        if (payload.isResponse) {
-          // Promote the existing pending conversation to active *in-place* so any listeners that hold the original object see the change immediately.
-          (
-            existingConversationAndContactByAddress.conversation as unknown as ActiveConversation
-          ).status = "active";
-        } else {
-          if (
-            existingConversationAndContactByAddress.conversation.status ===
-            "active"
-          ) {
-            console.log(
-              "conversation manager - existing conversation is active",
-              { payload }
-            );
-
-            (
-              existingConversationAndContactByAddress.conversation as unknown as PendingConversation
-            ).status = "pending";
-          }
-        }
-
+        // for safety reasons, it would be better to update the alias only if received handshake date
+        // is greater than last time time we touched the alias. it would allow the caller to not be
+        // responsible for this check
         (
           existingConversationAndContactByAddress.conversation as unknown as ActiveConversation
         ).theirAlias = payload.alias;
@@ -479,6 +463,67 @@ export class ConversationManagerService {
     );
 
     this.inMemorySyncronization(conversation, contact);
+
+    return {
+      conversation,
+      contact,
+    };
+  }
+
+  async hydrateFromSavedHanshaked(
+    payload: SavedHandshakePayload,
+    transactionId: string
+  ): Promise<{ conversation: Conversation; contact: Contact }> {
+    const contact = await this.repositories.contactRepository
+      .getContactByKaspaAddress(payload.recipientAddress)
+      .catch(async (error) => {
+        if (error instanceof DBNotFoundException) {
+          // create a new contact if not found
+          const newContact: Contact = {
+            id: uuidv4(),
+            kaspaAddress: payload.recipientAddress,
+            timestamp: new Date(payload.timestamp),
+            name: undefined,
+            tenantId: this.repositories.tenantId,
+          };
+
+          await this.repositories.contactRepository.saveContact(newContact);
+
+          return newContact;
+        }
+        throw error;
+      });
+
+    const conversation = await this.repositories.conversationRepository
+      .getConversationByContactId(contact.id)
+      .catch(async (error) => {
+        if (error instanceof DBNotFoundException) {
+          const _conversation: Conversation = {
+            id: uuidv4(),
+            myAlias: payload.alias,
+            theirAlias: null,
+            lastActivityAt: new Date(payload.timestamp),
+            status: "pending",
+            initiatedByMe: true,
+            contactId: contact.id,
+            tenantId: this.repositories.tenantId,
+          };
+
+          await this.repositories.conversationRepository.saveConversation(
+            _conversation
+          );
+
+          return _conversation;
+        }
+        throw error;
+      });
+
+    this.inMemorySyncronization(conversation, contact);
+
+    await this.repositories.savedHandshakeRepository.saveSavedHandshake({
+      id: `${this.repositories.tenantId}_${transactionId}`,
+      createdAt: new Date(),
+    });
 
     return {
       conversation,

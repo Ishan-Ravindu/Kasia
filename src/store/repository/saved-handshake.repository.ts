@@ -5,12 +5,19 @@ export type DbSavedHandshake = {
    * `${tenantId}_${transactionId}`
    */
   id: string;
+
+  tenantId: string;
+
+  createdAt: Date;
 };
 
 export type SavedHandshake = DbSavedHandshake;
 
 export class SavedHandhshakeRepository {
-  constructor(readonly db: KasiaDB) {}
+  constructor(
+    readonly db: KasiaDB,
+    readonly tenantId: string
+  ) {}
 
   async getSavedHandshake(id: string): Promise<SavedHandshake> {
     const result = await this.db.get("savedHandshakes", id);
@@ -22,11 +29,32 @@ export class SavedHandhshakeRepository {
     return result;
   }
 
-  async saveSavedHandshake(savedHandhshake: SavedHandshake): Promise<void> {
+  async saveSavedHandshake(
+    savedHandhshake: Omit<SavedHandshake, "tenantId">
+  ): Promise<void> {
     await this.db.put("savedHandshakes", {
       id: savedHandhshake.id,
+      createdAt: savedHandhshake.createdAt,
+      tenantId: this.tenantId,
     });
     return;
+  }
+
+  /**
+   * returns null in case there is no saved handshakes
+   */
+  async getLastSavedHandshakesByCreatedAt(): Promise<SavedHandshake | null> {
+    const cursor = await this.db
+      .transaction("savedHandshakes", "readonly")
+      .objectStore("savedHandshakes")
+      .index("by-tenant-id-created-at")
+      .openCursor(IDBKeyRange.upperBound([this.tenantId, new Date()]), "prev");
+
+    if (!cursor) {
+      return null;
+    }
+
+    return cursor.value;
   }
 
   async doesExistsById(savedHanshakeId: string): Promise<boolean> {

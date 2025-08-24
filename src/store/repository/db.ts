@@ -1,4 +1,4 @@
-import { DBSchema, IDBPDatabase, openDB } from "idb";
+import { DBSchema, IDBPCursorWithValue, IDBPDatabase, openDB } from "idb";
 import { DbMessage, MessageRepository } from "./message.repository";
 import {
   ConversationRepository,
@@ -94,6 +94,7 @@ export interface KasiaDBSchema extends DBSchema {
     value: DbSavedHandshake;
     indexes: {
       "by-id": string;
+      "by-tenant-id-created-at": [string, Date];
     };
   };
 }
@@ -186,7 +187,7 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         contactsStore.createIndex("by-tenant-id", "tenantId");
 
-        console.log("Database schema created successfully with all indexes");
+        console.log("Database schema initiated to v1");
       }
 
       if (oldVersion <= 1) {
@@ -195,6 +196,11 @@ export const openDatabase = async (): Promise<KasiaDB> => {
           keyPath: "id",
         });
         savedHandshakesStore.createIndex("by-id", "id", { unique: true });
+        savedHandshakesStore.createIndex(
+          "by-tenant-id-created-at",
+          ["tenantId", "createdAt"],
+          {}
+        );
 
         console.log("Database schema migrated to v2");
       }
@@ -252,27 +258,25 @@ export class Repositories {
       walletPassword
     );
 
-    // no tenant id or wallet password
-    // tenancy handled by id prefix, and there is no encryption/decryption
-    this.savedHandshakeRepository = new SavedHandhshakeRepository(db);
+    // no wallet password there is no encryption/decryption
+    this.savedHandshakeRepository = new SavedHandhshakeRepository(db, tenantId);
   }
 
-  getKasiaEventsByConversationId(
+  async getKasiaEventsByConversationId(
     conversationId: string
   ): Promise<KasiaConversationEvent[]> {
-    return Promise.all([
+    const [messages, payments, handshakes] = await Promise.all([
       this.messageRepository.getMessagesByConversationId(conversationId),
       this.paymentRepository.getPaymentsByConversationId(conversationId),
       this.handshakeRepository.getHanshakesByConversationId(conversationId),
-    ]).then(([messages, payments, handshakes]) => {
-      return [...messages, ...payments, ...handshakes].sort((a, b) => {
-        return a.createdAt.getTime() - b.createdAt.getTime();
-      });
+    ]);
+    return [...messages, ...payments, ...handshakes].sort((a, b) => {
+      return a.createdAt.getTime() - b.createdAt.getTime();
     });
   }
 
-  doesKasiaEventExistsById(id: string): Promise<boolean> {
-    return Promise.all([
+  async doesKasiaEventExistsById(id: string): Promise<boolean> {
+    const [message, payment, handshake] = await Promise.all([
       this.messageRepository
         .doesExistsById(`${this.tenantId}_${id}`)
         .catch(() => false),
@@ -285,8 +289,7 @@ export class Repositories {
       this.savedHandshakeRepository
         .doesExistsById(`${this.tenantId}_${id}`)
         .catch(() => false),
-    ]).then(([message, payment, handshake]) => {
-      return !!message || !!payment || !!handshake;
-    });
+    ]);
+    return !!message || !!payment || !!handshake;
   }
 }

@@ -723,8 +723,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
           const messagingStore = useMessagingStore.getState();
           if (messagingStore) {
-            // @TODO: should saved hanshake be processed as a kasia transactions like the others
-            // or should we handle it separately?
             await messagingStore.storeKasiaTransactions([kasiaTransaction]);
           }
         }

@@ -40,6 +40,7 @@ import { HistoricalSyncer } from "../service/historical-syncer";
 import {
   ContextualMessageResponse,
   HandshakeResponse,
+  SelfStashResponse,
 } from "../service/indexer/generated";
 import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 
@@ -281,10 +282,14 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
     openedRecipient: null,
     oneOnOneConversations: [],
     async load(address) {
-      const initLazyHistoricalHandshakeLoad = () => {
+      const initLazyHistoricalHandshakeLoad = (
+        lastSavedHanshakeTimestamp: number
+      ) => {
         _historicalSyncer = new HistoricalSyncer(address);
 
-        const _handshakesPromise = _historicalSyncer.initialLoad();
+        const _handshakesPromise = _historicalSyncer.initialLoad(
+          lastSavedHanshakeTimestamp
+        );
 
         const getHistoricalHandshakes = async () => {
           return await _handshakesPromise;
@@ -293,8 +298,17 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         return getHistoricalHandshakes;
       };
 
+      const repositories = useDBStore.getState().repositories;
+
       // 0. trigger lazy loading of historical handshakes
-      const getHistoricalHandshakes = initLazyHistoricalHandshakeLoad();
+      const lastSavedHanshake =
+        await repositories.savedHandshakeRepository.getLastSavedHandshakesByCreatedAt();
+      const lastSavedHanshakeTimestamp = (
+        lastSavedHanshake?.createdAt || new Date(0)
+      ).getTime();
+      const getHistoricalHandshakes = initLazyHistoricalHandshakeLoad(
+        lastSavedHanshakeTimestamp
+      );
 
       // 1. initialize conversation manager that hydrate conversation with contacts
       await _initializeConversationManager(address);
@@ -304,14 +318,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       // 3. process historical saved handshakes (that were lazily loaded), this will create new conversations locally if needed
       // possible optimization improvement: get last saved handshake block time and only fetch saved handshakes upsteam after that time
-      const handshakeReponses = await getHistoricalHandshakes();
-
-      // @TODO: implement and figure out a proper way of handling both send/received
-
+      //   AND
       // 4. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
       // possible optimization improvement: get last event block time and only fetch events after that time
-
-      const repositories = useDBStore.getState().repositories;
+      const handshakeReponses = await getHistoricalHandshakes();
 
       const unlockedWallet = useWalletStore.getState().unlockedWallet;
       if (!unlockedWallet) {
@@ -326,10 +336,77 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const ooocs = g().oneOnOneConversations;
       const ooocsByAddress: Map<string, OneOnOneConversation> = new Map();
-      const handshakesBySenderAddress: Map<string, HandshakeResponse[]> =
-        new Map();
+      const handshakesBySenderAddress: Map<
+        string,
+        (
+          | ({ __type: "received" } & HandshakeResponse)
+          | ({ __type: "sent" } & {
+              payload: SavedHandshakePayload;
+              selfStash: SelfStashResponse;
+            })
+        )[]
+      > = new Map();
+
+      for (const stashedElement of handshakeReponses.sentHandshakes) {
+        if (!stashedElement.owner) {
+          continue;
+        }
+
+        // skip if already known locally
+        if (
+          await repositories.savedHandshakeRepository.doesExistsById(
+            `${unlockedWallet.id}_${stashedElement.tx_id}`
+          )
+        ) {
+          continue;
+        }
+
+        // try decrypt self stash elements that we assume they are saved handshakes
+        const encryptedMessage = new EncryptedMessage(
+          stashedElement.stashed_data
+        );
+        const privateKey = new PrivateKey(privateKeyString);
+        const decrypted = decrypt_message(encryptedMessage, privateKey);
+
+        // parse decrypted message that we assume they are saved hanshake payloads
+        try {
+          const savedHandshakePayload: SavedHandshakePayload =
+            JSON.parse(decrypted);
+
+          const handshakes = handshakesBySenderAddress.get(
+            stashedElement.owner
+          );
+          if (!handshakes) {
+            handshakesBySenderAddress.set(stashedElement.owner, [
+              {
+                payload: savedHandshakePayload,
+                selfStash: { ...stashedElement },
+                __type: "sent",
+              },
+            ]);
+            continue;
+          }
+          handshakes.push({
+            payload: savedHandshakePayload,
+            selfStash: { ...stashedElement },
+            __type: "sent",
+          });
+          handshakesBySenderAddress.set(stashedElement.owner, handshakes);
+        } catch {
+          // no-op
+        }
+      }
 
       for (const handshake of handshakeReponses.receivedHandshakes) {
+        // skip is already ingested locally
+        if (
+          await repositories.handshakeRepository.doesExistsById(
+            `${unlockedWallet.id}_${handshake.tx_id}`
+          )
+        ) {
+          continue;
+        }
+
         const handshakes = handshakesBySenderAddress.get(handshake.sender);
         if (!handshakes) {
           handshakesBySenderAddress.set(handshake.sender, [handshake]);
@@ -344,7 +421,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       }
 
       const promises: Promise<void>[] = [];
-      const resolvedUnknownHandshakesAliasesBySenderAddress: Record<
+      const resolvedUnknownReceivedHandshakesAliasesBySenderAddress: Record<
         string,
         Set<string>
       > = {};
@@ -356,88 +433,82 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         const promise = async () => {
           let oooc = ooocsByAddress.get(senderAddress);
 
-          if (!oooc) {
-            console.log(`No oooc found for ${senderAddress}, creating new one`);
+          console.log(`No oooc found for ${senderAddress}, creating new one`);
 
-            // ingest the first decryptable handshake to create oooc
-            let atLeastOneHandshakeDecrypted = false;
-            for (const handshake of handshakes.sort(
-              (a, b) => Number(b.block_time) - Number(a.block_time)
-            )) {
-              const encryptedMessage = new EncryptedMessage(
-                handshake.message_payload
-              );
+          // ingest them in the order they arrived: asc by date
+          for (const handshake of handshakes.sort(
+            (a, b) =>
+              Number(
+                a.__type === "received" ? a.block_time : a.selfStash.block_time
+              ) -
+              Number(
+                b.__type === "received" ? b.block_time : b.selfStash.block_time
+              )
+          )) {
+            try {
+              let decryptedPart = "";
+              if (handshake.__type === "sent") {
+                await g().conversationManager?.hydrateFromSavedHanshaked(
+                  handshake.payload,
+                  handshake.selfStash.tx_id
+                );
+                decryptedPart = "Handshake sent";
+              } else {
+                // type is received
 
-              try {
-                const privateKey = new PrivateKey(privateKeyString);
-                const decrypted = decrypt_message(encryptedMessage, privateKey);
-
-                // create new conversation
-                await g().conversationManager?.processHandshake(
-                  senderAddress,
-                  decrypted
+                const encryptedMessage = new EncryptedMessage(
+                  handshake.message_payload
                 );
 
-                const conversationWithContact =
-                  g().conversationManager?.getConversationWithContactByAddress(
-                    senderAddress
-                  );
+                const privateKey = new PrivateKey(privateKeyString);
+                decryptedPart = decrypt_message(encryptedMessage, privateKey);
 
-                if (!conversationWithContact) {
-                  console.warn(
-                    `Failed to get conversation with contact while processing handshake for ${senderAddress}, processing next handshake...`
-                  );
-                  continue;
-                }
+                await g().conversationManager?.processHandshake(
+                  senderAddress,
+                  decryptedPart
+                );
+              }
 
+              const conversationWithContact =
+                g().conversationManager?.getConversationWithContactByAddress(
+                  senderAddress
+                );
+
+              if (!conversationWithContact) {
+                // shouldn't happen
+                console.warn(
+                  `Failed to get conversation with contact while processing handshake for ${senderAddress}, processing next handshake...`
+                );
+                continue;
+              }
+
+              if (!oooc) {
                 oooc = {
                   conversation: conversationWithContact.conversation,
                   contact: conversationWithContact.contact,
                   events: [],
                 };
-                atLeastOneHandshakeDecrypted = true;
-                break;
-              } catch {
-                continue;
               }
-            }
 
-            if (!atLeastOneHandshakeDecrypted) {
-              console.warn(
-                `Failed to decrypt any handshake for ${senderAddress}, skipping...`
-              );
-              return;
-            }
-          }
-
-          // transform raw handshake to kasia handshake and persist them if they are new
-          const unknownHandshakes = handshakes.filter(
-            (handshake) =>
-              oooc!.events.find((e) => e.transactionId === handshake.tx_id) ===
-              undefined
-          );
-
-          for (const unknownHandshake of unknownHandshakes) {
-            try {
-              const encryptedMessage = new EncryptedMessage(
-                unknownHandshake.message_payload
-              );
-
-              const privateKey = new PrivateKey(privateKeyString);
-
-              const decrypted = decrypt_message(encryptedMessage, privateKey);
+              const txId =
+                handshake.__type === "received"
+                  ? handshake.tx_id
+                  : handshake.selfStash.tx_id;
 
               const kasiaHandshake: Handshake = {
                 __type: "handshake",
                 amount: 0.2,
-                contactId: oooc!.contact.id,
-                conversationId: oooc!.conversation.id,
-                content: decrypted,
-                fromMe: false,
-                createdAt: new Date(Number(unknownHandshake.block_time)),
+                contactId: oooc.contact.id,
+                conversationId: oooc.conversation.id,
+                content: decryptedPart,
+                fromMe: handshake.__type === "sent",
+                createdAt:
+                  handshake.__type === "received"
+                    ? new Date(Number(handshake.block_time))
+                    : new Date(Number(handshake.selfStash.block_time)),
                 tenantId: unlockedWallet.id,
-                transactionId: unknownHandshake.tx_id,
-                id: `${unlockedWallet.id}_${unknownHandshake.tx_id}`,
+                transactionId: txId,
+                id: `${unlockedWallet.id}_${txId}`,
                 fee: 0,
               };
 
@@ -447,40 +518,43 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                 kasiaHandshake
               );
 
-              oooc!.events.push(kasiaHandshake);
+              oooc.events.push(kasiaHandshake);
 
               // keep a record of the resolved unknown hanshake, to fetch historical events for it later
-              try {
-                const alias = g().conversationManager?.parseHandshakePayload(
-                  kasiaHandshake.content
-                )?.alias;
-                if (alias) {
-                  const existing =
-                    resolvedUnknownHandshakesAliasesBySenderAddress[
+              // only applicable for receive handshake
+              if (handshake.__type === "received") {
+                try {
+                  const alias =
+                    g().conversationManager?.parseHandshakePayload(
+                      decryptedPart
+                    )?.alias;
+                  if (alias) {
+                    const existing =
+                      resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
+                        senderAddress
+                      ] ?? new Set();
+                    existing.add(alias);
+                    resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
                       senderAddress
-                    ] ?? new Set();
-                  existing.add(alias);
-                  resolvedUnknownHandshakesAliasesBySenderAddress[
-                    senderAddress
-                  ] = existing;
+                    ] = existing;
+                  }
+                } catch (e) {
+                  console.warn(
+                    `failed to parse historical handshake payload for ${handshake.tx_id}`,
+                    e
+                  );
                 }
-              } catch (e) {
-                console.warn(
-                  `failed to parse historical handshake payload for ${unknownHandshake.tx_id}`,
-                  e
-                );
               }
-            } catch (e) {
-              console.error("error decrypting handshake", e);
-              continue;
+
+              oooc.events.sort(
+                (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+              );
+
+              ooocsByAddress.set(senderAddress, oooc);
+            } catch {
+              // no-op
             }
           }
-
-          oooc!.events.sort(
-            (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-          );
-
-          ooocsByAddress.set(senderAddress, oooc!);
         };
 
         promises.push(promise());
@@ -506,7 +580,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
           // include current conversation participant's alias
           const resolvedUnknownHandshakesAlisesForThisConversation =
-            resolvedUnknownHandshakesAliasesBySenderAddress[
+            resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
               oooc.contact.kaspaAddress
             ] ?? new Set<string>();
           if (oooc.conversation.theirAlias) {
@@ -628,7 +702,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               transaction.recipientAddress === address.toString()
             ) {
               console.log("Skipping self-handshake message");
-              return;
+              continue;
             }
 
             if (
@@ -710,12 +784,97 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                   });
                 }
               }
-              return;
+              continue;
             }
           } catch (error) {
             console.error("Error processing handshake message:", error);
             throw error;
           }
+        }
+
+        // SELF STASH - SAVED HANDSHAKE
+        if (
+          transaction.content.startsWith(PROTOCOL.prefix.string) &&
+          transaction.content.includes(":handshake:")
+        ) {
+          // prefix:1:self_stash[:optional_scope]:data
+          const parts = transaction.content.split(":");
+
+          const hasSavedHandshakeScope = parts[3] === "saved_handshake";
+
+          if (!hasSavedHandshakeScope) {
+            continue;
+          }
+
+          try {
+            const payload: SavedHandshakePayload = JSON.parse(parts[4]);
+
+            await g().conversationManager?.hydrateFromSavedHanshaked(
+              payload,
+              transaction.transactionId
+            );
+
+            const conversationWithContact =
+              g().conversationManager?.getConversationWithContactByAddress(
+                transaction.senderAddress
+              );
+
+            if (conversationWithContact) {
+              const handshake: Handshake = {
+                __type: "handshake",
+                amount: transaction.amount,
+                contactId: conversationWithContact.contact.id,
+                conversationId: conversationWithContact.conversation.id,
+                content: "Handshake sent",
+                fromMe: true,
+                createdAt: transaction.createdAt,
+                tenantId: unlockedWallet.id,
+                transactionId: transaction.transactionId,
+                id: `${unlockedWallet.id}_${transaction.transactionId}`,
+                fee: 0,
+              };
+
+              // if already exists in memory, add even in place else add new one on one conversation
+              const existingConversationIndex =
+                g().oneOnOneConversations.findIndex(
+                  (c) =>
+                    c.conversation.id ===
+                    conversationWithContact.conversation.id
+                );
+
+              if (existingConversationIndex !== -1) {
+                const updatedConversations = [...g().oneOnOneConversations];
+                updatedConversations[existingConversationIndex] = {
+                  ...updatedConversations[existingConversationIndex],
+                  conversation: conversationWithContact.conversation,
+                  events: [
+                    ...updatedConversations[existingConversationIndex].events,
+                    handshake,
+                  ],
+                };
+                set({ oneOnOneConversations: updatedConversations });
+              } else {
+                set({
+                  oneOnOneConversations: [
+                    ...g().oneOnOneConversations,
+                    {
+                      contact: conversationWithContact.contact,
+                      events: [handshake],
+                      conversation: conversationWithContact.conversation,
+                    },
+                  ],
+                });
+              }
+
+              console.log("saving", { handshake });
+
+              await repositories.handshakeRepository.saveHandshake(handshake);
+            }
+          } catch (error) {
+            console.error(`Error while handling saved handshake`, error);
+            continue;
+          }
+          continue;
         }
 
         const existingConversationWithContactIndex =
@@ -782,7 +941,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           await repositories.paymentRepository.savePayment(payment);
 
           kasiaEvent = payment;
-        } else {
+        }
+
+        if (
+          transaction.payload.startsWith(PROTOCOL.prefix.hex) &&
+          transaction.payload.includes(PROTOCOL.headers.COMM.hex)
+        ) {
           // block incoming messages unless conversation is accepted and alias known
           if (
             !_isIncomingContentAllowed(
@@ -817,6 +981,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           existingConversationWithContact.conversation.id,
           transaction.createdAt
         );
+
+        if (!kasiaEvent) {
+          continue;
+        }
 
         set((state) => {
           const updatedConversationWithContacts = [
@@ -1275,7 +1443,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           } satisfies SavedHandshakePayload)
         );
 
-        const myPayload = `${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
+        const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
 
         console.log("Saving handshake...");
         const myTxId = await walletStore.sendTransaction({
@@ -1287,6 +1455,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
         await repositories.savedHandshakeRepository.saveSavedHandshake({
           id: `${walletStore.unlockedWallet.id}_${myTxId}`,
+          createdAt: new Date(),
         });
       } catch (error) {
         console.error("Error sending handshake message:", error);
@@ -1397,6 +1566,39 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           };
 
           await repositories.handshakeRepository.saveHandshake(eventToAdd);
+
+          // my payload
+          const address = WalletStorageService.getPrivateKeyGenerator(
+            walletStore.unlockedWallet,
+            walletStore.unlockedWallet.password
+          )
+            .receiveKey(0)
+            .toAddress(useWalletStore.getState().selectedNetwork)
+            .toString();
+
+          const encryptedMessageForMe = encrypt_message(
+            address,
+            JSON.stringify({
+              ...handshakeResponsePayload,
+              version: 1,
+              recipientAddress: recipientAddress,
+            } satisfies SavedHandshakePayload)
+          );
+
+          const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
+
+          console.log("Saving handshake...");
+          const myTxId = await walletStore.sendTransaction({
+            payload: myPayload,
+            toAddress: new Address(address),
+            password: walletStore.unlockedWallet.password,
+            customAmount: BigInt(0),
+          });
+
+          await repositories.savedHandshakeRepository.saveSavedHandshake({
+            id: `${walletStore.unlockedWallet.id}_${myTxId}`,
+            createdAt: new Date(),
+          });
 
           const updatedOneOnOneConversations = g().oneOnOneConversations.map(
             (oooc): OneOnOneConversation => {

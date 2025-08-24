@@ -18,9 +18,9 @@ export class HistoricalSyncer {
   /**
    * Emits `initialLoadCompleted` when done
    */
-  async initialLoad(): Promise<{
-    receivedHandshakes: HandshakeResponse[];
-    sentHandshakes: SelfStashResponse[];
+  async initialLoad(lastSavedHandshakeTimestamp: number): Promise<{
+    receivedHandshakes: ({ __type: "received" } & HandshakeResponse)[];
+    sentHandshakes: ({ __type: "sent" } & SelfStashResponse)[];
   }> {
     if (this.DISABLED) {
       console.log("HistoricalSyncer: initialLoad disabled");
@@ -33,9 +33,13 @@ export class HistoricalSyncer {
     // fetch all historical handhskaes for this address
     const [receivedHandshakes, sentHanshakes] = await Promise.all([
       getHandshakesByReceiver({
-        query: { address: this.address },
+        query: { address: this.address, limit: 100 },
       }),
-      this.fetchHistoricalSelfStashByOwner(this.address, "saved_handshake"),
+      this.fetchHistoricalSelfStashByOwner(
+        this.address,
+        "saved_handshake",
+        lastSavedHandshakeTimestamp
+      ),
     ]);
 
     if (receivedHandshakes.error) {
@@ -47,9 +51,9 @@ export class HistoricalSyncer {
 
     return {
       receivedHandshakes: receivedHandshakes.data
-        ? receivedHandshakes.data
+        ? receivedHandshakes.data.map((e) => ({ ...e, __type: "received" }))
         : [],
-      sentHandshakes: sentHanshakes,
+      sentHandshakes: sentHanshakes.map((e) => ({ ...e, __type: "sent" })),
     };
   }
 
@@ -68,6 +72,7 @@ export class HistoricalSyncer {
         alias: new TextEncoder()
           .encode(alias)
           .reduce((acc, byte) => acc + byte.toString(16).padStart(2, "0"), ""),
+        limit: 100,
       },
     });
 
@@ -90,6 +95,7 @@ export class HistoricalSyncer {
     const payments = await getPaymentsBySender({
       query: {
         address: from,
+        limit: 100,
       },
     });
 
@@ -105,7 +111,11 @@ export class HistoricalSyncer {
    * @param owner owner kaspa address
    * @param scope of the stashed zone
    */
-  async fetchHistoricalSelfStashByOwner(owner: string, scope: string) {
+  async fetchHistoricalSelfStashByOwner(
+    owner: string,
+    scope: string,
+    after?: number
+  ) {
     if (this.DISABLED) {
       console.log("HistoricalSyncer: fetchHistoricalSelfStashByOwner disabled");
       return [];
@@ -118,6 +128,8 @@ export class HistoricalSyncer {
         scope: new TextEncoder()
           .encode(scope)
           .reduce((acc, byte) => acc + byte.toString(16).padStart(2, "0"), ""),
+        block_time: after ? BigInt(after) : undefined,
+        limit: 100,
       },
     });
 

@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import { KasiaDB, openDatabase, Repositories } from "./repository/db";
+import {
+  KasiaDB,
+  KasiaDBSchema,
+  openDatabase,
+  Repositories,
+} from "./repository/db";
 import { UnlockedWallet } from "../types/wallet.type";
 import { v4 } from "uuid";
 import { DecryptionCache } from "../service/decryption-cache";
@@ -11,6 +16,8 @@ import { PROTOCOL } from "../config/protocol";
 import { Message } from "./repository/message.repository";
 import { Handshake } from "./repository/handshake.repository";
 import { Payment } from "./repository/payment.repository";
+import { IDBPCursorWithValue, IndexKey } from "idb";
+import { DbSavedHandshake } from "./repository/saved-handshake.repository";
 
 interface DBState {
   db: KasiaDB | undefined;
@@ -42,6 +49,7 @@ export const useDBStore = create<DBState>((set, get) => ({
 
   initDB: async () => {
     const db = await openDatabase();
+
     set({ db });
   },
   initRepositories: (unlockedWallet, walletPassword) => {
