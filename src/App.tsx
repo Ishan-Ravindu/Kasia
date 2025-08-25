@@ -9,17 +9,23 @@ import {
   applyCustomColors,
   resetCustomColors,
 } from "./config/custom-theme-applier";
+import { useGlobalStore } from "./hooks/useGlobalStore";
 
 const App: React.FC = () => {
   const networkStore = useNetworkStore();
   const { theme, getEffectiveTheme, customColors } = useUiStore();
-  const connect = useNetworkStore((s) => s.connect);
+  const { connect } = useGlobalStore();
   const isMobile = useIsMobile();
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: this cause re-render issue
+  useEffect(() => {
+    connect();
+  }, []);
 
   const onNetworkChange = useCallback(
     (n: NetworkType) => {
       networkStore.setNetwork(n);
-      connect();
+      connect({ networkType: n });
     },
     [connect, networkStore]
   );

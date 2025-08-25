@@ -16,8 +16,6 @@ import { PROTOCOL } from "../config/protocol";
 import { Message } from "./repository/message.repository";
 import { Handshake } from "./repository/handshake.repository";
 import { Payment } from "./repository/payment.repository";
-import { IDBPCursorWithValue, IndexKey } from "idb";
-import { DbSavedHandshake } from "./repository/saved-handshake.repository";
 
 interface DBState {
   db: KasiaDB | undefined;
@@ -33,10 +31,7 @@ interface DBState {
    * @param unlockedWallet wallet
    * @param walletPassword used for encryption and decription of locally stored sensitive data
    */
-  initRepositories: (
-    unlockedWallet: UnlockedWallet,
-    walletPassword: string
-  ) => void;
+  initRepositories: (unlockedWallet: UnlockedWallet) => void;
 
   migrateStorage: (address: string) => Promise<void>;
 }
@@ -52,19 +47,19 @@ export const useDBStore = create<DBState>((set, get) => ({
 
     set({ db });
   },
-  initRepositories: (unlockedWallet, walletPassword) => {
+  initRepositories: (unlockedWallet) => {
     const db = get().db;
     if (!db) {
       throw new Error("DB not initialized");
     }
 
-    if (!unlockedWallet?.id || !walletPassword) {
+    if (!unlockedWallet?.id || !unlockedWallet.password) {
       throw new Error("Tenant ID and wallet password are required");
     }
 
     const repositories = new Repositories(
       db,
-      walletPassword,
+      unlockedWallet.password,
       unlockedWallet.id
     );
     set({ repositories, unlockedWallet });

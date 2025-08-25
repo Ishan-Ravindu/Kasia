@@ -2,24 +2,19 @@ import { LoaderCircle } from "lucide-react";
 import { FC, useState, useEffect, useCallback } from "react";
 import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
-import { useNetworkStore } from "../store/network.store";
 import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
 import { unknownErrorToErrorLike } from "../utils/errors";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { ContactSection } from "./ContactSection";
 import { MessageSection } from "./MessagesSection";
-import { useDBStore } from "../store/db.store";
 import { Contact } from "../store/repository/contact.repository";
-import { HistoricalSyncer } from "../service/historical-syncer";
 
 export const MessengerContainer: FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isWalletReady, setIsWalletReady] = useState(false);
   const uiStore = useUiStore();
 
-  const networkStore = useNetworkStore();
-  const [messagesClientStarted, setMessageClientStarted] = useState(false);
   const [contactsCollapsed, setContactsCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState<"contacts" | "messages">(
     "contacts"
@@ -27,7 +22,6 @@ export const MessengerContainer: FC = () => {
 
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
-  const dbStore = useDBStore();
 
   const isMobile = useIsMobile();
   const { closeAllModals } = useUiStore();
@@ -92,7 +86,6 @@ export const MessengerContainer: FC = () => {
       uiStore.setSettingsOpen(false);
       closeAllModals();
 
-      setMessageClientStarted(false);
       messageStore.setOpenedRecipient(null);
       messageStore.setIsCreatingNewChat(false);
     };
@@ -113,43 +106,6 @@ export const MessengerContainer: FC = () => {
       );
     }
   }, [walletStore.unlockedWallet, messageStore]);
-
-  useEffect(() => {
-    const startMessageClient = async () => {
-      if (
-        messagesClientStarted ||
-        !isWalletReady ||
-        !networkStore.isConnected ||
-        !walletStore.unlockedWallet ||
-        !networkStore.kaspaClient
-      )
-        return;
-      try {
-        const receiveAddress =
-          walletStore.unlockedWallet.publicKeyGenerator.receiveAddress(
-            networkStore.network,
-            0
-          );
-
-        const receiveAddressStr = receiveAddress.toString();
-
-        // migrate storage
-        await dbStore.migrateStorage(receiveAddress.toString());
-
-        await messageStore.load(receiveAddressStr);
-
-        // Clear error message on success
-        setErrorMessage(null);
-        setMessageClientStarted(true);
-      } catch (error) {
-        console.error("Failed to start messaging process:", error);
-        setErrorMessage(
-          `Failed to start messaging: ${unknownErrorToErrorLike(error)}`
-        );
-      }
-    };
-    startMessageClient();
-  }, [isWalletReady, networkStore.isConnected, walletStore.unlockedWallet]);
 
   useEffect(() => {
     if (

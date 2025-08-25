@@ -9,19 +9,18 @@ import { Shield } from "lucide-react";
 import { devMode } from "../../config/dev-mode";
 import { deleteDB } from "idb";
 import { useDBStore } from "../../store/db.store";
+import { useGlobalStore } from "../../hooks/useGlobalStore";
 
 export const LockedSettingsModal: React.FC = () => {
   const networkStore = useNetworkStore();
   const selectedNetwork = useNetworkStore((state) => state.network);
   const isConnected = useNetworkStore((state) => state.isConnected);
   const isConnecting = useNetworkStore((state) => state.isConnecting);
-  const connect = useNetworkStore((state) => state.connect);
+  const { connect } = useGlobalStore();
 
   const closeModal = useUiStore((s) => s.closeModal);
 
-  const connectionError = useNetworkStore((s) => s.connectionError);
   const [connectionSuccess, setConnectionSuccess] = useState(false);
-  const hasAttemptedInitialConnection = useRef(false);
 
   const dbStore = useDBStore();
 
@@ -30,6 +29,8 @@ export const LockedSettingsModal: React.FC = () => {
       localStorage.getItem(`kasia_node_url_${selectedNetwork}`) ??
       ""
   );
+
+  const [connectionError, setConnectionError] = useState<string | undefined>();
 
   const deleteIndexDB = useCallback(async () => {
     if (dbStore.db) {
@@ -60,45 +61,45 @@ export const LockedSettingsModal: React.FC = () => {
     );
   }, [deleteIndexDB]);
 
-  // Network connection effect
-  useEffect(() => {
-    // Skip if already connected or if we've already attempted initial connection
-    if (isConnected || hasAttemptedInitialConnection.current) {
-      return;
-    }
-
-    hasAttemptedInitialConnection.current = true;
-    connect();
-  }, [isConnected, connect]);
-
-  const onNetworkChange = useCallback(
-    (network: NetworkType) => {
+  const connectWithErrorWrapper = async (
+    networkType: NetworkType,
+    nodeUrl?: string | null
+  ) => {
+    try {
+      await connect({
+        networkType,
+        nodeUrl,
+      });
+      setConnectionSuccess(true);
+      setConnectionError(undefined);
+    } catch (error) {
+      setConnectionError(error instanceof Error ? error.message : `${error}`);
       setConnectionSuccess(false);
+    }
+  };
 
-      networkStore.setNetwork(network);
+  const onNetworkChange = (network: NetworkType) => {
+    setConnectionSuccess(false);
 
-      const savedNetwork = localStorage.getItem(`kasia_node_url_${network}`);
+    const savedNetwork = localStorage.getItem(`kasia_node_url_${network}`);
 
-      setNodeUrl(savedNetwork ?? "");
+    setNodeUrl(savedNetwork ?? "");
 
-      connect();
-    },
-    [connect, networkStore]
-  );
+    connectWithErrorWrapper(network, savedNetwork ?? null);
+  };
 
-  const handleSaveNodeUrl = useCallback(async () => {
+  const handleSaveNodeUrl = async () => {
     setConnectionSuccess(false);
 
     if (isConnecting) {
       return;
     }
 
-    networkStore.setNodeUrl(nodeUrl === "" ? undefined : nodeUrl);
-
-    const isSuccess = await connect();
-
-    setConnectionSuccess(isSuccess);
-  }, [connect, isConnecting, networkStore, nodeUrl]);
+    await connectWithErrorWrapper(
+      selectedNetwork,
+      nodeUrl === "" ? null : nodeUrl
+    );
+  };
 
   return (
     <div className="w-full max-w-[600px]">

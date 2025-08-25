@@ -7,6 +7,10 @@ import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
 import { Loader2 } from "lucide-react";
 import clsx from "clsx";
+import {
+  StartSessionInvalidPasswordException,
+  useGlobalStore,
+} from "../../hooks/useGlobalStore";
 
 type UnlockWalletProps = {
   selectedWalletId: string | null;
@@ -32,7 +36,7 @@ export const Unlock = ({
 
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const { unlock } = useWalletStore();
+  const { startSession } = useGlobalStore();
 
   const usePasswordRef = (node: HTMLInputElement | null) => {
     passwordRef.current = node;
@@ -48,7 +52,7 @@ export const Unlock = ({
     setError(null);
     try {
       setUnlocking(true);
-      await unlock(selectedWalletId, pass);
+      await startSession({ walletId: selectedWalletId, walletPassword: pass });
       onSuccess(selectedWalletId);
     } catch (err) {
       console.error("Unlock error:", err);
@@ -57,8 +61,7 @@ export const Unlock = ({
         passwordRef.current.focus();
       }
       const msg =
-        err instanceof Error &&
-        err.message.toLowerCase().includes("invalid password")
+        err instanceof StartSessionInvalidPasswordException
           ? "Incorrect password. Please try again."
           : "Failed to unlock wallet. Please try again.";
       setError(msg);

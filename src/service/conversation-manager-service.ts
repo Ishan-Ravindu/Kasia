@@ -137,7 +137,6 @@ export class ConversationManagerService {
             conversationAndContact.conversation
           );
 
-          // Note: Not triggering onHandshakeInitiated again since it's a retry
           return {
             conversation: conversationAndContact.conversation,
             contact: conversationAndContact.contact,
@@ -181,6 +180,17 @@ export class ConversationManagerService {
         (
           existingConversationAndContactByAddress.conversation as unknown as ActiveConversation
         ).theirAlias = payload.alias;
+
+        // if conversation was initiated by me, and not yet active, it becomes active.
+        if (
+          existingConversationAndContactByAddress.conversation.status !==
+            "active" &&
+          existingConversationAndContactByAddress.conversation.initiatedByMe
+        ) {
+          (
+            existingConversationAndContactByAddress.conversation as unknown as ActiveConversation
+          ).status = "active";
+        }
 
         await this.repositories.conversationRepository.saveConversation(
           existingConversationAndContactByAddress.conversation
@@ -572,10 +582,7 @@ export class ConversationManagerService {
   ) {
     const isMyNewAliasValid = isAlias(payload.theirAlias);
 
-    const myAlias =
-      payload.isResponse && isAlias(payload.theirAlias)
-        ? payload.theirAlias
-        : this.generateUniqueAlias();
+    const myAlias = this.generateUniqueAlias();
     const status =
       payload.isResponse && isMyNewAliasValid ? "active" : "pending";
 
@@ -653,11 +660,12 @@ export class ConversationManagerService {
             conversationAndContact.conversation.initiatedByMe)
       )
       .forEach((conversationAndContact) => {
-        // Monitor our own alias
-        monitored.push({
-          alias: conversationAndContact.conversation.myAlias,
-          address: conversationAndContact.contact.kaspaAddress,
-        });
+        if (conversationAndContact.conversation.theirAlias) {
+          monitored.push({
+            alias: conversationAndContact.conversation.theirAlias,
+            address: conversationAndContact.contact.kaspaAddress,
+          });
+        }
       });
 
     return monitored;

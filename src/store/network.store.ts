@@ -1,63 +1,58 @@
 import { create } from "zustand";
 import { NetworkType } from "../types/all";
 import { KaspaClient } from "../service/kaspa-client";
-import { unknownErrorToErrorLike } from "../utils/errors";
-import { useWalletStore } from "./wallet.store";
-import { unstable_batchedUpdates } from "react-dom";
-import { client as indexerClient } from "../service/indexer/generated/client.gen";
 
 interface NetworkState {
   isConnected: boolean;
   isConnecting: boolean;
-  connectionError?: string;
   network: NetworkType;
   kaspaClient: KaspaClient;
-  nodeUrl: string | undefined;
+  nodeUrl: string | null;
 
   /**
    * requires a call to `.connect(network: NetworkType)` if you want changes to be applied
    *
    * note: this persist the node url on the local storage and will be re-used on next startup
    */
-  setNodeUrl: (url?: string) => void;
+  setNodeUrl: (url: string | null) => void;
   /**
    * requires a call to `.connect(network: NetworkType)` if you want changes to be applied
    */
   setNetwork: (network: NetworkType) => void;
 
-  connect: () => Promise<boolean>;
+  connect: () => Promise<void>;
   disconnect: () => Promise<void>;
 }
 
+/**
+ * Responsability: manage Kaspa RPC connection
+ */
 export const useNetworkStore = create<NetworkState>((set, g) => {
   const initialNetwork =
     import.meta.env.VITE_DEFAULT_KASPA_NETWORK ?? "mainnet";
   const initialNodeUrl =
-    localStorage.getItem(`kasia_node_url_${initialNetwork}`) ?? undefined;
+    localStorage.getItem(`kasia_node_url_${initialNetwork}`) ?? null;
   return {
     isConnected: false,
     isConnecting: false,
-    connectionError: undefined,
     network: initialNetwork,
     nodeUrl: initialNodeUrl,
     kaspaClient: new KaspaClient({
       networkId: initialNetwork,
-      nodeUrl: initialNodeUrl,
+      nodeUrl: initialNodeUrl ?? undefined,
     }),
-    async connect() {
+    async connect(): Promise<void> {
       let kaspaClient = g().kaspaClient;
 
       const isDifferentNetwork = kaspaClient.networkId !== g().network;
-      const isDifferentUrl = kaspaClient.rpc?.url !== g().nodeUrl;
+      const isDifferentUrl =
+        kaspaClient.rpc?.url !== (g().nodeUrl ?? undefined);
 
       if (!isDifferentNetwork && !isDifferentUrl && g().isConnected) {
         console.warn(
           "Trying to connect KaspaClient while it is already connected."
         );
-        set({
-          connectionError: "Already connected.",
-        });
-        return false;
+        throw new Error("Already connected.");
       }
 
       if ((isDifferentNetwork || isDifferentUrl) && kaspaClient.connected) {
@@ -67,7 +62,7 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
       if (isDifferentNetwork || isDifferentUrl) {
         kaspaClient = new KaspaClient({
           networkId: g().network,
-          nodeUrl: g().nodeUrl,
+          nodeUrl: g().nodeUrl ?? undefined,
         });
 
         set({
@@ -78,7 +73,6 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
       set({
         isConnecting: true,
         isConnected: false,
-        connectionError: undefined,
       });
 
       try {
@@ -94,50 +88,27 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
           localStorage.removeItem(`kasia_node_url_${kaspaClient.networkId}`);
         }
 
-        unstable_batchedUpdates(() => {
-          useWalletStore.getState().setRpcClient(kaspaClient);
-          useWalletStore.getState().setSelectedNetwork(g().network);
-        });
         set({
           isConnected: true,
-          connectionError: undefined,
           isConnecting: false,
         });
-        return true; // Exit the function if connection is successful
+        return;
       } catch (error) {
-        console.error(`Failed to connect to KaspaClient`, error);
         set({
-          connectionError: unknownErrorToErrorLike(error).message,
           isConnecting: false,
         });
+        throw error;
       }
-
-      console.error("Max retries reached. Could not connect to KaspaClient.");
-      set({
-        connectionError:
-          "Max retries reached. Could not connect to KaspaClient.",
-      });
-
-      return false;
     },
     async disconnect() {
       const kaspaClient = g().kaspaClient;
       if (kaspaClient.connected) {
         await kaspaClient.disconnect();
-        set({ isConnected: false, connectionError: undefined });
+        set({ isConnected: false });
       }
     },
     setNetwork(network) {
-      const nodeUrl =
-        localStorage.getItem(`kasia_node_url_${network}`) ?? undefined;
-
-      // update indexer base url
-      indexerClient.setConfig({
-        baseUrl:
-          network === "mainnet"
-            ? import.meta.env.VITE_INDEXER_MAINNET_URL
-            : import.meta.env.VITE_INDEXER_TESTNET_URL,
-      });
+      const nodeUrl = localStorage.getItem(`kasia_node_url_${network}`) ?? null;
 
       set({ network, nodeUrl });
     },

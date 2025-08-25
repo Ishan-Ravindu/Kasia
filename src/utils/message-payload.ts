@@ -90,8 +90,6 @@ export function parseKaspaMessagePayload(
   return { type, alias, encryptedHex, scope };
 }
 
-export function isKasiaTransaction(
-  tx: ITransaction | ExplorerTransaction
-): boolean {
+export function isKasiaTransaction(tx: ITransaction): boolean {
   return tx?.payload?.startsWith(PROTOCOL.prefix.hex) ?? false;
 }

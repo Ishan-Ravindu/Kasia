@@ -122,10 +122,7 @@ export class WalletStorageService {
     }));
   }
 
-  async getDecrypted(
-    walletId: string,
-    password: string
-  ): Promise<UnlockedWallet> {
+  getDecrypted(walletId: string, password: string): UnlockedWallet {
     const walletsString = localStorage.getItem(this._storageKey);
     if (!walletsString) throw new Error("No wallets found");
 
@@ -150,8 +147,7 @@ export class WalletStorageService {
       const derivationType: WalletDerivationType =
         wallet.derivationType || "legacy";
 
-      // Get the public key generator - use original working approach
-      const publicKeyGenerator = await PublicKeyGenerator.fromMasterXPrv(
+      const publicKeyGenerator = PublicKeyGenerator.fromMasterXPrv(
         extendedKey,
         false,
         BigInt(derivationType === "standard" ? 0 : 1)

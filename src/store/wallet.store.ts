@@ -92,12 +92,10 @@ type WalletState = {
     derivationType?: WalletDerivationType
   ) => Promise<string>;
   deleteWallet: (walletId: string) => void;
-  unlock: (
-    walletId: string,
-    password: string
-  ) => Promise<UnlockedWallet | null>;
+  unlock: (walletId: string, password: string) => Promise<UnlockedWallet>;
   lock: () => void;
 
+  // note: this shouldn't be wallet responsability
   // fee estimate management
   fetchFeeEstimates: () => Promise<void>;
   startFeeEstimatePolling: () => void;
@@ -255,61 +253,58 @@ export const useWalletStore = create<WalletState>((set, get) => {
     },
 
     unlock: async (walletId: string, password: string) => {
-      try {
-        const wallet = await _walletStorage.getDecrypted(walletId, password);
+      const wallet = _walletStorage.getDecrypted(walletId, password);
 
-        const currentRpcClient = get().rpcClient;
-        if (!currentRpcClient) {
-          throw new Error("RPC client not initialized");
-        }
-        wallet.client = currentRpcClient;
-        set({ unlockedWallet: wallet });
+      const currentRpcClient = get().rpcClient;
+      if (!currentRpcClient) {
+        throw new Error("RPC client not initialized");
+      }
+      wallet.client = currentRpcClient;
+      set({
+        unlockedWallet: wallet,
+        address: wallet.receivePublicKey.toAddress(currentRpcClient.networkId),
+      });
 
-        _accountService = new AccountService(currentRpcClient, wallet);
-        _accountService.setPassword(password);
-        // Set up event listeners
-        _accountService.on("balance", (balance) => {
-          set({ balance });
-        });
-        await _accountService.start();
+      _accountService = new AccountService(currentRpcClient, wallet);
+      _accountService.setPassword(password);
+      // Set up event listeners
+      _accountService.on("balance", (balance) => {
+        set({ balance });
+      });
+      await _accountService.start();
 
-        const initialBalance = _accountService.context.balance;
-        if (initialBalance) {
-          const matureUtxos = _accountService.context.getMatureRange(
-            0,
-            _accountService.context.matureLength
-          );
-          const pendingUtxos = _accountService.context.getPending();
-
-          set({
-            balance: {
-              mature: initialBalance.mature,
-              pending: initialBalance.pending,
-              outgoing: initialBalance.outgoing,
-              matureDisplay: sompiToKaspaString(initialBalance.mature),
-              pendingDisplay: sompiToKaspaString(initialBalance.pending),
-              outgoingDisplay: sompiToKaspaString(initialBalance.outgoing),
-              matureUtxoCount: matureUtxos.length,
-              pendingUtxoCount: pendingUtxos.length,
-            },
-          });
-        }
+      const initialBalance = _accountService.context.balance;
+      if (initialBalance) {
+        const matureUtxos = _accountService.context.getMatureRange(
+          0,
+          _accountService.context.matureLength
+        );
+        const pendingUtxos = _accountService.context.getPending();
 
         set({
-          rpcClient: currentRpcClient,
-          address: _accountService.receiveAddress,
-          isAccountServiceRunning: true,
-          accountService: _accountService,
+          balance: {
+            mature: initialBalance.mature,
+            pending: initialBalance.pending,
+            outgoing: initialBalance.outgoing,
+            matureDisplay: sompiToKaspaString(initialBalance.mature),
+            pendingDisplay: sompiToKaspaString(initialBalance.pending),
+            outgoingDisplay: sompiToKaspaString(initialBalance.outgoing),
+            matureUtxoCount: matureUtxos.length,
+            pendingUtxoCount: pendingUtxos.length,
+          },
         });
-
-        // Start fee polling when wallet starts
-        get().startFeeEstimatePolling();
-
-        return wallet;
-      } catch (error) {
-        console.error("Failed to unlock wallet:", error);
-        throw error;
       }
+
+      set({
+        rpcClient: currentRpcClient,
+        isAccountServiceRunning: true,
+        accountService: _accountService,
+      });
+
+      // Start fee polling when wallet starts
+      get().startFeeEstimatePolling();
+
+      return wallet;
     },
 
     lock: () => {

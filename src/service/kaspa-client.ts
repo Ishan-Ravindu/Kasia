@@ -38,7 +38,7 @@ export class KaspaClient {
     this.options = {
       debug: true,
       retryDelay: 2000,
-      maxRetries: 3,
+      maxRetries: 1,
     };
 
     this.rpc = null;

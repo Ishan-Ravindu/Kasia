@@ -44,6 +44,7 @@ import {
 } from "../service/indexer/generated";
 import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 import { hexToString } from "../utils/format";
+import { RawResolvedKasiaTransaction } from "../service/block-processor-service";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
@@ -59,6 +60,9 @@ interface MessagingState {
   isLoaded: boolean;
   isCreatingNewChat: boolean;
   oneOnOneConversations: OneOnOneConversation[];
+  ingestRawResolvedKasiaTransaction: (
+    tx: RawResolvedKasiaTransaction
+  ) => Promise<void>;
   storeKasiaTransactions: (transactions: KasiaTransaction[]) => Promise<void>;
   flushWalletHistory: (address: string) => void;
   exportMessages: (wallet: UnlockedWallet, password: string) => Promise<Blob>;
@@ -606,7 +610,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         isLoaded: true,
       });
     },
-    // @TODO(indexdb): verify stop messenger client service is called properly
     stop() {
       _historicalSyncer = null!;
     },
@@ -1453,6 +1456,18 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
 
         console.log("Saving handshake...");
+
+        // wait for mature UTXOs ready
+        const accountService = useWalletStore.getState().accountService;
+
+        if (!accountService) {
+          throw new Error(
+            "Messaging Store - Unexpected Error: Account Service is not ready"
+          );
+        }
+
+        await accountService.waitForMatureUTXO();
+
         const myTxId = await walletStore.sendTransaction({
           payload: myPayload,
           toAddress: new Address(address),
@@ -1595,6 +1610,18 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
 
           console.log("Saving handshake...");
+
+          // wait for mature UTXOs ready
+          const accountService = useWalletStore.getState().accountService;
+
+          if (!accountService) {
+            throw new Error(
+              "Messaging Store - Unexpected Error: Account Service is not ready"
+            );
+          }
+
+          await accountService.waitForMatureUTXO();
+
           const myTxId = await walletStore.sendTransaction({
             payload: myPayload,
             toAddress: new Address(address),
@@ -1728,6 +1755,61 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       } catch (error) {
         console.error("Error restoring last opened recipient:", error);
       }
+    },
+    ingestRawResolvedKasiaTransaction(tx) {
+      // note: ideally we wouldn't have "too much" cross-store dependency
+      // or at least in a determined way that would prevent bi-directional dependencies
+      const unlockedWallet = useWalletStore.getState().unlockedWallet;
+
+      if (!unlockedWallet) {
+        throw new Error(
+          "Cannot process live transaction because wallet isn't initialized."
+        );
+      }
+
+      const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
+        unlockedWallet,
+        unlockedWallet.password
+      );
+
+      const privateKey = privateKeyGenerator.receiveKey(0);
+
+      const decryptedContent = decrypt_message(
+        new EncryptedMessage(tx.parsedPayload.encryptedHex),
+        new PrivateKey(privateKey.toString())
+      );
+      // this hack is necessary because we have inconsistencies between data parsed at historical level
+      // , at live level (here is live level), and when client is the creator of the event
+      // so be "re-build" it like the other places, ideally this shouldn't be necessary
+      let hackedContent = decryptedContent;
+
+      if (tx.parsedPayload.type === "handshake") {
+        // handhshake payload is expected to be utf-8 encoded
+        hackedContent = `${PROTOCOL.prefix.string}${PROTOCOL.headers.HANDSHAKE.string}${decryptedContent}`;
+      } else if (tx.parsedPayload.type === "comm") {
+        // message payload is expected to be hex encoded
+        hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${toHex(tx.parsedPayload.alias ?? "UNKNOWN")}:${decryptedContent}`;
+      } else if (tx.parsedPayload.type === "payment") {
+        // payment payload should be the raw decrypted JSON content
+        hackedContent = decryptedContent;
+      } else if (tx.parsedPayload.type === "self_stash") {
+        // self_stash payload is expected to be hex encoded
+        hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${tx.parsedPayload.scope ? `${toHex(tx.parsedPayload.scope)}:` : ""}${decryptedContent}`;
+      }
+
+      const kasiaTransaction: KasiaTransaction = {
+        transactionId: tx.id,
+        senderAddress: tx.senderAddressString,
+        recipientAddress: tx.recipientAddressString,
+        createdAt: new Date(Number(tx.header.timestamp)),
+        // TODO: gas only is additional fees and not base fees based on mass?
+        fee: 0, // Number(tx.transaction.gas),
+        content: hackedContent,
+        amount: Number(tx.recipientOutputAmount),
+        payload: tx.transaction.payload,
+      };
+
+      g().storeKasiaTransactions([kasiaTransaction]);
     },
   };
 });

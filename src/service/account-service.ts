@@ -4,43 +4,22 @@ import {
   UtxoProcessor,
   UtxoContext,
   UtxoEntry,
-  ITransaction,
   PendingTransaction,
   GeneratorSummary,
   sompiToKaspaString,
   kaspaToSompi,
-  ITransactionOutput,
   PrivateKeyGenerator,
   Generator,
 } from "kaspa-wasm";
 import { KaspaClient } from "./kaspa-client";
-import {
-  decrypt_message,
-  encrypt_message,
-  EncryptedMessage,
-  PrivateKey,
-} from "cipher";
-import { DecryptionCache } from "./decryption-cache";
-import {
-  BlockAddedData,
-  KasiaTransaction,
-  PriorityFeeConfig,
-} from "../types/all";
+import { encrypt_message } from "cipher";
+import { PriorityFeeConfig } from "../types/all";
 import { UnlockedWallet } from "../types/wallet.type";
-import { TransactionId, getTransactionId } from "../types/transactions";
+import { TransactionId } from "../types/transactions";
 import { useMessagingStore } from "../store/messaging.store";
-import { useDBStore } from "../store/db.store";
-import { PROTOCOL, toHex } from "../config/protocol";
+import { PROTOCOL } from "../config/protocol";
 import { PLACEHOLDER_ALIAS } from "../config/constants";
-import {
-  parseKaspaMessagePayload,
-  isKasiaTransaction,
-} from "../utils/message-payload";
-import {
-  hexToBytes,
-  getEncoder,
-  tryParseBase64AsHexToHex,
-} from "../utils/payload-encoding";
+import { hexToBytes, getEncoder } from "../utils/payload-encoding";
 import { WalletStorageService } from "./wallet-storage-service";
 import { TransactionGeneratorService } from "./transaction-generator";
 import { MAX_TX_FEE } from "../config/constants";
@@ -112,11 +91,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   // only populated when started
   isStarted: boolean = false;
   receiveAddress: Address | null = null;
-
-  private processedMessageIds: Set<string> = new Set();
-  private monitoredConversations: Set<string> = new Set(); // Store monitored aliases
-  private monitoredAddresses: Map<string, string> = new Map(); // Store address -> alias mappings
-  private readonly MAX_PROCESSED_MESSAGES = 1000; // Prevent unlimited growth
 
   // Add password field
   private password: string | null = null;
@@ -235,10 +209,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     try {
       // Get the receive address from the wallet
       const initialReceiveAddress =
-        this.unlockedWallet.publicKeyGenerator.receiveAddress(
-          this.networkId,
-          0
-        );
+        this.unlockedWallet.receivePublicKey.toAddress(this.networkId);
 
       // Ensure it has the proper network prefix
       this.receiveAddress = new Address(
@@ -265,14 +236,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       const addressesToTrack = [this.receiveAddress];
       await this.context.trackAddresses(addressesToTrack);
 
-      // Set up block subscription with optimized message handling
-      console.log("Setting up block subscription...");
-      await this.rpcClient.subscribeToBlockAdded((event) => {
-        // Fire-and-forget; callback signature remains (event) => void
-        void this.processBlockEvent(event as unknown as BlockAddedData);
-      });
-      console.log("Successfully subscribed to block events");
-
       this.isStarted = true;
     } catch (error) {
       console.error("Failed to start account service:", error);
@@ -287,11 +250,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Stop the UTXO processor
       await this.processor.stop();
 
-      // Unsubscribe from block events using the RpcClient method
-      if (this.rpcClient.rpc) {
-        await this.rpcClient.rpc.unsubscribeBlockAdded();
-      }
-
       // Clean up our local state
       this.isStarted = false;
       console.log(
@@ -303,61 +261,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         error
       );
     }
-  }
-
-  private async _fetchTransactionDetails(txId: string, maxRetries = 10) {
-    const retryDelay = 2000; // Changed to 2 seconds between retries
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const baseUrl =
-          this.networkId === "mainnet"
-            ? "https://api.kaspa.org"
-            : "https://api-tn10.kaspa.org";
-        const response = await fetch(
-          `${baseUrl}/transactions/${txId}?inputs=true&outputs=true&resolve_previous_outpoints=no`
-        );
-
-        if (response.status === 404) {
-          console.log(
-            `Transaction ${txId} not yet available in API (attempt ${
-              attempt + 1
-            }/${maxRetries}), retrying in 2 seconds...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-          continue;
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch transaction details: ${response.statusText}`
-          );
-        }
-
-        const result = await response.json();
-        console.log(
-          `Successfully fetched transaction details for ${txId} on attempt ${
-            attempt + 1
-          }`
-        );
-        return result;
-      } catch (error) {
-        if (attempt === maxRetries - 1) {
-          console.error(
-            `Error fetching transaction details for ${txId} after ${maxRetries} attempts:`,
-            error
-          );
-          return null;
-        }
-        console.log(
-          `Attempt ${
-            attempt + 1
-          }/${maxRetries} failed, retrying in 2 seconds...`
-        );
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      }
-    }
-    return null;
   }
 
   private validateTransactionFee(feeAmount: bigint): void {
@@ -433,308 +336,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     console.log("========================");
 
     return txId;
-  }
-
-  private updateMonitoredConversations() {
-    try {
-      const messagingStore = useMessagingStore.getState();
-      const conversationManager = messagingStore?.conversationManager;
-
-      if (!conversationManager) return;
-
-      // Update our monitored conversations
-      this.monitoredConversations.clear();
-      this.monitoredAddresses.clear();
-      const conversations = conversationManager.getMonitoredConversations();
-
-      // Silently update monitored conversations
-      conversations.forEach((conv: { alias: string; address: string }) => {
-        this.monitoredConversations.add(conv.alias);
-        this.monitoredAddresses.set(conv.address, conv.alias);
-      });
-    } catch (error) {
-      console.error("Error updating monitored conversations:", error);
-    }
-  }
-
-  // note: account service should not be responsible for handling block added logic
-  private async processBlockEvent(event: BlockAddedData) {
-    try {
-      const blockTime =
-        Number(event?.data?.block?.header?.timestamp) || Date.now();
-      const transactions = event?.data?.block?.transactions || [];
-
-      // Process transactions silently
-      const txOutputsMap = new Map<string, ITransactionOutput[]>();
-      transactions.forEach((tx) => {
-        if (tx.outputs && tx.verboseData?.transactionId) {
-          txOutputsMap.set(tx.verboseData.transactionId, tx.outputs);
-        }
-      });
-
-      // note: this should be optimized, account service shouldn't be the owner of that
-      // it shouldn't be needed to refresh computation here if the owner of this would be the
-      // maintainer of the shared state
-      this.updateMonitoredConversations();
-
-      for (const tx of transactions) {
-        const txId = tx.verboseData?.transactionId;
-        if (!txId || this.processedMessageIds.has(txId)) continue;
-
-        if (isKasiaTransaction(tx)) {
-          // mark the txId as processed to avoid duplicate processing
-          this.processedMessageIds.add(txId);
-          if (this.processedMessageIds.size > this.MAX_PROCESSED_MESSAGES) {
-            const oldestId = this.processedMessageIds.values().next().value;
-
-            if (oldestId) {
-              this.processedMessageIds.delete(oldestId);
-            }
-          }
-
-          try {
-            // Process message transaction silently
-            await this.processMessageTransaction(tx, blockTime);
-          } catch (error) {
-            if (process.env.NODE_ENV === "development") {
-              console.debug("Error processing message transaction:", error);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error processing block event:", error);
-    }
-  }
-
-  private async processMessageTransaction(
-    tx: ITransaction,
-    blockTime: number,
-    maxRetries = 10
-  ) {
-    const payload = tx.payload;
-    if (!payload.startsWith(PROTOCOL.prefix.hex)) {
-      return;
-    }
-
-    const txId = getTransactionId(tx);
-
-    if (!txId) {
-      console.warn("Transaction ID is missing in real-time processing");
-      return;
-    }
-
-    if (
-      await useDBStore.getState().repositories.doesKasiaEventExistsById(txId)
-    ) {
-      console.log(`Transaction ${txId} already processed`);
-      return;
-    }
-
-    // note: ideally we wouldn't need to compute the address once more
-    // if this is needed, it means the loading strategy is wrong
-    // and should queue added block events before ingesting them
-    const walletAddress = this.unlockedWallet.publicKeyGenerator.receiveAddress(
-      this.networkId,
-      0
-    );
-    const stringWalletAddress = walletAddress.toString();
-
-    if (DecryptionCache.hasFailed(stringWalletAddress, txId)) {
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`Real-time: Skipping known failed decryption: ${txId}`);
-      }
-      return;
-    }
-
-    // Get sender address from transaction inputs
-    let senderAddress = null;
-    if (tx.inputs && tx.inputs.length > 0) {
-      const input = tx.inputs[0];
-      const prevTxId = input.previousOutpoint?.transactionId;
-      const prevOutputIndex = input.previousOutpoint?.index;
-
-      if (prevTxId && typeof prevOutputIndex === "number") {
-        try {
-          const prevTx = await this._fetchTransactionDetails(
-            // this returns an explorer transaction
-            prevTxId,
-            maxRetries
-          );
-          if (prevTx?.outputs && prevTx.outputs[prevOutputIndex]) {
-            const output = prevTx.outputs[prevOutputIndex];
-            console.log("resolved sender address from prevTx: ", output);
-            senderAddress = output.script_public_key_address;
-          }
-        } catch (error) {
-          console.error("Error getting sender address:", error);
-        }
-      }
-    }
-
-    // @TODO(indexer): shouldn't use this fallback, can lead to fake id.
-    // If we still don't have a sender address, use the change output address
-    if (!senderAddress && tx.outputs && tx.outputs.length > 1) {
-      senderAddress = tx.outputs[1].verboseData?.scriptPublicKeyAddress;
-    }
-
-    // Get the recipient address from the outputs
-    let recipientAddress = null;
-    if (tx.outputs && tx.outputs.length > 0) {
-      recipientAddress = tx.outputs[0].verboseData?.scriptPublicKeyAddress;
-    }
-
-    // If we still don't have a sender address, try to fetch it from the previous transaction
-    if (!senderAddress && tx.inputs && tx.inputs.length > 0) {
-      // Try all inputs to find a valid sender address
-      for (let i = 0; i < tx.inputs.length; i++) {
-        const input = tx.inputs[i];
-        // previous_outpoint_hash
-        const prevTxId = input.previousOutpoint.transactionId;
-        const prevOutputIndex = input.previousOutpoint.index;
-
-        if (prevTxId) {
-          try {
-            const prevTx = await this._fetchTransactionDetails(
-              prevTxId,
-              maxRetries
-            );
-            if (prevTx?.outputs && prevTx.outputs[prevOutputIndex]) {
-              const output = prevTx.outputs[prevOutputIndex];
-              senderAddress = output.script_public_key_address;
-              break;
-            }
-          } catch (error) {
-            console.error(
-              "Error getting sender address from previous transaction:",
-              error
-            );
-          }
-        }
-      }
-    }
-    const parsed = parseKaspaMessagePayload(tx.payload);
-
-    const messageType = parsed.type;
-    const targetAlias = parsed.alias;
-
-    // @TODO: check how to do hex manipulation properly, currently parsed.encryptedHex is a hex
-    // if we want to handle base64, it would need to find a way to do from/to hex properly in JS
-    // from my tests, it seems that the utils alters the hex
-    // ONLY apply base64 parsing for comm (message) transactions, not for payments/handshakes
-    let hexEncryptedPayload = parsed.encryptedHex;
-    if (parsed.type === PROTOCOL.headers.COMM.type) {
-      hexEncryptedPayload = tryParseBase64AsHexToHex(parsed.encryptedHex);
-    }
-
-    const encryptedHex = hexEncryptedPayload;
-    const isHandshake = parsed.type === PROTOCOL.headers.HANDSHAKE.type;
-
-    const isMonitoredAddress =
-      (senderAddress && this.monitoredAddresses.has(senderAddress)) ||
-      (recipientAddress && this.monitoredAddresses.has(recipientAddress));
-    const isCommForUs =
-      messageType === PROTOCOL.headers.COMM.type &&
-      targetAlias &&
-      this.monitoredConversations.has(targetAlias);
-
-    // For payments, check if the sender address is one we're monitoring
-    // (i.e., we have a conversation with them OR they sent us a payment)
-    const isPaymentForUs =
-      messageType === PROTOCOL.headers.PAYMENT.type &&
-      (isMonitoredAddress ||
-        recipientAddress === this.receiveAddress?.toString());
-
-    try {
-      // note: same remark as earlier in the flow
-      // here we should need to re-generate the key because the context should already
-      // be unlocked, unless there is a logical error in the general loading strategy
-      const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-        this.unlockedWallet,
-        this.pwd!
-      );
-
-      let decryptionSuccess = false;
-
-      try {
-        const privateKey = privateKeyGenerator.receiveKey(0);
-
-        const decryptedContent = decrypt_message(
-          new EncryptedMessage(encryptedHex),
-          new PrivateKey(privateKey.toString())
-        );
-
-        decryptionSuccess = true;
-
-        if (decryptionSuccess) {
-          DecryptionCache.markSuccess(stringWalletAddress, txId);
-          if (process.env.NODE_ENV === "development") {
-            console.debug(
-              `Real-time: Successful decryption for ${txId} - removed from failed cache if present`
-            );
-          }
-        } else {
-          DecryptionCache.markFailed(stringWalletAddress, txId);
-          if (process.env.NODE_ENV === "development") {
-            console.debug(
-              `Real-time: Failed decryption for ${txId} - marked as failed in cache`
-            );
-          }
-        }
-
-        if (
-          decryptionSuccess &&
-          (isHandshake || isMonitoredAddress || isCommForUs || isPaymentForUs)
-        ) {
-          // this hack is necessary because we have inconsistencies between data parsed at historical level
-          // , at live level (here is live level), and when client is the creator of the event
-          // so be "re-build" it like the other places, ideally this shouldn't be necessary
-          let hackedContent = decryptedContent;
-
-          if (parsed.type === "handshake") {
-            // handhshake payload is expected to be utf-8 encoded
-            hackedContent = `${PROTOCOL.prefix.string}${PROTOCOL.headers.HANDSHAKE.string}${decryptedContent}`;
-          } else if (parsed.type === "message") {
-            // message payload is expected to be hex encoded
-            hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${toHex(parsed.alias ?? "UNKNOWN")}:${decryptedContent}`;
-          } else if (parsed.type === "payment") {
-            // payment payload should be the raw decrypted JSON content
-            hackedContent = decryptedContent;
-          } else if (parsed.type === "self_stash") {
-            // self_stash payload is expected to be hex encoded
-            hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${parsed.scope ? `${toHex(parsed.scope)}:` : ""}${decryptedContent}`;
-          }
-
-          const kasiaTransaction: KasiaTransaction = {
-            transactionId: txId,
-            senderAddress: senderAddress || "Unknown",
-            recipientAddress: recipientAddress || "Unknown",
-            createdAt: new Date(blockTime),
-            // @TODO(indexdb): how to get fees?
-            fee: 0,
-            content: hackedContent,
-            amount: Number(tx.outputs[0].value) / 100000000,
-            payload: tx.payload,
-          };
-
-          console.log("kasiaTransaction from account service", {
-            ...kasiaTransaction,
-          });
-
-          const messagingStore = useMessagingStore.getState();
-          if (messagingStore) {
-            await messagingStore.storeKasiaTransactions([kasiaTransaction]);
-          }
-        }
-      } catch (error) {
-        console.error("Error processing message:", error);
-      }
-    } catch (error) {
-      console.error(
-        `Error processing message transaction ${getTransactionId(tx)}:`,
-        error
-      );
-    }
   }
 
   public async createTransaction(
@@ -1073,5 +674,32 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       console.error("Error sending message with context:", error);
       throw error;
     }
+  }
+
+  /**
+   * is subject to race condition in case multiple waiters wants to consume these mature UTXOs
+   */
+  public async waitForMatureUTXO(): Promise<void> {
+    if (this.ctx.matureLength > 0) {
+      return;
+    }
+
+    return new Promise((res, rej) => {
+      const oneTimeListen = () => {
+        if (this.ctx.matureLength > 0) {
+          this.processor.removeEventListener("maturity", oneTimeListen);
+          res();
+        }
+      };
+
+      this.processor.addEventListener("maturity", oneTimeListen);
+
+      // timeout of 10 seconds
+      setTimeout(() => {
+        rej(new Error("Timeout while waiting for mature UTXO"));
+
+        this.processor.removeEventListener("maturity", oneTimeListen);
+      }, 10_000);
+    });
   }
 }

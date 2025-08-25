@@ -3,6 +3,9 @@ import { Conversation } from "../store/repository/conversation.repository";
 
 export interface HandshakePayload {
   type: "handshake";
+  /**
+   * my alias, the one I write to
+   */
   alias: string;
   theirAlias?: string; // Used in response to confirm both aliases
   timestamp: number;
