@@ -169,10 +169,16 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const knownEventIds = new Set(oooc.events.map((e) => e.id.split("_")[1]));
       const newIndexerPayments = indexerPayments.filter(
-        (p) => !knownEventIds.has(p.tx_id)
+        (p, idx, self) =>
+          !knownEventIds.has(p.tx_id) &&
+          // @todo: remove when indexer dedup filter
+          idx === self.findIndex((o) => o.tx_id === p.tx_id)
       );
       const newIndexerMessages = indexerMessages.filter(
-        (m) => !knownEventIds.has(m.tx_id)
+        (m, idx, self) =>
+          !knownEventIds.has(m.tx_id) &&
+          // @todo: remove when indexer dedup filter
+          idx === self.findIndex((o) => o.tx_id === m.tx_id)
       );
 
       const newKasiaTransactions: KasiaTransaction[] = [];
@@ -181,21 +187,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         try {
           const payload = m.message_payload;
 
-          const hexStringBytes = payload.match(/.{1,2}/g);
-          if (!hexStringBytes) {
-            continue;
-          }
-
-          const bytes = new Uint8Array(
-            hexStringBytes.map((b) => parseInt(b, 16))
-          );
-          const decodedString = new TextDecoder().decode(bytes);
-
           // if its base64, decrypt
-          const encryptedHex = tryParseBase64AsHexToHex(decodedString);
+          const encryptedHex = tryParseBase64AsHexToHex(payload);
+          const encryptedMessage = new EncryptedMessage(encryptedHex);
 
           const decryptedContent = decrypt_message(
-            new EncryptedMessage(encryptedHex),
+            encryptedMessage,
             new PrivateKey(privateKeyString)
           );
 
@@ -211,27 +208,24 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           };
           console.log("kasia transaction from message", { kasiaTransaction });
           newKasiaTransactions.push(kasiaTransaction);
-        } catch {
+        } catch (error) {
           // chill
+          console.error(error);
         }
       }
 
       for (const p of newIndexerPayments) {
         if (!p.sender) continue;
         try {
-          const hexStringBytes = p.message.match(/.{1,2}/g);
-          if (!hexStringBytes) continue;
-          const bytes = new Uint8Array(
-            hexStringBytes.map((b) => parseInt(b, 16))
-          );
-          const decodedMessage = new TextDecoder().decode(bytes);
-
           const paymentPayload = decrypt_message(
-            new EncryptedMessage(decodedMessage),
+            new EncryptedMessage(p.message),
             new PrivateKey(privateKeyString)
           );
 
-          console.log("payment historical", { decodedMessage, paymentPayload });
+          console.log("payment historical", {
+            payload: p.message,
+            decryptedPayload: paymentPayload,
+          });
           newKasiaTransactions.push({
             amount: 0,
             content: paymentPayload,
@@ -240,7 +234,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             payload:
               PROTOCOL.prefix.hex +
               PROTOCOL.headers.PAYMENT.hex +
-              decodedMessage,
+              paymentPayload,
             recipientAddress: myAddress,
             senderAddress: p.sender,
             transactionId: p.tx_id,
@@ -596,6 +590,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               "Messaging Store - Error while persisting handshake",
               error
             );
+            continue;
           }
 
           oooc.events.push(kasiaHSToPersist);
@@ -637,7 +632,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             );
           }
 
-          await _fetchHistoricalForConversation(
+          return _fetchHistoricalForConversation(
             oooc,
             resolvedUnknownHandshakesAlisesForThisConversation,
             address
@@ -1040,7 +1035,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             ...state.oneOnOneConversations,
           ];
 
-          const ooocToUpdateIndex = updatedConversationWithContacts.findIndex(
+          const ooocToUpdateIndex = state.oneOnOneConversations.findIndex(
             (oooc) => oooc.contact.kaspaAddress === participantAddress
           );
 
@@ -1050,14 +1045,13 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           }
 
           const updatedConversation = {
-            ...updatedConversationWithContacts[ooocToUpdateIndex],
+            ...state.oneOnOneConversations[ooocToUpdateIndex],
             conversation: {
-              ...updatedConversationWithContacts[ooocToUpdateIndex]
-                .conversation,
+              ...state.oneOnOneConversations[ooocToUpdateIndex].conversation,
               lastActivityAt: transaction.createdAt,
             },
             events: [
-              ...updatedConversationWithContacts[ooocToUpdateIndex].events,
+              ...state.oneOnOneConversations[ooocToUpdateIndex].events,
               kasiaEvent,
             ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
           };

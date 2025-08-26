@@ -119,10 +119,6 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         messagesStore.createIndex("by-id", "id", { unique: true });
         messagesStore.createIndex("by-tenant-id", "tenantId");
-        messagesStore.createIndex("by-tenant-id-conversation-id", [
-          "tenantId",
-          "conversationId",
-        ]);
         messagesStore.createIndex("by-tenant-id-created-at", [
           "tenantId",
           "createdAt",
@@ -131,6 +127,10 @@ export const openDatabase = async (): Promise<KasiaDB> => {
           "tenantId",
           "conversationId",
           "createdAt",
+        ]);
+        messagesStore.createIndex("by-tenant-id-conversation-id", [
+          "tenantId",
+          "conversationId",
         ]);
 
         // PAYMENTS
@@ -148,6 +148,10 @@ export const openDatabase = async (): Promise<KasiaDB> => {
           "tenantId",
           "createdAt",
         ]);
+        paymentsStore.createIndex("by-tenant-id-conversation-id", [
+          "tenantId",
+          "conversationId",
+        ]);
 
         // HANDSHAKES
         const handshakesStore = db.createObjectStore("handshakes", {
@@ -163,6 +167,10 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         handshakesStore.createIndex("by-tenant-id-created-at", [
           "tenantId",
           "createdAt",
+        ]);
+        handshakesStore.createIndex("by-tenant-id-conversation-id", [
+          "tenantId",
+          "conversationId",
         ]);
 
         // CONVERSATIONS
