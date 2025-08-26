@@ -67,9 +67,9 @@ export class PaymentRepository {
     conversationId: string
   ): Promise<Payment[]> {
     return this.db
-      .getAllFromIndex("payments", "by-conversation-id-tenant-id", [
-        conversationId,
+      .getAllFromIndex("payments", "by-tenant-id-conversation-id", [
         this.tenantId,
+        conversationId,
       ])
       .then((dbPayments) => {
         return dbPayments.map((dbPayment) => {

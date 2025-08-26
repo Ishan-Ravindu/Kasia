@@ -18,7 +18,7 @@ import {
   SavedHandhshakeRepository,
 } from "./saved-handshake.repository";
 
-const CURRENT_DB_VERSION = 2;
+const CURRENT_DB_VERSION = 1;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -35,9 +35,9 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-conversation-id-tenant-id": [string, string];
-      "by-created-at": number;
-      "by-conversation-created-at": [string, number];
+      "by-tenant-id-conversation-id": [string, string];
+      "by-tenant-id-created-at": [string, Date];
+      "by-tenant-id-conversation-id-created-at": [string, string, Date];
     };
   };
   payments: {
@@ -46,9 +46,9 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-conversation-id-tenant-id": [string, string];
-      "by-created-at": number;
-      "by-conversation-created-at": [string, number];
+      "by-tenant-id-conversation-id": [string, string];
+      "by-tenant-id-created-at": [string, Date];
+      "by-tenant-id-conversation-id-created-at": [string, string, Date];
     };
   };
   handshakes: {
@@ -57,9 +57,9 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-conversation-id-tenant-id": [string, string];
-      "by-created-at": number;
-      "by-conversation-created-at": [string, number];
+      "by-tenant-id-conversation-id": [string, string];
+      "by-tenant-id-created-at": [string, Date];
+      "by-tenant-id-conversation-id-created-at": [string, string, Date];
     };
   };
   conversations: {
@@ -67,9 +67,9 @@ export interface KasiaDBSchema extends DBSchema {
     value: DbConversation;
     indexes: {
       "by-tenant-id": string;
-      "by-status": ConversationStatus;
-      "by-last-activity": number;
-      "by-status-last-activity": [ConversationStatus, number];
+      "by-tenant-id-status": [string, ConversationStatus];
+      "by-tenant-id-last-activity": [string, Date];
+      "by-tenant-id-status-last-activity": [string, ConversationStatus, Date];
       "by-contact-id": string;
     };
   };
@@ -79,7 +79,7 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-timestamp": number;
+      "by-tenant-id-timestamp": [string, Date];
     };
   };
   contacts: {
@@ -87,6 +87,7 @@ export interface KasiaDBSchema extends DBSchema {
     value: DbContact;
     indexes: {
       "by-tenant-id": string;
+      "by-tenant-id-timestamp": [string, Date];
     };
   };
   savedHandshakes: {
@@ -118,12 +119,16 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         messagesStore.createIndex("by-id", "id", { unique: true });
         messagesStore.createIndex("by-tenant-id", "tenantId");
-        messagesStore.createIndex("by-conversation-id-tenant-id", [
-          "conversationId",
+        messagesStore.createIndex("by-tenant-id-conversation-id", [
           "tenantId",
+          "conversationId",
         ]);
-        messagesStore.createIndex("by-created-at", "createdAt");
-        messagesStore.createIndex("by-conversation-created-at", [
+        messagesStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
+          "createdAt",
+        ]);
+        messagesStore.createIndex("by-tenant-id-conversation-id-created-at", [
+          "tenantId",
           "conversationId",
           "createdAt",
         ]);
@@ -134,13 +139,13 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         paymentsStore.createIndex("by-id", "id", { unique: true });
         paymentsStore.createIndex("by-tenant-id", "tenantId");
-        paymentsStore.createIndex("by-conversation-id-tenant-id", [
-          "conversationId",
+        paymentsStore.createIndex("by-tenant-id-conversation-id-created-at", [
           "tenantId",
-        ]);
-        paymentsStore.createIndex("by-created-at", "createdAt");
-        paymentsStore.createIndex("by-conversation-created-at", [
           "conversationId",
+          "createdAt",
+        ]);
+        paymentsStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
           "createdAt",
         ]);
 
@@ -150,13 +155,13 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         handshakesStore.createIndex("by-id", "id", { unique: true });
         handshakesStore.createIndex("by-tenant-id", "tenantId");
-        handshakesStore.createIndex("by-conversation-id-tenant-id", [
-          "conversationId",
+        handshakesStore.createIndex("by-tenant-id-conversation-id-created-at", [
           "tenantId",
-        ]);
-        handshakesStore.createIndex("by-created-at", "createdAt");
-        handshakesStore.createIndex("by-conversation-created-at", [
           "conversationId",
+          "createdAt",
+        ]);
+        handshakesStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
           "createdAt",
         ]);
 
@@ -165,10 +170,17 @@ export const openDatabase = async (): Promise<KasiaDB> => {
           keyPath: "id",
         });
         conversationsStore.createIndex("by-tenant-id", "tenantId");
-        conversationsStore.createIndex("by-status", "status");
-        conversationsStore.createIndex("by-last-activity", "lastActivityAt");
+        conversationsStore.createIndex("by-tenant-id-status", [
+          "tenantId",
+          "status",
+        ]);
+        conversationsStore.createIndex("by-tenant-id-last-activity", [
+          "tenantId",
+          "lastActivityAt",
+        ]);
         conversationsStore.createIndex("by-contact-id", "contactId");
-        conversationsStore.createIndex("by-status-last-activity", [
+        conversationsStore.createIndex("by-tenant-id-status-last-activity", [
+          "tenantId",
           "status",
           "lastActivityAt",
         ]);
@@ -179,30 +191,37 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         decryptionTrialsStore.createIndex("by-id", "id", { unique: true });
         decryptionTrialsStore.createIndex("by-tenant-id", "tenantId");
-        decryptionTrialsStore.createIndex("by-timestamp", "timestamp");
+        decryptionTrialsStore.createIndex("by-tenant-id-timestamp", [
+          "tenantId",
+          "timestamp",
+        ]);
 
         // CONTACTS
         const contactsStore = db.createObjectStore("contacts", {
           keyPath: "id",
         });
         contactsStore.createIndex("by-tenant-id", "tenantId");
+        contactsStore.createIndex("by-tenant-id-timestamp", [
+          "tenantId",
+          "timestamp",
+        ]);
+
+        // SAVED HANDSHAKES
+        const savedHandshakesStore = db.createObjectStore("savedHandshakes", {
+          keyPath: "id",
+        });
+        savedHandshakesStore.createIndex("by-id", "id", { unique: true });
+        savedHandshakesStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
+          "createdAt",
+        ]);
 
         console.log("Database schema initiated to v1");
       }
 
       if (oldVersion <= 1) {
-        // SAVES HANDSHAKEs
-        const savedHandshakesStore = db.createObjectStore("savedHandshakes", {
-          keyPath: "id",
-        });
-        savedHandshakesStore.createIndex("by-id", "id", { unique: true });
-        savedHandshakesStore.createIndex(
-          "by-tenant-id-created-at",
-          ["tenantId", "createdAt"],
-          {}
-        );
-
-        console.log("Database schema migrated to v2");
+        // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
+        // add more if branching for each next version
       }
     },
   });

@@ -159,14 +159,14 @@ export class ConversationManagerService {
     }
   }
 
+  /**
+   * assumption: payload has been parse with this.parseHandshakePayload first
+   */
   public async processHandshake(
     senderAddress: string,
-    payloadString: string
+    payload: HandshakePayload
   ): Promise<unknown> {
     try {
-      const payload = this.parseHandshakePayload(payloadString);
-      this.validateHandshakePayload(payload);
-
       // STEP 1 – look up strictly by sender address only
       const existingConversationAndContactByAddress =
         this.getConversationWithContactByAddress(senderAddress);
@@ -419,7 +419,10 @@ export class ConversationManagerService {
 
       const jsonPart = parts.slice(3).join(":"); // Handle colons in JSON
       try {
-        return JSON.parse(jsonPart);
+        const payload: HandshakePayload = JSON.parse(jsonPart);
+        this.validateHandshakePayload(payload);
+
+        return payload;
       } catch {
         throw new Error("Invalid handshake JSON payload");
       }
@@ -427,7 +430,10 @@ export class ConversationManagerService {
 
     // ASSUME IT'S THE NEW FORMAT
     try {
-      return JSON.parse(payloadString);
+      const payload: HandshakePayload = JSON.parse(payloadString);
+      this.validateHandshakePayload(payload);
+
+      return payload;
     } catch {
       throw new Error("Invalid handshake JSON payload");
     }
@@ -527,6 +533,13 @@ export class ConversationManagerService {
         }
         throw error;
       });
+
+    conversation.myAlias = payload.alias;
+    conversation.lastActivityAt = new Date(payload.timestamp);
+
+    await this.repositories.conversationRepository.saveConversation(
+      conversation
+    );
 
     this.inMemorySyncronization(conversation, contact);
 

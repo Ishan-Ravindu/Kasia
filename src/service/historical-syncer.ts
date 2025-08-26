@@ -18,7 +18,10 @@ export class HistoricalSyncer {
   /**
    * Emits `initialLoadCompleted` when done
    */
-  async initialLoad(lastSavedHandshakeTimestamp: number): Promise<{
+  async initialLoad(
+    lastSavedHandshakeTimestamp: number,
+    lastHandshakeTimestamp: number
+  ): Promise<{
     receivedHandshakes: ({ __type: "received" } & HandshakeResponse)[];
     sentHandshakes: ({ __type: "sent" } & SelfStashResponse)[];
   }> {
@@ -33,7 +36,11 @@ export class HistoricalSyncer {
     // fetch all historical handhskaes for this address
     const [receivedHandshakes, sentHanshakes] = await Promise.all([
       getHandshakesByReceiver({
-        query: { address: this.address, limit: 100 },
+        query: {
+          address: this.address,
+          block_time: BigInt(lastHandshakeTimestamp),
+          limit: 100,
+        },
       }),
       this.fetchHistoricalSelfStashByOwner(
         this.address,

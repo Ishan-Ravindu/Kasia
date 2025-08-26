@@ -6,6 +6,9 @@ export type DbDecryptionTrial = {
    * @note tenantId is automatically added upon saving
    */
   id: string;
+
+  tenantId: string;
+  timestamp: Date;
 };
 
 export type DecryptionTrial = DbDecryptionTrial;
@@ -40,9 +43,13 @@ export class DecryptionTrialRepository {
   /**
    * @param decryptionTrial id of the transaction to mark as failed, `tenantId` is automatically added
    */
-  async saveDecryptionTrial(decryptionTrial: DecryptionTrial): Promise<string> {
+  async saveDecryptionTrial(
+    decryptionTrial: Omit<DecryptionTrial, "tenantId">
+  ): Promise<string> {
     return this.db.put("decryptionTrials", {
       id: `${this.tenantId}_${decryptionTrial.id}`,
+      tenantId: this.tenantId,
+      timestamp: decryptionTrial.timestamp,
     });
   }
 

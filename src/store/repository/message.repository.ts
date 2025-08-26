@@ -78,9 +78,9 @@ export class MessageRepository {
     conversationId: string
   ): Promise<Message[]> {
     return this.db
-      .getAllFromIndex("messages", "by-conversation-id-tenant-id", [
-        conversationId,
+      .getAllFromIndex("messages", "by-tenant-id-conversation-id", [
         this.tenantId,
+        conversationId,
       ])
       .then((dbMessages) => {
         return dbMessages.map((dbMessage) => {

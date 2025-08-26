@@ -67,15 +67,32 @@ export class HandshakeRepository {
     conversationId: string
   ): Promise<Handshake[]> {
     return this.db
-      .getAllFromIndex("handshakes", "by-conversation-id-tenant-id", [
-        conversationId,
+      .getAllFromIndex("handshakes", "by-tenant-id-conversation-id", [
         this.tenantId,
+        conversationId,
       ])
       .then((dbHandshakes) => {
         return dbHandshakes.map((dbHandshake) => {
           return this._dbHandshakeToHandshake(dbHandshake);
         });
       });
+  }
+
+  /**
+   * returns null in case there is no handshakes
+   */
+  async getLastDbHandshakesByCreatedAt(): Promise<DbHandshake | null> {
+    const cursor = await this.db
+      .transaction("handshakes", "readonly")
+      .objectStore("handshakes")
+      .index("by-tenant-id-created-at")
+      .openCursor(IDBKeyRange.upperBound([this.tenantId, new Date()]), "prev");
+
+    if (!cursor) {
+      return null;
+    }
+
+    return cursor.value;
   }
 
   async saveHandshake(handshake: Omit<Handshake, "tenantId">): Promise<void> {
