@@ -258,7 +258,13 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         );
         broadcastChannelsStore.createIndex("by-tenant-id", "tenantId");
 
-        console.log("Database schema created successfully with all indexes");
+        console.log("Database schema initiated to v1");
+      }
+
+      if (oldVersion <= 3) {
+        // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
+        // add more if branching for each next version
+        // BROADCAST CHANNELS
       }
     },
   });

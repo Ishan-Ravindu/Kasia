@@ -79,7 +79,7 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
             className="rounded-full bg-[var(--secondary-bg)]"
           />
           {/* overlay last 2 characters of address */}
-          <div className="absolute top-2.5 left-[11px] text-xs font-bold text-[var(--text-primary)]">
+          <div className="absolute top-2.5 left-[10px] text-xs font-bold text-[var(--text-primary)]">
             {message.senderAddress.slice(-2).toUpperCase()}
           </div>
         </div>
