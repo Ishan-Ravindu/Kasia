@@ -9,12 +9,12 @@ import {
   applyCustomColors,
   resetCustomColors,
 } from "./config/custom-theme-applier";
-import { useGlobalStore } from "./hooks/useGlobalStore";
+import { useOrchestrator } from "./hooks/useOrchestrator";
 
 const App: React.FC = () => {
   const networkStore = useNetworkStore();
   const { theme, getEffectiveTheme, customColors } = useUiStore();
-  const { connect } = useGlobalStore();
+  const { connect } = useOrchestrator();
   const isMobile = useIsMobile();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: this cause re-render issue

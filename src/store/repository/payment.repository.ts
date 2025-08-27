@@ -78,6 +78,23 @@ export class PaymentRepository {
       });
   }
 
+  /**
+   * returns null in case there is no payments
+   */
+  async getLastDbPaymentByCreatedAt(): Promise<DbPayment | null> {
+    const cursor = await this.db
+      .transaction("payments", "readonly")
+      .objectStore("payments")
+      .index("by-tenant-id-created-at")
+      .openCursor(IDBKeyRange.upperBound([this.tenantId, new Date()]), "prev");
+
+    if (!cursor) {
+      return null;
+    }
+
+    return cursor.value;
+  }
+
   async savePayment(payment: Omit<Payment, "tenantId">): Promise<void> {
     await this.db.put(
       "payments",

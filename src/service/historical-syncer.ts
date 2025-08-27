@@ -64,7 +64,11 @@ export class HistoricalSyncer {
     };
   }
 
-  async fetchHistoricalMessagesToAddress(from: string, alias: string) {
+  async fetchHistoricalMessagesToAddress(
+    from: string,
+    alias: string,
+    after?: number
+  ) {
     if (this.DISABLED) {
       console.log(
         "HistoricalSyncer: fetchHistoricalMessagesToAddress disabled"
@@ -80,6 +84,7 @@ export class HistoricalSyncer {
           .encode(alias)
           .reduce((acc, byte) => acc + byte.toString(16).padStart(2, "0"), ""),
         limit: 100,
+        block_time: after ? BigInt(after) : undefined,
       },
     });
 
@@ -91,7 +96,7 @@ export class HistoricalSyncer {
     return messages.data;
   }
 
-  async fetchHistoricalPaymentsFromAddress(from: string) {
+  async fetchHistoricalPaymentsFromAddress(from: string, after?: number) {
     if (this.DISABLED) {
       console.log(
         "HistoricalSyncer: fetchHistoricalPaymentsFromAddress disabled"
@@ -103,6 +108,7 @@ export class HistoricalSyncer {
       query: {
         address: from,
         limit: 100,
+        block_time: after ? BigInt(after) : undefined,
       },
     });
 

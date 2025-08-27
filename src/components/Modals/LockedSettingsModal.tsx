@@ -9,14 +9,14 @@ import { Shield } from "lucide-react";
 import { devMode } from "../../config/dev-mode";
 import { deleteDB } from "idb";
 import { useDBStore } from "../../store/db.store";
-import { useGlobalStore } from "../../hooks/useGlobalStore";
+import { useOrchestrator } from "../../hooks/useOrchestrator";
 
 export const LockedSettingsModal: React.FC = () => {
   const networkStore = useNetworkStore();
   const selectedNetwork = useNetworkStore((state) => state.network);
   const isConnected = useNetworkStore((state) => state.isConnected);
   const isConnecting = useNetworkStore((state) => state.isConnecting);
-  const { connect } = useGlobalStore();
+  const { connect } = useOrchestrator();
 
   const closeModal = useUiStore((s) => s.closeModal);
 

@@ -74,6 +74,23 @@ export class MessageRepository {
       });
   }
 
+  /**
+   * returns null in case there is no messages
+   */
+  async getLastDbMessageByCreatedAt(): Promise<DbMessage | null> {
+    const cursor = await this.db
+      .transaction("messages", "readonly")
+      .objectStore("messages")
+      .index("by-tenant-id-created-at")
+      .openCursor(IDBKeyRange.upperBound([this.tenantId, new Date()]), "prev");
+
+    if (!cursor) {
+      return null;
+    }
+
+    return cursor.value;
+  }
+
   async getMessagesByConversationId(
     conversationId: string
   ): Promise<Message[]> {

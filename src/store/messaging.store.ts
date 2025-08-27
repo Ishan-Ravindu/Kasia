@@ -45,6 +45,7 @@ import {
 import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 import { hexToString } from "../utils/format";
 import { RawResolvedKasiaTransaction } from "../service/block-processor-service";
+import { Repositories } from "./repository/db";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
@@ -129,7 +130,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
   const _fetchHistoricalForConversation = async (
     oooc: OneOnOneConversation,
     aliases: Set<string>,
-    myAddress: string
+    myAddress: string,
+    repositories: Repositories
   ): Promise<void> => {
     try {
       if (!_historicalSyncer) return;
@@ -148,15 +150,27 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         aliasesToFetch.add(oooc.conversation.theirAlias);
       }
 
+      // get last message&payment timestamp in parallel
+      const [lastMessageTimestamp, lastPaymentTimestamp] = await Promise.all([
+        await repositories.messageRepository
+          .getLastDbMessageByCreatedAt()
+          .then((v) => v?.createdAt.getTime() ?? 0),
+        await repositories.paymentRepository
+          .getLastDbPaymentByCreatedAt()
+          .then((v) => v?.createdAt.getTime() ?? 0),
+      ]);
+
       const [indexerPayments, indexerMessages] = await Promise.all([
         _historicalSyncer.fetchHistoricalPaymentsFromAddress(
-          oooc.contact.kaspaAddress
+          oooc.contact.kaspaAddress,
+          lastPaymentTimestamp
         ),
         Promise.allSettled(
           [...aliasesToFetch].map((alias) =>
             _historicalSyncer.fetchHistoricalMessagesToAddress(
               oooc.contact.kaspaAddress,
-              alias
+              alias,
+              lastMessageTimestamp
             )
           )
         ).then((results) => {
@@ -635,7 +649,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           return _fetchHistoricalForConversation(
             oooc,
             resolvedUnknownHandshakesAlisesForThisConversation,
-            address
+            address,
+            repositories
           );
         })
       );
@@ -1522,7 +1537,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       if (!manager) {
         throw new Error("Conversation manager not initialized");
       }
-      return await manager.processHandshake(senderAddress, payload);
+
+      const validatedPayload: HandshakePayload =
+        manager.parseHandshakePayload(payload);
+
+      return await manager.processHandshake(senderAddress, validatedPayload);
     },
     getActiveConversationsWithContacts: () => {
       const manager = g().conversationManager;
@@ -1701,7 +1720,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                 if (oooc.conversation.theirAlias) {
                   aliases.add(oooc.conversation.theirAlias);
                 }
-                await _fetchHistoricalForConversation(oooc, aliases, myAddress);
+                await _fetchHistoricalForConversation(
+                  oooc,
+                  aliases,
+                  myAddress,
+                  repositories
+                );
               }
             }
           } catch (e) {

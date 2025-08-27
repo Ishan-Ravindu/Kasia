@@ -9,8 +9,8 @@ import { Loader2 } from "lucide-react";
 import clsx from "clsx";
 import {
   StartSessionInvalidPasswordException,
-  useGlobalStore,
-} from "../../hooks/useGlobalStore";
+  useOrchestrator,
+} from "../../hooks/useOrchestrator";
 
 type UnlockWalletProps = {
   selectedWalletId: string | null;
@@ -36,7 +36,7 @@ export const Unlock = ({
 
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const { startSession } = useGlobalStore();
+  const { startSession } = useOrchestrator();
 
   const usePasswordRef = (node: HTMLInputElement | null) => {
     passwordRef.current = node;

@@ -6,7 +6,6 @@ import { useToastStore } from "../store/toast.store";
 import { useMessagingStore } from "../store/messaging.store";
 import { useDBStore } from "../store/db.store";
 import { UnlockedWallet } from "../types/wallet.type";
-import { SenderAndAcceptanceResolutionService } from "../service/sender-and-acceptance-resolution-service";
 import { useLiveStore } from "../store/live.store";
 
 export type ConnectOpts = {
@@ -28,7 +27,7 @@ export class StartSessionInvalidPasswordException extends Error {
   }
 }
 
-export const useGlobalStore = () => {
+export const useOrchestrator = () => {
   const networkStore = useNetworkStore();
   const walletStore = useWalletStore();
   const messagingStore = useMessagingStore();
