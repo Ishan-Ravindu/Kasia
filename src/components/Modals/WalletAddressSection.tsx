@@ -68,7 +68,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
 
   if (!address) return null;
   return (
-    <div className="relative">
+    <div className="relative my-2 sm:mx-2">
       <div className="mb-2">
         <strong>Address:</strong>
         <div className="address-actions my-1 flex flex-col items-center gap-2 sm:flex-row">
@@ -105,7 +105,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
               title="Copy address to clipboard"
               type="button"
               variant="primary"
-              className="flex h-14 w-full items-center justify-center p-0"
+              className="flex h-14 w-full items-center justify-center rounded-xl p-0"
             >
               <Copy className="h-8 w-8 sm:h-6 sm:w-6" />
             </Button>
@@ -114,7 +114,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
               title="Show QR code"
               type="button"
               variant="primary"
-              className="flex h-14 w-full items-center justify-center p-0"
+              className="flex h-14 w-full items-center justify-center rounded-xl p-0"
             >
               <QrCode className="h-8 w-8 sm:h-6 sm:w-6" />
             </Button>

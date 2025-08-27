@@ -3,6 +3,10 @@ import { FC, useCallback, useEffect, useState } from "react";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
+import {
+  HIGH_UTXO_THRESHOLD,
+  UTXO_MIN_COMPOUND_COUNT,
+} from "../../config/constants";
 
 type FrozenBalance = {
   matureUtxoCount: number;
@@ -12,10 +16,6 @@ type FrozenBalance = {
 type UtxoCompoundProps = {
   onFrozenBalanceChange?: (frozenBalance: FrozenBalance | null) => void;
 };
-
-// Constants
-const HIGH_UTXO_THRESHOLD = 40; // Threshold for showing high UTXO warning
-const UTXO_MIN_COUNT = 2;
 
 export const UtxoCompound: FC<UtxoCompoundProps> = ({
   onFrozenBalanceChange,
@@ -31,7 +31,8 @@ export const UtxoCompound: FC<UtxoCompoundProps> = ({
 
   const compoundNotNeeded =
     !balance?.matureUtxoCount ||
-    (balance?.matureUtxoCount && balance?.matureUtxoCount < UTXO_MIN_COUNT);
+    (balance?.matureUtxoCount &&
+      balance?.matureUtxoCount < UTXO_MIN_COMPOUND_COUNT);
 
   // notify parent whenever frozen balance changes
   useEffect(() => {
@@ -102,7 +103,7 @@ export const UtxoCompound: FC<UtxoCompoundProps> = ({
   if (compoundNotNeeded) return;
 
   return (
-    <div className="mt-1">
+    <div className="mt-4">
       <div className="mb-2">
         <h3 className="mb-1 text-center text-base font-semibold sm:text-left">
           Compound UTXOs

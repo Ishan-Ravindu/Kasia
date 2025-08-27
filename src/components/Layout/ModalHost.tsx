@@ -4,7 +4,7 @@ import { NewBroadcast } from "../Modals/NewBroadcast";
 import { Modal } from "../Common/modal";
 import { MessageBackup } from "../Modals/MessageBackup";
 import { WalletAddressSection } from "../Modals/WalletAddressSection";
-import { WalletInfo } from "../Modals/WalletInfo";
+import { Wallet } from "../Modals/Wallet";
 import { WalletSeedRetreiveDisplay } from "../Modals/WalletSeedRetreiveDisplay";
 import { WalletWithdrawal } from "../Modals/WalletWithdrawal";
 import { LockedSettingsModal } from "../Modals/LockedSettingsModal";
@@ -13,7 +13,6 @@ import { NewChatForm } from "../Modals/NewChatForm";
 import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
 import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
-import { useState } from "react";
 import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
@@ -77,7 +76,7 @@ export const ModalHost = () => {
       {/* Wallet Info Modal */}
       {modals.walletInfo && (
         <Modal onClose={() => closeModal("walletInfo")}>
-          <WalletInfo />
+          <Wallet />
         </Modal>
       )}
 

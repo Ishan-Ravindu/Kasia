@@ -388,7 +388,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={clsx(
                     "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-colors",
                     {
-                      "mx-2 min-w-14 flex-col items-center justify-center":
+                      "mx-1 min-w-14 flex-col items-center justify-center":
                         isMobile,
                       "w-full": !isMobile,
                       "text-primary border-primary border-b-2":
@@ -410,7 +410,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           {/* Content */}
           <div
-            className={clsx("flex-1 overflow-y-auto p-6", {
+            className={clsx("flex-1 overflow-y-auto p-1 sm:p-6", {
               "h-[calc(80vh-80px)]": isMobile,
             })}
           >
@@ -467,7 +467,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
                         </button>
                       )}
-
+                      {/* Change Wallet Name */}
+                      <button
+                        onClick={() => {
+                          onClose();
+                          openModal("seed");
+                        }}
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                      >
+                        <Key className="h-5 w-5" />
+                        <div className="text-left">
+                          <div className="text-sm font-medium">Seed Phrase</div>
+                          <div className="text-muted-foreground text-xs">
+                            View Your Wallets Seed Phrase
+                          </div>
+                        </div>
+                      </button>
                       {/* Delete All Messages */}
                       <button
                         onClick={() => {

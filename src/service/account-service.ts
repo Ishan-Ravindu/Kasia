@@ -852,7 +852,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       }, 10_000);
     });
   }
-    /*
+  /*
    * Check if broadcasts are enabled and we should process broadcast messages
    */
   private shouldProcessBroadcasts(): boolean {

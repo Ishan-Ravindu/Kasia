@@ -30,7 +30,6 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
   const openModal = useUiStore((s) => s.openModal);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const lockWallet = useWalletStore((s) => s.lock);
-  const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   return (
@@ -43,114 +42,40 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
       >
         {contactsCollapsed ? (
           <>
-            {/* wallet */}
-            <div
-              className="relative"
-              onMouseEnter={() =>
-                !isMobile && (setWalletMenuOpen(true), setSettingsOpen(false))
-              }
-              onMouseLeave={() => !isMobile && setWalletMenuOpen(false)}
-            >
-              <button
-                onClick={() => isMobile && setWalletMenuOpen((v) => !v)}
-                className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
-                aria-label="Wallet Operations"
-              >
-                <CreditCard className="h-5 w-5" />
-              </button>
-
-              {walletMenuOpen && (
-                <>
-                  {/* spacer bridge */}
-                  <div className="absolute bottom-full left-0 z-10 h-2 w-56" />
-                  <div
-                    className="border-primary-border absolute bottom-full left-0 z-10 mb-2 w-56 rounded border bg-[var(--primary-bg)] shadow-2xl shadow-(color:--button-primary)/30"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ul className="divide-primary-border divide-y">
-                      {/* Show Address */}
-                      <li
-                        onClick={() => {
-                          openModal("address");
-                          setWalletMenuOpen(false);
-                        }}
-                        className={clsx(
-                          "hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3",
-                          { "pointer-events-none opacity-50": !walletAddress }
-                        )}
-                      >
-                        <User className="h-5 w-5" />
-                        <span className="flex items-center text-sm">
-                          Show Address
-                          {!walletAddress && (
-                            <Loader2 className="ml-2 h-5 w-5 animate-spin text-gray-500" />
-                          )}
-                        </span>
-                      </li>
-
-                      {/* Wallet Info */}
-                      <li
-                        onClick={() => {
-                          openModal("walletInfo");
-                          setWalletMenuOpen(false);
-                        }}
-                        className={clsx(
-                          "hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3",
-                          { "pointer-events-none opacity-50": !walletAddress }
-                        )}
-                      >
-                        <Wallet className="h-5 w-5" />
-                        <span className="flex items-center text-sm">
-                          Wallet Info
-                          {!walletAddress && (
-                            <Loader2 className="ml-2 h-5 w-5 animate-spin text-gray-500" />
-                          )}
-                        </span>
-                      </li>
-
-                      {/* Withdraw */}
-                      <li
-                        onClick={() => {
-                          openModal("withdraw");
-                          setWalletMenuOpen(false);
-                        }}
-                        className="hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3"
-                      >
-                        <Wallet className="h-5 w-5" />
-                        <span className="text-sm">Withdraw Funds</span>
-                      </li>
-
-                      {/* Seed */}
-                      <li
-                        onClick={() => {
-                          openModal("seed");
-                          setWalletMenuOpen(false);
-                        }}
-                        className="hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3"
-                      >
-                        <Key className="h-5 w-5" />
-                        <span className="text-sm">View Seed Phrase</span>
-                      </li>
-                    </ul>
-                  </div>
-                </>
+            {/* address */}
+            <button
+              onClick={() => openModal("address")}
+              disabled={!walletAddress}
+              className={clsx(
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                { "pointer-events-none opacity-50": !walletAddress }
               )}
-            </div>
+              aria-label="Show Address"
+            >
+              <User className="h-5 w-5" />
+            </button>
+
+            {/* wallet */}
+            <button
+              onClick={() => openModal("walletInfo")}
+              disabled={!walletAddress}
+              className={clsx(
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                { "pointer-events-none opacity-50": !walletAddress }
+              )}
+              aria-label="Wallet Info"
+            >
+              <Wallet className="h-5 w-5" />
+            </button>
 
             {/* settings */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-              <SettingsModal
-                isOpen={showSettingsModal}
-                onClose={() => setShowSettingsModal(false)}
-              />
-            </div>
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
 
             {/* toggle pane */}
             <button
@@ -175,113 +100,39 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             </button>
 
             {/* settings */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-              <SettingsModal
-                isOpen={showSettingsModal}
-                onClose={() => setShowSettingsModal(false)}
-              />
-            </div>
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
 
             {/* wallet */}
-            <div
-              className="relative"
-              onMouseEnter={() =>
-                !isMobile && (setWalletMenuOpen(true), setSettingsOpen(false))
-              }
-              onMouseLeave={() => !isMobile && setWalletMenuOpen(false)}
-            >
-              <button
-                onClick={() => isMobile && setWalletMenuOpen((v) => !v)}
-                className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
-                aria-label="Wallet Operations"
-              >
-                <CreditCard className="h-5 w-5" />
-              </button>
-
-              {walletMenuOpen && (
-                <>
-                  {/* spacer bridge */}
-                  <div className="absolute bottom-full left-0 z-10 h-2 w-56" />
-                  <div
-                    className="border-primary-border absolute bottom-full left-0 z-10 mb-2 w-56 rounded border bg-[var(--primary-bg)] shadow-2xl shadow-(color:--button-primary)/30"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <ul className="divide-primary-border divide-y">
-                      {/* Show Address */}
-                      <li
-                        onClick={() => {
-                          openModal("address");
-                          setWalletMenuOpen(false);
-                        }}
-                        className={clsx(
-                          "hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3",
-                          { "pointer-events-none opacity-50": !walletAddress }
-                        )}
-                      >
-                        <User className="h-5 w-5" />
-                        <span className="flex items-center text-sm">
-                          Show Address
-                          {!walletAddress && (
-                            <Loader2 className="ml-2 h-5 w-5 animate-spin text-gray-500" />
-                          )}
-                        </span>
-                      </li>
-
-                      {/* Wallet Info */}
-                      <li
-                        onClick={() => {
-                          openModal("walletInfo");
-                          setWalletMenuOpen(false);
-                        }}
-                        className={clsx(
-                          "hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3",
-                          { "pointer-events-none opacity-50": !walletAddress }
-                        )}
-                      >
-                        <Wallet className="h-5 w-5" />
-                        <span className="flex items-center text-sm">
-                          Wallet Info
-                          {!walletAddress && (
-                            <Loader2 className="ml-2 h-5 w-5 animate-spin text-gray-500" />
-                          )}
-                        </span>
-                      </li>
-
-                      {/* Withdraw */}
-                      <li
-                        onClick={() => {
-                          openModal("withdraw");
-                          setWalletMenuOpen(false);
-                        }}
-                        className="hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3"
-                      >
-                        <Wallet className="h-5 w-5" />
-                        <span className="text-sm">Withdraw Funds</span>
-                      </li>
-
-                      {/* Seed */}
-                      <li
-                        onClick={() => {
-                          openModal("seed");
-                          setWalletMenuOpen(false);
-                        }}
-                        className="hover:bg-secondary-bg flex cursor-pointer items-center gap-2 px-4 py-3"
-                      >
-                        <Key className="h-5 w-5" />
-                        <span className="text-sm">View Seed Phrase</span>
-                      </li>
-                    </ul>
-                  </div>
-                </>
+            <button
+              onClick={() => openModal("walletInfo")}
+              disabled={!walletAddress}
+              className={clsx(
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                { "pointer-events-none opacity-50": !walletAddress }
               )}
-            </div>
+              aria-label="Wallet Info"
+            >
+              <Wallet className="h-5 w-5" />
+            </button>
+
+            {/* address */}
+            <button
+              onClick={() => openModal("address")}
+              disabled={!walletAddress}
+              className={clsx(
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                { "pointer-events-none opacity-50": !walletAddress }
+              )}
+              aria-label="Show Address"
+            >
+              <User className="h-5 w-5" />
+            </button>
           </>
         )}
       </div>
@@ -301,12 +152,17 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
           )}
           aria-label="Sign out"
         >
-          <ArrowLeft className="h-5 w-5 text-red-500" />
+          <ArrowLeft className="h-5 w-5 text-[var(--accent-red)]" />
           {!contactsCollapsed && (
-            <span className="text-sm text-red-500">Sign out</span>
+            <span className="text-sm text-[var(--accent-red)]">Sign out</span>
           )}
         </button>
       </div>
+
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   );
 };
