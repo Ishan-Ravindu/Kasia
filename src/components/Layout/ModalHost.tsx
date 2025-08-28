@@ -48,7 +48,7 @@ export const ModalHost = () => {
 
       {/* View Image */}
       {modals.image && (
-        <Modal onClose={() => closeModal("image")}>
+        <Modal className="!w-fit" onClose={() => closeModal("image")}>
           <ImagePresenter />
         </Modal>
       )}

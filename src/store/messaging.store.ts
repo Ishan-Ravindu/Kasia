@@ -1030,8 +1030,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           ) {
             continue;
           }
-
-          const decryptedContent = transaction.content.split(":")[1];
+          const decryptedContent = transaction.content.substring(
+            transaction.content.indexOf(":") + 1
+          );
 
           const message: Message = {
             __type: "message",
