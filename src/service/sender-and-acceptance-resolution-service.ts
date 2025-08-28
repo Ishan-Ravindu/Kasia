@@ -120,12 +120,8 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
   private async processWaitingQueue() {
     if (this.waitingQueue.size > 0) {
       for (const [txId, waitingContext] of this.waitingQueue) {
-        console.log("try to process:" + txId);
         const acceptingBlock = this.acceptingBlockByTransactionId[txId];
         if (acceptingBlock) {
-          console.log(
-            "try to process:" + txId + " with accepting block:" + acceptingBlock
-          );
           const blockResponse = await this.rpcClient.getBlock({
             hash: acceptingBlock,
             includeTransactions: false,
@@ -142,7 +138,7 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
               txid: txId,
               acceptingBlockDaaScore: blockResponse.block.header.daaScore,
             })
-            .catch((_error) => {
+            .catch(() => {
               return null;
             });
 
