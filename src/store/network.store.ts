@@ -33,6 +33,22 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
   const initialNodeUrl =
     localStorage.getItem(`kasia_node_url_${initialNetwork}`) ?? null;
 
+  const onConnectionLost = async () => {
+    const { rpc, connect } = g();
+
+    // remove auto-reconnect
+    rpc.removeEventListener("disconnect", onConnectionLost);
+
+    console.warn("RPC connection lost. Attempting to reconnect...");
+
+    try {
+      await connect();
+      console.log("Reconnected successfully.");
+    } catch (error) {
+      console.error("Failed to reconnect:", error);
+    }
+  };
+
   return {
     isConnected: false,
     isConnecting: false,
@@ -72,6 +88,9 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
           url: g().nodeUrl ?? undefined,
         });
 
+        // register auto-reconnect
+        rpc.addEventListener("disconnect", onConnectionLost);
+
         // persist the nodeUrl uppon successful connection
         if (g().nodeUrl) {
           localStorage.setItem(
@@ -99,6 +118,9 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
     async disconnect() {
       const rpc = g().rpc;
       if (rpc.isConnected) {
+        // remove auto-reconnect as this is an explicit disconnection
+        rpc.removeEventListener("disconnect", onConnectionLost);
+
         await rpc.disconnect();
         set({ isConnected: false });
       }

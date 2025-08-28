@@ -36,10 +36,6 @@ export const useOrchestrator = () => {
 
   const toastStore = useToastStore();
 
-  const disconnect = async () => {
-    return networkStore.disconnect();
-  };
-
   const connect = async (opts?: ConnectOpts) => {
     const baseNetwork = networkStore.network;
 
