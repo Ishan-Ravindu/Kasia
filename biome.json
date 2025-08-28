@@ -7,5 +7,12 @@
       "!**/dist/**"
     ],
     "ignoreUnknown": true
+  },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "useUniqueElementIds": "off"
+      }
+    }
   }
 }

@@ -321,6 +321,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       // 0. trigger lazy loading of historical handshakes
 
+      console.log(
+        "Loading Strategy - Getting last saved handshake and handshake..."
+      );
       // get last date of handshakes
       const lastSavedHanshake =
         await repositories.savedHandshakeRepository.getLastSavedHandshakesByCreatedAt();
@@ -341,16 +344,24 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         lastHandshakeTimestamp
       );
 
+      console.log("Loading Strategy - Initializing Conversation Manager");
+
       // 1. initialize conversation manager that hydrate conversation with contacts
       await _initializeConversationManager(address);
 
+      console.log("Loading Strategy - Hydrading OOC");
+
       // 2. hydrate events on these loaded conversations, this load in memory one on one conversation
       await g().hydrateOneonOneConversations();
+
+      console.log("Loading Strategy - Waiting for histical upsteam response");
 
       // 3. process historical saved handshakes (that were lazily loaded), this will create new conversations locally if needed
       //   AND
       // 4. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
       const handshakeReponses = await getHistoricalHandshakes();
+
+      console.log("Loading Strategy - Processing Handshake from upstream");
 
       const unlockedWallet = useWalletStore.getState().unlockedWallet;
       if (!unlockedWallet) {
@@ -619,7 +630,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       await Promise.all([...uniqueSenderAddresses].map(processOneSender));
 
-      console.log("handshake history reconciliation loaded");
+      console.log("Loading Strategy - handshake history reconciliation loaded");
 
       set({
         oneOnOneConversations: Array.from(ooocsByAddress.values()),

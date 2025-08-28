@@ -10,8 +10,8 @@ import {
   kaspaToSompi,
   PrivateKeyGenerator,
   Generator,
+  RpcClient,
 } from "kaspa-wasm";
-import { KaspaClient } from "./kaspa-client";
 import { encrypt_message } from "cipher";
 import { PriorityFeeConfig } from "../types/all";
 import { UnlockedWallet } from "../types/wallet.type";
@@ -96,20 +96,16 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   private password: string | null = null;
 
   constructor(
-    private readonly rpcClient: KaspaClient,
+    private readonly rpc: RpcClient,
     private readonly unlockedWallet: UnlockedWallet
   ) {
     super();
 
-    if (!rpcClient.rpc) {
-      throw new Error("RPC client is not initialized");
-    }
-
-    this.networkId = rpcClient.networkId;
+    this.networkId = rpc.networkId?.toString() ?? "mainnet";
 
     this.processor = new UtxoProcessor({
       networkId: this.networkId,
-      rpc: rpcClient.rpc,
+      rpc: rpc,
     });
     this.context = new UtxoContext({ processor: this.processor });
 
@@ -119,19 +115,17 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 
-  private get rpc() {
-    if (!this.rpcClient.rpc) throw new Error("RPC client is not initialized");
-    return this.rpcClient.rpc;
-  }
   private get recv(): Address {
     if (!this.receiveAddress)
       throw new Error("Receive address not initialized");
     return this.receiveAddress;
   }
+
   private get ctx(): UtxoContext {
     if (!this.context) throw new Error("UTXO context not initialized");
     return this.context;
   }
+
   private get pwd(): string {
     if (!this.password)
       throw new Error("Password not set - cannot perform operation");
@@ -142,8 +136,13 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     receiveAddress: Address;
     context: UtxoContext;
   } {
-    if (!this.isStarted || !this.rpcClient.rpc)
+    if (!this.isStarted || !this.rpc)
       throw new Error("Account service is not started");
+    if (!this.rpc.isConnected) {
+      throw new Error(
+        "Network is not connect, refresh the page if the problem persist"
+      );
+    }
     if (!this.receiveAddress)
       throw new Error("Receive address not initialized");
     if (!this.context) throw new Error("UTXO context not initialized");

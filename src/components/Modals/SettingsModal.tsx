@@ -237,7 +237,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsChangingName(true);
 
     try {
-      await changeWalletName(selectedWalletId, newWalletName.trim());
+      changeWalletName(selectedWalletId, newWalletName.trim());
       setNameChangeSuccess(true);
       setNewWalletName("");
 
@@ -918,7 +918,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="mt-4 space-y-6 sm:mt-0"></div>
                 <h3 className="mb-4 text-lg font-medium">Development Mode</h3>
 
-                <Button onClick={sendSelfStash}>Trigger Send Self Stash</Button>
+                <div className="my-2">
+                  <h4>Protocol:</h4>
+                  <Button onClick={sendSelfStash}>
+                    Trigger Send Self Stash
+                  </Button>
+                </div>
+
+                <div className="my-2">
+                  <h4>Network:</h4>
+                  <p>isConnected: {networkStore.isConnected ? "yes" : "no"}</p>
+                  <p>url: {networkStore.nodeUrl} </p>
+                  <p>network: {networkStore.network}</p>
+
+                  <div className="my-1 flex gap-2">
+                    <Button onClick={() => networkStore.connect()}>
+                      Connect
+                    </Button>
+                    <Button onClick={() => networkStore.disconnect()}>
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
               </>
             ) : null}
           </div>
