@@ -99,8 +99,6 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
       }
     );
 
-    // TODO: error in resolution promise means error being passed here?
-    // if so, need to delete element from waiting queue in that case too.
     const raceResult = await Promise.race<
       [Promise<"timeout">, Promise<ResolvedKasiaTransaction>]
     >([
