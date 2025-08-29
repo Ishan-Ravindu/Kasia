@@ -49,17 +49,6 @@ export interface WalletStoreSendTransactionArgs {
   priorityFee?: PriorityFeeConfig;
 }
 
-export interface WalletStoreSendTransactionArgs {
-  /**
-   * payload to use for the transaction, if encryption is required, it should be encrypted before passing it here
-   */
-  payload?: string;
-  toAddress: Address;
-  password: string;
-  customAmount?: bigint;
-  priorityFee?: PriorityFeeConfig;
-}
-
 type WalletState = {
   wallets: {
     id: string;

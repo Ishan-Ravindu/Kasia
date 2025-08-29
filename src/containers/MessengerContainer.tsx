@@ -4,13 +4,13 @@ import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
 import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
-import { unknownErrorToErrorLike } from "../utils/errors";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { SidebarSection } from "../components/SideBarPane/SidebarSection";
 import { MessageSection } from "../components/MessagesPane/MessagesSection";
 import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
 import { Contact } from "../store/repository/contact.repository";
 import { useBroadcastStore } from "../store/broadcast.store";
+import { useComposerStore } from "../store/message-composer.store";
 
 export const MessengerContainer: FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export const MessengerContainer: FC = () => {
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
   const { isBroadcastMode } = useBroadcastStore();
+  const setAttachment = useComposerStore((s) => s.setAttachment);
 
   const isMobile = useIsMobile();
   const { closeAllModals } = useUiStore();
@@ -89,24 +90,11 @@ export const MessengerContainer: FC = () => {
       closeAllModals();
 
       messageStore.setOpenedRecipient(null);
+
+      // clear any attachments
+      setAttachment(null);
     };
   }, []);
-
-  const onNewChatClicked = useCallback(async () => {
-    try {
-      if (!walletStore.unlockedWallet?.password) {
-        setErrorMessage("Please unlock your wallet first");
-        return;
-      }
-
-      messageStore.setIsCreatingNewChat(true);
-    } catch (error) {
-      console.error("Failed to start new chat:", error);
-      setErrorMessage(
-        `Failed to start new chat: ${unknownErrorToErrorLike(error)}`
-      );
-    }
-  }, [walletStore.unlockedWallet, messageStore]);
 
   useEffect(() => {
     if (

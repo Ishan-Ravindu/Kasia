@@ -53,16 +53,7 @@ import {
   exportData,
   importData,
 } from "../service/import-export-service";
-
-// Helper function to determine network type from address
-function getNetworkTypeFromAddress(address: string): NetworkType {
-  if (address.startsWith("kaspatest:")) {
-    return NetworkType.Testnet;
-  } else if (address.startsWith("kaspadev:")) {
-    return NetworkType.Devnet;
-  }
-  return NetworkType.Mainnet;
-}
+import { getNetworkTypeFromAddress } from "../utils/network";
 
 interface MessagingState {
   isLoaded: boolean;

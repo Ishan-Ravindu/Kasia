@@ -52,10 +52,6 @@ type UiState = {
   oneOnOneConversation: OneOnOneConversation | null;
   setOneOnOneConversation: (oooc: OneOnOneConversation | null) => void;
 
-  // Warn Costy Send Message Modal callback
-  sendMessageCallback: (() => void) | null;
-  setSendMessageCallback: (callback: (() => void) | null) => void;
-
   // image presenter content
   imagePresenterImage: string | null;
   setImagePresenterImage: (image: string | null) => void;
@@ -206,10 +202,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   // Contact Info Modal state
   oneOnOneConversation: null,
   setOneOnOneConversation: (c) => set({ oneOnOneConversation: c }),
-
-  // Warn Costy Send Message Modal callback
-  sendMessageCallback: null,
-  setSendMessageCallback: (callback) => set({ sendMessageCallback: callback }),
 
   // image presenter content
   imagePresenterImage: null,
