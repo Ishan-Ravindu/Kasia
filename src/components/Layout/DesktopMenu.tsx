@@ -1,15 +1,6 @@
 import { FC, useState } from "react";
 import clsx from "clsx";
-import {
-  PanelLeftOpen,
-  Settings,
-  CreditCard,
-  ArrowLeft,
-  User,
-  Loader2,
-  Key,
-  Wallet,
-} from "lucide-react";
+import { PanelLeftOpen, Settings, ArrowLeft, User, Wallet } from "lucide-react";
 import { SettingsModal } from "../Modals/SettingsModal";
 import { useUiStore } from "../../store/ui.store";
 import { useWalletStore } from "../../store/wallet.store";
@@ -24,11 +15,9 @@ interface DesktopMenuProps {
 export const DesktopMenu: FC<DesktopMenuProps> = ({
   contactsCollapsed,
   setContactsCollapsed,
-  isMobile,
   walletAddress,
 }) => {
   const openModal = useUiStore((s) => s.openModal);
-  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const lockWallet = useWalletStore((s) => s.lock);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
@@ -47,7 +36,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("address")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Show Address"
@@ -60,7 +49,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("walletInfo")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Wallet Info"
@@ -71,7 +60,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* settings */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
               aria-label="Settings"
             >
               <Settings className="h-5 w-5" />
@@ -80,7 +69,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* toggle pane */}
             <button
               aria-label="toggle contacts pane"
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)]"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] active:scale-90 active:opacity-80"
               onClick={() => setContactsCollapsed(!contactsCollapsed)}
             >
               <PanelLeftOpen
@@ -93,7 +82,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* toggle pane */}
             <button
               aria-label="toggle contacts pane"
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)]"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] active:scale-90 active:opacity-80"
               onClick={() => setContactsCollapsed(!contactsCollapsed)}
             >
               <PanelLeftOpen className="size-5" />
@@ -102,7 +91,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* settings */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
               aria-label="Settings"
             >
               <Settings className="h-5 w-5" />
@@ -113,7 +102,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("walletInfo")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Wallet Info"
@@ -126,7 +115,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("address")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Show Address"
@@ -147,7 +136,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
         <button
           onClick={lockWallet}
           className={clsx(
-            "hover:bg-primary-bg/50 flex w-full cursor-pointer items-center gap-2 rounded p-2 focus:outline-none",
+            "hover:bg-primary-bg/50 flex w-full cursor-pointer items-center gap-2 rounded p-2 focus:outline-none active:scale-90 active:opacity-80",
             contactsCollapsed ? "flex-col" : "flex-row"
           )}
           aria-label="Sign out"

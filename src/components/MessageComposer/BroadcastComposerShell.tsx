@@ -82,7 +82,7 @@ export const BroadcastComposerShell = ({
                 <button
                   onClick={onSend}
                   className={clsx(
-                    "absolute flex h-6 w-6 cursor-pointer items-center justify-center text-[var(--button-primary)] transition-all duration-200 ease-in-out hover:text-[var(--button-primary)]/80",
+                    "absolute flex h-6 w-6 cursor-pointer items-center justify-center text-[var(--button-primary)] transition-all duration-200 ease-in-out hover:text-[var(--button-primary)]/80 active:scale-90 active:opacity-80",
                     draft.trim()
                       ? "pointer-events-auto translate-x-0 opacity-100"
                       : "pointer-events-none translate-x-4 opacity-0"

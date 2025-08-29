@@ -28,7 +28,7 @@ export const ImageView: FC<ImageViewProps> = ({ data, position }) => {
   return (
     <div className={`${containerClass} flex items-center`}>
       <button
-        className="cursor-pointer opacity-80 transition-opacity hover:opacity-100"
+        className="cursor-pointer opacity-80 transition-opacity hover:text-[var(--kas-primary)] active:scale-90 active:opacity-60"
         onClick={handleImageClick}
       >
         <ScanEye className="size-6" />

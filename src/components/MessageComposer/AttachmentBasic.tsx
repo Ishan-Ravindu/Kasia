@@ -31,7 +31,7 @@ export const AttachmentBasic = () => {
                 className="block max-h-[120px] max-w-[200px] flex-1 rounded-lg object-contain"
               />
             ) : (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm active:scale-90 active:opacity-80">
                 <Paperclip className="h-4 w-4" />
                 {attachment.name} (
                 {((JSON.parse(attachment.content).size || 0) / 1024).toFixed(2)}
@@ -40,7 +40,7 @@ export const AttachmentBasic = () => {
             )}
             <button
               onClick={removeAttachment}
-              className="flex-shrink-0 cursor-pointer rounded-full p-1 text-[var(--accent-red)] transition-colors duration-200 hover:text-[var(--accent-red)]/80"
+              className="flex-shrink-0 cursor-pointer rounded-full p-1 text-[var(--accent-red)] transition-colors duration-200 hover:text-[var(--accent-red)]/80 active:scale-90 active:opacity-80"
               title="Remove attachment"
             >
               <Trash2 className="size-6" />

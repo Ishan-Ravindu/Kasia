@@ -32,7 +32,7 @@ export const ContactMenu: React.FC<ContactMenuProps> = ({
     <Popover className="relative">
       {({ close }) => (
         <>
-          <PopoverButton className="translate-y-[1.5px] transform cursor-pointer rounded p-2 text-[var(--button-primary)] hover:bg-[var(--primary-bg)] hover:opacity-90 focus:outline-none">
+          <PopoverButton className="translate-y-[1.5px] transform cursor-pointer rounded p-2 text-[var(--button-primary)] hover:bg-[var(--primary-bg)] hover:opacity-90 focus:outline-none data-[active]:scale-90 data-[active]:opacity-80">
             <UserCog className="size-6 sm:size-5" />
           </PopoverButton>
           <PopoverPanel
@@ -46,7 +46,7 @@ export const ContactMenu: React.FC<ContactMenuProps> = ({
                   openModal("contact-info-modal");
                   close();
                 }}
-                className="focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)]"
+                className="focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)] active:scale-90 active:opacity-80"
               >
                 <Info className="h-4 w-4" /> Contact Info
               </button>
@@ -62,7 +62,7 @@ export const ContactMenu: React.FC<ContactMenuProps> = ({
                   setTimeout(() => setIsCopying(false), 1000);
                 }}
                 className={clsx(
-                  "flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 transition duration-300",
+                  "flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 transition duration-300 active:scale-90 active:opacity-80",
                   {
                     "bg-kas-secondary text-white": isCopying,
                     "focus:bg-secondary-bg active:bg-secondary-bg text-[var(--text-primary)] hover:bg-[var(--kas-primary)]":
@@ -84,7 +84,7 @@ export const ContactMenu: React.FC<ContactMenuProps> = ({
                   setPopoverEditValue(oneOnOneConversation?.contact.name || "");
                 }}
                 className={clsx(
-                  "focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)]",
+                  "focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)] active:scale-90 active:opacity-80",
                   { hidden: isEditingInPopover }
                 )}
               >

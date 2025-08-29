@@ -21,7 +21,7 @@ export const ExplorerLink: FC<ExplorerLinkProps> = ({
         href={getExplorerUrl(transactionId, network)}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs opacity-80 transition-opacity hover:opacity-100"
+        className="text-xs opacity-80 transition-opacity hover:text-[var(--kas-primary)] active:scale-90 active:opacity-60"
       >
         <Tickets className="size-5" />
       </a>

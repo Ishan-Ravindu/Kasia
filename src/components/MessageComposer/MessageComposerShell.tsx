@@ -185,7 +185,7 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
             <Popover className="relative">
               {({ close }) => (
                 <>
-                  <PopoverButton className="rounded p-1 hover:bg-white/5">
+                  <PopoverButton className="rounded p-1 hover:bg-white/5 active:scale-90 active:opacity-80">
                     <Plus className="size-6 cursor-pointer text-[var(--button-primary)]" />
                   </PopoverButton>
                   <Transition
@@ -202,7 +202,7 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
                           openFileDialog();
                           close();
                         }}
-                        className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-white/5"
+                        className="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-white/5 active:scale-90 active:opacity-80"
                       >
                         <Paperclip className="m-2 size-5" />
                       </button>
@@ -240,7 +240,7 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
                 <button
                   onClick={onSend}
                   className={clsx(
-                    "absolute flex h-6 w-6 cursor-pointer items-center justify-center text-[var(--button-primary)] transition-all duration-200 ease-in-out hover:text-[var(--button-primary)]/80",
+                    "absolute flex h-6 w-6 cursor-pointer items-center justify-center text-[var(--button-primary)] transition-all duration-200 ease-in-out hover:text-[var(--button-primary)]/80 active:scale-90 active:opacity-80",
                     draft.trim() || attachment
                       ? "pointer-events-auto translate-x-0 opacity-100"
                       : "pointer-events-none translate-x-4 opacity-0"
@@ -253,7 +253,7 @@ export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
                   <button
                     onClick={openCameraDialog}
                     className={clsx(
-                      "absolute flex h-6 w-6 cursor-pointer items-center justify-center text-[var(--button-primary)] transition-all duration-200 ease-in-out hover:text-[var(--button-primary)]/80",
+                      "absolute flex h-6 w-6 cursor-pointer items-center justify-center text-[var(--button-primary)] transition-all duration-200 ease-in-out hover:text-[var(--button-primary)]/80 active:scale-90 active:opacity-80",
                       !draft.trim() && !attachment
                         ? "pointer-events-auto translate-x-0 opacity-100"
                         : "pointer-events-none -translate-x-4 opacity-0"

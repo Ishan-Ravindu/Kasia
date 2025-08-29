@@ -41,7 +41,7 @@ export const ModeSelector: FC<ModeSelectorProps> = ({
 
   return (
     <Menu>
-      <MenuButton className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-3xl px-3 py-0.5 text-sm font-medium text-[var(--kas-primary)] transition-colors duration-200 hover:opacity-80">
+      <MenuButton className="text-text-primary inline-flex cursor-pointer items-center justify-center gap-2 rounded-3xl px-3 py-0.5 text-sm font-medium transition-colors duration-200 hover:text-[var(--kas-primary)] active:scale-90 active:opacity-80">
         {modeIcon}
       </MenuButton>
       <MenuItems

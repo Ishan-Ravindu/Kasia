@@ -80,8 +80,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
               </button>
             )}
             <div className="relative flex-1">
-              <Search
-                className="hover:text-kas-primary hover:bg-primary-bg/50 absolute top-1/2 left-3 z-10 size-7 -translate-y-1/2 cursor-pointer rounded p-1 focus:outline-none"
+              <button
                 onClick={() => {
                   if (searchQuery.length > 0) {
                     setSearchQuery("");
@@ -90,7 +89,11 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
                     setShowSearch(!showSearch);
                   }
                 }}
-              />
+                className="hover:text-kas-primary hover:bg-primary-bg/50 absolute top-1/2 left-1 z-10 size-7 -translate-y-[15px] cursor-pointer rounded p-1 focus:outline-none active:scale-90 active:opacity-80"
+                aria-label="Toggle search"
+              >
+                <Search className="size-6" />
+              </button>
               <input
                 type="text"
                 placeholder={
@@ -108,7 +111,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute top-1/2 right-3 z-10 h-4 w-4 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600"
+                  className="absolute top-1/2 right-3 z-10 h-4 w-4 -translate-y-[15px] cursor-pointer text-gray-400 hover:text-gray-600"
                   aria-label="Clear search"
                 >
                   <X className="h-4 w-4" />
@@ -124,7 +127,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
             )}
             <button
               aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-1 hover:text-[var(--kas-primary)] focus:outline-none"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-1 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
               onClick={onNewChatClicked}
             >
               <Plus className="size-6" />
@@ -135,7 +138,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
           <div className="flex flex-1 justify-center">
             <button
               aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded hover:text-[var(--kas-primary)] focus:outline-none"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
               onClick={onNewChatClicked}
             >
               <Plus className="size-6" />
