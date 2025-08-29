@@ -1,18 +1,17 @@
 import { FC, useMemo, useEffect, useState, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
-import { Pencil, Info, Copy, Check, UserCog } from "lucide-react";
+
 import { FetchApiMessages } from "../FetchApiMessages";
 import { MessagesList } from "../MessageDisplay/MessagesList";
 import { MessageComposerShell } from "../MessageComposer/MessageComposerShell";
 import { useMessagingStore } from "../../store/messaging.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { KaspaAddress } from "../KaspaAddress";
-import clsx from "clsx";
+
 import { useIsMobile } from "../../hooks/useIsMobile";
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
-import { EditNicknamePopover } from "../EditNicknamePopover";
+import { ContactMenu } from "../ContactMenu";
 import { useUiStore } from "../../store/ui.store";
-import { copyToClipboard } from "../../utils/copy-to-clipboard";
+
 import { Contact } from "../../store/repository/contact.repository";
 import { Button } from "../Common/Button";
 
@@ -54,11 +53,6 @@ export const MessageSection: FC<{
   // Nickname editing state
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [tempNickname, setTempNickname] = useState("");
-
-  const [isEditingInPopover, setIsEditingInPopover] = useState(false);
-  const [popoverEditValue, setPopoverEditValue] = useState(
-    oneOnOneConversation?.contact.name || ""
-  );
 
   // Nickname editing handlers
   const handleNicknameSave = () => {
@@ -177,14 +171,6 @@ export const MessageSection: FC<{
       ? nickname.slice(0, maxLength - 3) + "..."
       : nickname;
   }
-
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const [isCopying, setIsCopying] = useState(false);
-
-  // reset nickname editing when popover closes
-  useEffect(() => {
-    if (!popoverOpen) setIsEditingInPopover(false);
-  }, [popoverOpen]);
 
   const openModal = useUiStore((state) => state.openModal);
   const setOneOnOneConversation = useUiStore((s) => s.setOneOnOneConversation);
@@ -320,104 +306,13 @@ export const MessageSection: FC<{
                 ) : (
                   <KaspaAddress address={openedRecipient ?? ""} />
                 )}
-                <Popover className="relative">
-                  {({ open, close }) => {
-                    // Only update state if it actually changed, and never in render
-                    if (open !== popoverOpen) {
-                      // Use a microtask to avoid updating state during render
-                      Promise.resolve().then(() => setPopoverOpen(open));
-                    }
-                    return (
-                      <>
-                        <PopoverButton className="translate-y-[1.5px] transform cursor-pointer rounded p-2 text-[var(--button-primary)] hover:bg-[var(--primary-bg)] hover:opacity-90 focus:outline-none">
-                          <UserCog className="size-6 sm:size-5" />
-                        </PopoverButton>
-                        <PopoverPanel
-                          anchor="bottom end"
-                          className="absolute right-0 z-10 mt-2 w-48 rounded bg-[var(--primary-bg)] shadow-2xl ring-1 shadow-(color:--button-primary)/30 ring-[var(--primary-border)]"
-                        >
-                          <div className="flex flex-col">
-                            <button
-                              onClick={() => {
-                                setOneOnOneConversation(
-                                  oneOnOneConversation ?? null
-                                );
-                                openModal("contact-info-modal");
-                              }}
-                              className="focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)]"
-                            >
-                              <Info className="h-4 w-4" /> Contact Info
-                            </button>
-                            <button
-                              onClick={() => {
-                                copyToClipboard(
-                                  oneOnOneConversation.contact.kaspaAddress ??
-                                    openedRecipient ??
-                                    "",
-                                  "Address Copied"
-                                );
-                                setIsCopying(true);
-                                setTimeout(() => setIsCopying(false), 1000);
-                              }}
-                              className={clsx(
-                                "flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 transition duration-300",
-                                {
-                                  "bg-kas-secondary text-white": isCopying,
-                                  "focus:bg-secondary-bg active:bg-secondary-bg text-[var(--text-primary)] hover:bg-[var(--kas-primary)]":
-                                    !isCopying,
-                                }
-                              )}
-                              title="Copy Address"
-                            >
-                              {isCopying ? (
-                                <Check className="h-4 w-4 text-white" />
-                              ) : (
-                                <Copy className="h-4 w-4 text-[var(--text-primary)]" />
-                              )}
-                              Copy Address
-                            </button>
-                            <button
-                              onClick={() => {
-                                setIsEditingInPopover(true);
-                                setPopoverEditValue(
-                                  oneOnOneConversation.contact.name || ""
-                                );
-                              }}
-                              className={clsx(
-                                "focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)]",
-                                { hidden: isEditingInPopover }
-                              )}
-                            >
-                              <Pencil className="h-4 w-4" /> Edit Nickname
-                            </button>
-                            {isEditingInPopover && (
-                              <EditNicknamePopover
-                                value={popoverEditValue}
-                                placeholder={
-                                  oneOnOneConversation.contact.name ||
-                                  oneOnOneConversation.contact.kaspaAddress ||
-                                  ""
-                                }
-                                onChange={setPopoverEditValue}
-                                onSave={() => {
-                                  if (oneOnOneConversation) {
-                                    messageStore.setContactNickname(
-                                      oneOnOneConversation.contact.kaspaAddress,
-                                      popoverEditValue
-                                    );
-                                  }
-                                  setIsEditingInPopover(false);
-                                  close();
-                                }}
-                                onCancel={() => setIsEditingInPopover(false)}
-                              />
-                            )}
-                          </div>
-                        </PopoverPanel>
-                      </>
-                    );
-                  }}
-                </Popover>
+                <ContactMenu
+                  oneOnOneConversation={oneOnOneConversation}
+                  openedRecipient={openedRecipient}
+                  messageStore={messageStore}
+                  openModal={openModal}
+                  setOneOnOneConversation={setOneOnOneConversation}
+                />
               </h3>
             </div>
             {openedRecipient && (
