@@ -11,7 +11,7 @@ export const BroadcastSection: FC<{
   setMobileView: (v: "contacts" | "messages") => void;
 }> = ({ mobileView, setMobileView }) => {
   const isMobile = useIsMobile();
-  const { selectedChannelName, getMessagesForChannel, channels, messages } =
+  const { selectedChannelName, getMessagesForChannel, channels } =
     useBroadcastStore();
   const { address: walletAddress } = useWalletStore();
 
@@ -24,9 +24,7 @@ export const BroadcastSection: FC<{
 
   // get messages for the selected channel
   const channelMessages = selectedChannelName
-    ? messages
-        .filter((msg) => msg.channelName === selectedChannelName.toLowerCase())
-        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+    ? getMessagesForChannel(selectedChannelName)
     : [];
 
   // scroll to bottom when new messages arrive

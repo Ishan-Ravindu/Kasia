@@ -64,7 +64,7 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
       // add the channel to the store (this will save to db and update state)
       await addChannel(
         inputValue.trim(),
-        description.trim() || "New broadcast channel"
+        description.trim() || "Broadcast channel"
       );
       onClose();
     } catch (error) {

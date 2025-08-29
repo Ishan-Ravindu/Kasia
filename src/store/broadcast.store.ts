@@ -30,16 +30,6 @@ interface BroadcastState {
     status: "confirmed" | "failed",
     transactionId?: string
   ) => void;
-  updateMessageTransactionId: (
-    messageId: string,
-    transactionId: string
-  ) => void;
-  findPendingMessage: (
-    channelName: string,
-    content: string,
-    senderAddress: string,
-    timestamp: Date
-  ) => BroadcastMessage | undefined;
   findPendingMessageByTxId: (
     transactionId: string
   ) => BroadcastMessage | undefined;
@@ -183,33 +173,6 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     }));
   },
 
-  updateMessageTransactionId: (messageId: string, transactionId: string) => {
-    set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg.id === messageId ? { ...msg, transactionId } : msg
-      ),
-    }));
-  },
-
-  findPendingMessage: (
-    channelName: string,
-    content: string,
-    senderAddress: string,
-    timestamp: Date
-  ) => {
-    const state = get();
-    const timeWindow = 5 * 60 * 1000; // 5 minutes window for matching
-
-    return state.messages.find(
-      (msg) =>
-        msg.channelName === channelName.toLowerCase() &&
-        msg.content === content &&
-        msg.senderAddress === senderAddress &&
-        msg.status === "pending" &&
-        Math.abs(msg.timestamp.getTime() - timestamp.getTime()) < timeWindow
-    );
-  },
-
   findPendingMessageByTxId: (transactionId: string) => {
     const state = get();
     return state.messages.find(
@@ -224,6 +187,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   },
 
+  // unused - but we might use in the future (so remove this comment if you use it!)
   clearAllMessages: () => {
     set({ messages: [] });
   },
