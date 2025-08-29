@@ -329,7 +329,7 @@ export const MessageSection: FC<{
                     }
                     return (
                       <>
-                        <PopoverButton className="cursor-pointer rounded p-1 text-[var(--button-primary)] hover:scale-110 focus:outline-none">
+                        <PopoverButton className="translate-y-[1.5px] transform cursor-pointer rounded p-2 text-[var(--button-primary)] hover:bg-[var(--primary-bg)] hover:opacity-90 focus:outline-none">
                           <UserCog className="size-6 sm:size-5" />
                         </PopoverButton>
                         <PopoverPanel
@@ -337,6 +337,17 @@ export const MessageSection: FC<{
                           className="absolute right-0 z-10 mt-2 w-48 rounded bg-[var(--primary-bg)] shadow-2xl ring-1 shadow-(color:--button-primary)/30 ring-[var(--primary-border)]"
                         >
                           <div className="flex flex-col">
+                            <button
+                              onClick={() => {
+                                setOneOnOneConversation(
+                                  oneOnOneConversation ?? null
+                                );
+                                openModal("contact-info-modal");
+                              }}
+                              className="focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)]"
+                            >
+                              <Info className="h-4 w-4" /> Contact Info
+                            </button>
                             <button
                               onClick={() => {
                                 copyToClipboard(
@@ -352,7 +363,7 @@ export const MessageSection: FC<{
                                 "flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 transition duration-300",
                                 {
                                   "bg-kas-secondary text-white": isCopying,
-                                  "hover:bg-secondary-bg focus:bg-secondary-bg active:bg-secondary-bg text-[var(--text-primary)]":
+                                  "focus:bg-secondary-bg active:bg-secondary-bg text-[var(--text-primary)] hover:bg-[var(--kas-primary)]":
                                     !isCopying,
                                 }
                               )}
@@ -373,7 +384,7 @@ export const MessageSection: FC<{
                                 );
                               }}
                               className={clsx(
-                                "hover:bg-secondary-bg focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)]",
+                                "focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)] hover:bg-[var(--kas-primary)]",
                                 { hidden: isEditingInPopover }
                               )}
                             >
@@ -401,17 +412,6 @@ export const MessageSection: FC<{
                                 onCancel={() => setIsEditingInPopover(false)}
                               />
                             )}
-                            <button
-                              onClick={() => {
-                                setOneOnOneConversation(
-                                  oneOnOneConversation ?? null
-                                );
-                                openModal("contact-info-modal");
-                              }}
-                              className="hover:bg-secondary-bg focus:bg-secondary-bg active:bg-secondary-bg flex w-full cursor-pointer items-center justify-start gap-2 px-4 py-2 text-[var(--text-primary)]"
-                            >
-                              <Info className="h-4 w-4" /> Contact Info
-                            </button>
                           </div>
                         </PopoverPanel>
                       </>

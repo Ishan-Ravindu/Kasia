@@ -24,7 +24,12 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(open);
+    if (open) {
+      // small delay to ensure component is rendered before animating in
+      setTimeout(() => setMounted(true), 10);
+    } else {
+      setMounted(false);
+    }
   }, [open]);
 
   const handleClose = () => {
@@ -53,7 +58,7 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
       {/* Draw type thing */}
       <aside
         className={clsx(
-          "bg-secondary-bg fixed inset-y-0 left-0 z-45 flex w-full max-w-xs flex-col shadow-xl transition-transform duration-300 ease-out",
+          "bg-secondary-bg fixed inset-y-0 left-0 z-45 flex w-full max-w-3/4 flex-col shadow-xl transition-transform duration-300 ease-out",
           {
             "-translate-x-full": !mounted,
             "translate-x-0": mounted,
@@ -73,7 +78,7 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
           </div>
           <button
             onClick={handleClose}
-            className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-700"
+            className="cursor-pointer rounded-lg p-2 transition-colors active:bg-gray-700"
             aria-label="Close menu"
           >
             <X className="h-6 w-6 text-[var(--text-primary)]" />
@@ -83,16 +88,18 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
         <div className="flex flex-1 flex-col overflow-auto">
           {/* Wallet Operations Section */}
           <div className="border-primary-border p-6">
-            <h3 className="mb-4 text-base font-medium text-[var(--text-secondary)]">
-              Wallet Operations
-            </h3>
+            <div className="mb-4">
+              <h3 className="text-base font-medium text-[var(--text-secondary)]">
+                Wallet Operations
+              </h3>
+            </div>
             <div className="space-y-3">
               <button
                 onClick={() => {
                   openModal("address");
                 }}
                 className={clsx(
-                  "flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-gray-700",
+                  "flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-4 transition-colors active:bg-gray-700",
                   { "pointer-events-none opacity-50": !address }
                 )}
               >
@@ -105,12 +112,13 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
                 </span>
               </button>
 
+              <div className="my-2 w-full border-b border-[var(--text-secondary)]/30"></div>
               <button
                 onClick={() => {
                   openModal("walletInfo");
                 }}
                 className={clsx(
-                  "flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-gray-700",
+                  "flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-4 transition-colors active:bg-gray-700",
                   { "pointer-events-none opacity-50": !address }
                 )}
               >
@@ -122,24 +130,24 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
                   )}
                 </span>
               </button>
-
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-gray-700"
-              >
-                <Settings className="h-6 w-6 text-[var(--text-primary)]" />
-                <span className="text-base text-[var(--text-primary)]">
-                  Settings
-                </span>
-              </button>
             </div>
           </div>
 
           {/* Sign Out Section */}
-          <div className="border-primary-border mt-auto border-t p-4">
+          <div className="border-primary-border mt-auto border-t p-3">
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-4 transition-colors active:bg-gray-700"
+            >
+              <Settings className="h-5 w-5 text-[var(--text-primary)]" />
+              <span className="text-base text-[var(--text-primary)]">
+                Settings
+              </span>
+            </button>
+            <div className="my-2 w-full border-b border-[var(--text-secondary)]/30"></div>
             <button
               onClick={onCloseWallet}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-gray-700"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-colors active:bg-gray-700"
             >
               <ArrowLeft className="h-5 w-5 text-[var(--accent-red)]" />
               <span className="text-base text-[var(--accent-red)]">

@@ -47,7 +47,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("address")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Show Address"
@@ -60,7 +60,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("walletInfo")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Wallet Info"
@@ -71,7 +71,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* settings */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none"
               aria-label="Settings"
             >
               <Settings className="h-5 w-5" />
@@ -80,7 +80,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* toggle pane */}
             <button
               aria-label="toggle contacts pane"
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)]"
               onClick={() => setContactsCollapsed(!contactsCollapsed)}
             >
               <PanelLeftOpen
@@ -93,7 +93,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* toggle pane */}
             <button
               aria-label="toggle contacts pane"
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)]"
               onClick={() => setContactsCollapsed(!contactsCollapsed)}
             >
               <PanelLeftOpen className="size-5" />
@@ -102,7 +102,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
             {/* settings */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none"
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none"
               aria-label="Settings"
             >
               <Settings className="h-5 w-5" />
@@ -113,7 +113,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("walletInfo")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Wallet Info"
@@ -126,7 +126,7 @@ export const DesktopMenu: FC<DesktopMenuProps> = ({
               onClick={() => openModal("address")}
               disabled={!walletAddress}
               className={clsx(
-                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 focus:outline-none",
+                "hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none",
                 { "pointer-events-none opacity-50": !walletAddress }
               )}
               aria-label="Show Address"

@@ -18,38 +18,35 @@ export const ModeSelector: FC<ModeSelectorProps> = ({
     return null;
   }
 
-  const modeDisplay = isBroadcastMode ? "Broadcast" : "Chat";
-
   const modeIcon = isBroadcastMode ? (
-    <Radio className="size-5" />
+    <Radio className="size-6" />
   ) : (
-    <MessageCircle className="size-5" />
+    <MessageCircle className="size-6" />
   );
 
   const modes = [
     {
       id: "chat",
       displayableString: "Chat",
-      icon: <MessageCircle className="size-3" />,
+      icon: <MessageCircle className="size-5" />,
       value: false,
     },
     {
       id: "radio",
       displayableString: "Broadcast",
-      icon: <Radio className="size-3" />,
+      icon: <Radio className="size-5" />,
       value: true,
     },
   ];
 
   return (
     <Menu>
-      <MenuButton className="inline-flex min-w-[100px] cursor-pointer items-center justify-center gap-2 rounded-3xl border border-[var(--color-kas-secondary)]/60 bg-[var(--color-kas-secondary)]/20 px-3 py-0.5 text-sm font-medium transition-colors duration-200 hover:scale-110">
+      <MenuButton className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-3xl px-3 py-0.5 text-sm font-medium text-[var(--kas-primary)] transition-colors duration-200 hover:opacity-80">
         {modeIcon}
-        {modeDisplay}
       </MenuButton>
       <MenuItems
         className="absolute top-full left-0 z-10 min-w-[140px] rounded-sm border border-[var(--border-color)] bg-[var(--secondary-bg)] shadow-md"
-        anchor="bottom"
+        anchor="bottom end"
       >
         {modes.map((mode) => (
           <MenuItem key={mode.id}>
