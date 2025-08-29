@@ -73,7 +73,6 @@ export const MessageSection: FC<{
   const lastKnsCheckRef = useRef<{ nickname: string; address: string } | null>(
     null
   );
-
   // compute last index of outgoing and incoming messages so we can render the message ui accordingly
   const { lastOutgoing, lastIncoming } = useMemo(() => {
     const conversationEvents = oneOnOneConversation?.events;
@@ -175,7 +174,7 @@ export const MessageSection: FC<{
   const openModal = useUiStore((state) => state.openModal);
   const setOneOnOneConversation = useUiStore((s) => s.setOneOnOneConversation);
 
-  if (!oneOnOneConversation) {
+  if (!oneOnOneConversation && boxState !== "new") {
     return null;
   }
 
@@ -255,18 +254,17 @@ export const MessageSection: FC<{
       {boxState === "new" && (
         /* ONBOARDING ─ show help when no contacts exist */
         <>
-          <div className="border-primary-border h-[60px] border-b bg-[var(--secondary-bg)] p-4" />
-          <div className="bg-primary-bg flex-1 overflow-y-auto p-4">
+          <div className="h-[60px] bg-[var(--secondary-bg)] p-4" />
+          <div className="bg-primary-bg flex-1 overflow-x-hidden overflow-y-auto px-1 py-4 pb-8 sm:px-2">
             <div className="m-5 rounded-[12px] bg-[rgba(0,0,0,0.2)] px-5 py-10 text-center text-[var(--text-secondary)] italic">
-              Start by funding your wallet with some Kas (should be a small
-              amount such as 10 Kas) and chat to someone by clicking the add (+)
-              button on the top-left corner
+              Start by funding your wallet with some Kas and start a chat by
+              clicking + in the contacts section.
             </div>
           </div>
         </>
       )}
 
-      {boxState === "filtered" && (
+      {boxState === "filtered" && oneOnOneConversation && (
         /* A CONVERSATION IS OPEN */
         <>
           <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4">
