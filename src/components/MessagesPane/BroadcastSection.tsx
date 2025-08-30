@@ -11,11 +11,12 @@ export const BroadcastSection: FC<{
   setMobileView: (v: "contacts" | "messages") => void;
 }> = ({ mobileView, setMobileView }) => {
   const isMobile = useIsMobile();
-  const { selectedChannelName, getMessagesForChannel, channels } =
-    useBroadcastStore();
   const { address: walletAddress } = useWalletStore();
-
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+
+  const selectedChannelName = useBroadcastStore((s) => s.selectedChannelName);
+  const channels = useBroadcastStore((s) => s.channels);
+  const messages = useBroadcastStore((s) => s.messages);
 
   // get the selected channel data
   const selectedChannel = selectedChannelName
@@ -24,7 +25,9 @@ export const BroadcastSection: FC<{
 
   // get messages for the selected channel
   const channelMessages = selectedChannelName
-    ? getMessagesForChannel(selectedChannelName)
+    ? messages
+        .filter((msg) => msg.channelName === selectedChannelName.toLowerCase())
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
     : [];
 
   // scroll to bottom when new messages arrive
@@ -35,7 +38,7 @@ export const BroadcastSection: FC<{
         behavior: "smooth",
       });
     }
-  }, [channelMessages.length]);
+  }, [messages.length]);
 
   if (!selectedChannelName || !selectedChannel) {
     return (
@@ -87,7 +90,7 @@ export const BroadcastSection: FC<{
             <ChevronLeft className="size-6" />
           </button>
           <h3 className="truncate text-base font-semibold">
-            # {selectedChannel.channelName}
+            # {selectedChannel?.channelName}
           </h3>
         </div>
         <div className="text-accent-yellow flex items-center gap-1">
@@ -108,7 +111,9 @@ export const BroadcastSection: FC<{
       </div>
 
       {/* Broadcast composer */}
-      <BroadcastComposerShell channelName={selectedChannel.channelName} />
+      <BroadcastComposerShell
+        channelName={selectedChannel?.channelName || ""}
+      />
     </div>
   );
 };

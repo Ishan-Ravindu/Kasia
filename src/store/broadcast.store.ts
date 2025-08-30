@@ -33,7 +33,7 @@ interface BroadcastState {
   findPendingMessageByTxId: (
     transactionId: string
   ) => BroadcastMessage | undefined;
-  getMessagesForChannel: (channelName: string) => BroadcastMessage[];
+
   clearAllMessages: () => void;
   clearChannelMessages: (channelName: string) => void;
 
@@ -178,13 +178,6 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     return state.messages.find(
       (msg) => msg.transactionId === transactionId && msg.status === "pending"
     );
-  },
-
-  getMessagesForChannel: (channelName: string) => {
-    const state = get();
-    return state.messages
-      .filter((msg) => msg.channelName === channelName.toLowerCase())
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   },
 
   // unused - but we might use in the future (so remove this comment if you use it!)

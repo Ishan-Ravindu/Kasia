@@ -1,4 +1,4 @@
-import { FC, useMemo, useEffect, useState, useRef } from "react";
+import { FC, useEffect, useState, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { FetchApiMessages } from "../FetchApiMessages";
@@ -29,18 +29,17 @@ export const MessageSection: FC<{
   const openedRecipient = useMessagingStore((s) => s.openedRecipient);
 
   // Find the current contact for display purposes
-  const oneOnOneConversation = useMemo(() => {
-    if (!openedRecipient) return null;
-    return oneOnOneConversations.find(
-      (oooc) => oooc.contact.kaspaAddress === openedRecipient
-    );
-  }, [oneOnOneConversations, openedRecipient]);
+  const oneOnOneConversation = openedRecipient
+    ? oneOnOneConversations.find(
+        (oooc) => oooc.contact.kaspaAddress === openedRecipient
+      )
+    : null;
 
-  const boxState = useMemo<"new" | "filtered" | "unfiltered">(() => {
-    if (!oneOnOneConversations.length) return "new";
-    if (!openedRecipient) return "unfiltered";
-    return "filtered";
-  }, [oneOnOneConversations, openedRecipient]);
+  const boxState = !oneOnOneConversations.length
+    ? "new"
+    : !openedRecipient
+      ? "unfiltered"
+      : "filtered";
 
   // KNS domain move check state
   const [showKnsMovedModal, setShowKnsMovedModal] = useState(false);
@@ -74,19 +73,16 @@ export const MessageSection: FC<{
     null
   );
   // compute last index of outgoing and incoming messages so we can render the message ui accordingly
-  const { lastOutgoing, lastIncoming } = useMemo(() => {
-    const conversationEvents = oneOnOneConversation?.events;
+  const conversationEvents = oneOnOneConversation?.events;
+  let lastOutgoing = -1;
+  let lastIncoming = -1;
 
-    if (!conversationEvents) return { lastOutgoing: -1, lastIncoming: -1 };
-
-    let lastOut = -1;
-    let lastIn = -1;
+  if (conversationEvents) {
     conversationEvents.forEach((m, i) => {
-      if (m.fromMe) lastOut = i;
-      else lastIn = i;
+      if (m.fromMe) lastOutgoing = i;
+      else lastIncoming = i;
     });
-    return { lastOutgoing: lastOut, lastIncoming: lastIn };
-  }, [oneOnOneConversation?.events]);
+  }
 
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 

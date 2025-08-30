@@ -72,7 +72,7 @@ export const BroadcastComposerShell = ({
             onSend={onSend}
             onDragOver={false} // no drag support
             onPaste={() => {}} // no pasting
-            placeholder="Type your broadcast message..."
+            placeholder="Type your broadcast..."
             disabled={sendState.status === "loading"}
           />
 

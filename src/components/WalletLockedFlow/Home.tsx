@@ -1,4 +1,4 @@
-import { Settings, Trash2 } from "lucide-react";
+import { Settings } from "lucide-react";
 import { NetworkSelector } from "../NetworkSelector";
 import { TrustMessage } from "../Layout/TrustMessage";
 import { Button } from "../Common/Button";
@@ -46,7 +46,7 @@ export const Home = ({
     <>
       <button
         onClick={() => openModal("settings")}
-        className="absolute top-4 right-4 size-6 hover:cursor-pointer hover:opacity-80"
+        className="absolute top-4 right-4 size-6 text-[var(--text-secondary)] hover:cursor-pointer hover:opacity-80 active:scale-90"
       >
         <Settings className="size-6" />
       </button>
