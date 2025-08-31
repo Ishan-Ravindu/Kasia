@@ -67,7 +67,7 @@ export const AvatarHash: FC<{
         const θ = start + angleOffset + (2 * Math.PI * i) / SEGMENTS;
         return { cx: c + rRing * Math.cos(θ), cy: c + rRing * Math.sin(θ) };
       }),
-    [c, rRing, angleOffset]
+    [c, rRing, angleOffset, start]
   );
 
   return (

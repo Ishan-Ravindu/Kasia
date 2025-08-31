@@ -1,6 +1,5 @@
 import { FC, useState } from "react";
 import clsx from "clsx";
-import { Hourglass, Check, Ban } from "lucide-react";
 
 import {
   BroadcastMessage,
@@ -11,6 +10,7 @@ import {
   ExplorerLink,
   MessageTimestamp,
   MessageContent,
+  getBubbleStyle,
 } from "../Bubble";
 import { AvatarHash } from "../../icons/AvatarHash";
 import { useUiStore } from "../../../store/ui.store";
@@ -45,7 +45,6 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
 
   const renderTimestamp = () => {
     if (!showTimestamp && !showMeta) return null;
-
     return <MessageTimestamp timestamp={displayStamp} shouldUseBubble={true} />;
   };
 
@@ -94,13 +93,17 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
       )}
 
       <div
-        onClick={() => setShowMeta((prev) => !prev)}
+        onClick={() => setShowMeta((p) => !p)}
+        style={getBubbleStyle(!isOutgoing ? message.senderAddress : undefined)}
         className={clsx(
           "my-0.5 cursor-pointer text-base leading-relaxed",
           generateBubbleClasses({
             isOutgoing,
             groupPosition,
             status: message.status,
+            addressForCustomColor: !isOutgoing
+              ? message.senderAddress
+              : undefined,
           })
         )}
       >
