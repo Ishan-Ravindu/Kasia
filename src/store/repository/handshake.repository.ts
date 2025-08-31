@@ -111,6 +111,28 @@ export class HandshakeRepository {
     return;
   }
 
+  async saveBulk(handshakes: Omit<Handshake, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("handshakes", "readwrite");
+    const store = tx.objectStore("handshakes");
+
+    for (const handshake of handshakes) {
+      // Check if handshake already exists
+      const existing = await store.get(
+        `${this.tenantId}_${handshake.transactionId}`
+      );
+      if (!existing) {
+        await store.put(
+          this._handshakeToDbHandshake({
+            ...handshake,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
   async reEncrypt(newPassword: string): Promise<void> {
     const transaction = this.db.transaction("handshakes", "readwrite");
     const store = transaction.objectStore("handshakes");

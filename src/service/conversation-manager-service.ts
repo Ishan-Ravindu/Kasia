@@ -50,7 +50,7 @@ export class ConversationManagerService {
     return `${ConversationManagerService.STORAGE_KEY_PREFIX}_${this.currentAddress}`;
   }
 
-  private async loadConversations() {
+  public async loadConversations() {
     try {
       // Clear existing data first
       this.conversationWithContactByConversationId.clear();

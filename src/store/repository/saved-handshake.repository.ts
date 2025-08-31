@@ -57,9 +57,38 @@ export class SavedHandhshakeRepository {
     return cursor.value;
   }
 
+  async getAllSavedHandshakes(): Promise<SavedHandshake[]> {
+    return this.db.getAllFromIndex(
+      "savedHandshakes",
+      "by-tenant-id",
+      this.tenantId
+    );
+  }
+
   async doesExistsById(savedHanshakeId: string): Promise<boolean> {
     return this.db
       .count("savedHandshakes", savedHanshakeId)
       .then((count) => count > 0);
+  }
+
+  async saveBulk(
+    savedHandshakes: Omit<SavedHandshake, "tenantId">[]
+  ): Promise<void> {
+    const tx = this.db.transaction("savedHandshakes", "readwrite");
+    const store = tx.objectStore("savedHandshakes");
+
+    for (const handshake of savedHandshakes) {
+      // Check if handshake already exists
+      const existing = await store.get(handshake.id);
+      if (!existing) {
+        await store.put({
+          id: handshake.id,
+          createdAt: handshake.createdAt,
+          tenantId: this.tenantId,
+        });
+      }
+    }
+
+    await tx.done;
   }
 }

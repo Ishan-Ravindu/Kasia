@@ -113,6 +113,28 @@ export class ConversationRepository {
     return;
   }
 
+  async saveBulk(
+    conversations: Omit<Conversation, "tenantId">[]
+  ): Promise<void> {
+    const tx = this.db.transaction("conversations", "readwrite");
+    const store = tx.objectStore("conversations");
+
+    for (const conversation of conversations) {
+      // Check if conversation already exists
+      const existing = await store.get(conversation.id);
+      if (!existing) {
+        await store.put(
+          this._conversationToDbConversation({
+            ...conversation,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
   async reEncrypt(newPassword: string): Promise<void> {
     const transaction = this.db.transaction("conversations", "readwrite");
     const store = transaction.objectStore("conversations");

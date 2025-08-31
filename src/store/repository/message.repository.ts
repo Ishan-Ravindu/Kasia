@@ -152,6 +152,28 @@ export class MessageRepository {
     return;
   }
 
+  async saveBulk(messages: Omit<Message, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("messages", "readwrite");
+    const store = tx.objectStore("messages");
+
+    for (const message of messages) {
+      // Check if message already exists
+      const existing = await store.get(
+        `${this.tenantId}_${message.transactionId}`
+      );
+      if (!existing) {
+        await store.put(
+          this._messageToDbMessage({
+            ...message,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
   private _messageToDbMessage(message: Message): DbMessage {
     return {
       id: `${message.tenantId}_${message.transactionId}`,

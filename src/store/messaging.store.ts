@@ -7,13 +7,18 @@ import {
 import { Contact } from "./repository/contact.repository";
 import {
   encrypt_message,
-  decrypt_with_secret_key,
   EncryptedMessage,
   decrypt_message,
   PrivateKey,
 } from "cipher";
 import { WalletStorageService } from "../service/wallet-storage-service";
-import { Address, kaspaToSompi, NetworkType } from "kaspa-wasm";
+import {
+  Address,
+  decryptXChaCha20Poly1305,
+  encryptXChaCha20Poly1305,
+  kaspaToSompi,
+  NetworkType,
+} from "kaspa-wasm";
 import { ConversationManagerService } from "../service/conversation-manager-service";
 import { useWalletStore } from "./wallet.store";
 import {
@@ -28,10 +33,7 @@ import {
   ActiveConversation,
   Conversation,
 } from "./repository/conversation.repository";
-import {
-  loadLegacyMessages,
-  saveMessages,
-} from "../service/storage-encryption";
+import { loadLegacyMessages } from "../service/storage-encryption";
 import { PROTOCOL, toHex } from "../config/protocol";
 import { Payment } from "./repository/payment.repository";
 import { Message } from "./repository/message.repository";
@@ -46,6 +48,11 @@ import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 import { hexToString } from "../utils/format";
 import { RawResolvedKasiaTransaction } from "../service/block-processor-service";
 import { Repositories } from "./repository/db";
+import {
+  BackupV2,
+  exportData,
+  importData,
+} from "../service/import-export-service";
 
 // Helper function to determine network type from address
 function getNetworkTypeFromAddress(address: string): NetworkType {
@@ -1165,242 +1172,30 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       set({ isCreatingNewChat });
     },
     exportMessages: async (wallet, password) => {
-      try {
-        console.log("Starting message export process...");
+      const backup = await exportData(useDBStore.getState().repositories);
 
-        const password = useWalletStore.getState().unlockedWallet?.password;
-        if (!password) {
-          throw new Error(
-            "Wallet password not available for exporting messages."
-          );
-        }
+      const encryptedBackup = encryptXChaCha20Poly1305(
+        JSON.stringify(backup),
+        password
+      );
 
-        const messagesMap = loadLegacyMessages(password);
+      const blob = new Blob([encryptedBackup], {
+        type: "application/json",
+      });
 
-        console.log("Getting private key generator...");
-        const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-          wallet,
-          password
-        );
-
-        console.log("Getting receive key...");
-        const receiveKey = privateKeyGenerator.receiveKey(0);
-
-        // Get the current network type from the first message's address
-        let networkType = NetworkType.Mainnet; // Default to mainnet
-        const addresses = Object.keys(messagesMap);
-        if (addresses.length > 0) {
-          networkType = getNetworkTypeFromAddress(addresses[0]);
-        }
-        console.log("Using network type:", networkType);
-
-        const receiveAddress = receiveKey.toAddress(networkType);
-        const walletAddress = receiveAddress.toString();
-        console.log("Using receive address:", walletAddress);
-
-        // Export nicknames for this wallet
-        const nicknameStorageKey = `contact_nicknames_${walletAddress}`;
-        const nicknames = JSON.parse(
-          localStorage.getItem(nicknameStorageKey) || "{}"
-        );
-        console.log("Exporting nicknames:", nicknames);
-
-        // Create backup object with metadata
-        const backup = {
-          version: "1.0",
-          timestamp: Date.now(),
-          type: "kaspa-messages-backup",
-          data: messagesMap,
-          nicknames: nicknames,
-          // contacts: g().conversationManager.get,
-          conversations: {
-            active: g().conversationManager?.getActiveConversations() || [],
-            pending: g().conversationManager?.getPendingConversations() || [],
-          },
-        };
-
-        console.log("Converting backup to string...");
-        const backupStr = JSON.stringify(backup);
-
-        console.log("Encrypting backup data...");
-        try {
-          const encryptedData = await encrypt_message(
-            receiveAddress.toString(),
-            backupStr
-          );
-
-          // Create a Blob with the encrypted data wrapped in JSON
-          const backupFile = {
-            type: "kaspa-messages-backup",
-            data: encryptedData.to_hex(),
-          };
-
-          const blob = new Blob([JSON.stringify(backupFile)], {
-            type: "application/json",
-          });
-
-          return blob;
-        } catch (error: unknown) {
-          console.error("Detailed export error:", error);
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          throw new Error(`Failed to create backup: ${errorMessage}`);
-        }
-      } catch (error: unknown) {
-        console.error("Error exporting messages:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        throw new Error(`Failed to create backup: ${errorMessage}`);
-      }
+      return blob;
     },
     importMessages: async (file, wallet, password) => {
-      try {
-        console.log("Starting import process...");
+      const fileContent = await file.text();
 
-        // Read and parse file content
-        const fileContent = await file.text();
-        console.log("Parsing backup file...");
-        const backupFile = JSON.parse(fileContent);
+      const decryptedBackup = decryptXChaCha20Poly1305(fileContent, password);
 
-        // Validate backup file format
-        if (
-          !backupFile.type ||
-          backupFile.type !== "kaspa-messages-backup" ||
-          !backupFile.data
-        ) {
-          throw new Error("Invalid backup file format");
-        }
+      const backup: BackupV2 = JSON.parse(decryptedBackup);
 
-        console.log("Getting private key for decryption...");
-        const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-          wallet,
-          password
-        );
-        const privateKey = privateKeyGenerator.receiveKey(0);
+      await importData(useDBStore.getState().repositories, backup);
 
-        // Get private key bytes
-        const privateKeyBytes =
-          WalletStorageService.getPrivateKeyBytes(privateKey);
-        if (!privateKeyBytes) {
-          throw new Error("Failed to get private key bytes");
-        }
-
-        console.log("Creating EncryptedMessage from hex...");
-        const encryptedMessage = new EncryptedMessage(backupFile.data);
-
-        console.log("Decrypting backup data...");
-        const decryptedStr = await decrypt_with_secret_key(
-          encryptedMessage,
-          privateKeyBytes
-        );
-
-        console.log("Parsing decrypted data...");
-        const decryptedData = JSON.parse(decryptedStr);
-
-        // Validate decrypted data structure
-        if (
-          !decryptedData.version ||
-          !decryptedData.type ||
-          !decryptedData.data
-        ) {
-          throw new Error("Invalid backup data structure");
-        }
-
-        console.log("Merging with existing messages...");
-        // Merge with existing messages
-        const currentPassword =
-          useWalletStore.getState().unlockedWallet?.password;
-        if (!currentPassword) {
-          throw new Error(
-            "Wallet password not available for importing messages."
-          );
-        }
-
-        const existingMessages = loadLegacyMessages(currentPassword);
-
-        const mergedMessages = {
-          ...existingMessages,
-          ...decryptedData.data,
-        };
-
-        // Save merged messages
-        saveMessages(mergedMessages, currentPassword);
-
-        // Get network type and current address first
-        let networkType = NetworkType.Mainnet; // Default to mainnet
-        const addresses = Object.keys(mergedMessages);
-        if (addresses.length > 0) {
-          networkType = getNetworkTypeFromAddress(addresses[0]);
-        }
-        console.log("Using network type:", networkType);
-
-        // Get the current address from the private key using detected network type
-        const receiveAddress = privateKey.toAddress(networkType);
-        const currentAddress = receiveAddress.toString();
-        console.log("Using receive address:", currentAddress);
-
-        // Restore nicknames if they exist in the backup
-        if (decryptedData.nicknames) {
-          console.log("Restoring nicknames...");
-          const nicknameStorageKey = `contact_nicknames_${currentAddress}`;
-          const existingNicknames = JSON.parse(
-            localStorage.getItem(nicknameStorageKey) || "{}"
-          );
-
-          // Merge existing nicknames with backup nicknames (backup takes precedence)
-          const mergedNicknames = {
-            ...existingNicknames,
-            ...decryptedData.nicknames,
-          };
-
-          localStorage.setItem(
-            nicknameStorageKey,
-            JSON.stringify(mergedNicknames)
-          );
-          console.log("Nicknames restored:", mergedNicknames);
-        }
-
-        // Restore conversations if they exist in the backup
-        if (decryptedData.conversations) {
-          console.log("Restoring conversations...");
-          const { active = [], pending = [] } = decryptedData.conversations;
-
-          // Restore active conversations
-          active.forEach((conv: ActiveConversation) => {
-            if (g().conversationManager?.isValidConversation(conv)) {
-              g().conversationManager?.restoreConversation(conv);
-            } else {
-              console.error("Invalid conversation object in backup:", conv);
-            }
-          });
-
-          // Restore pending conversations
-          pending.forEach((conv: PendingConversation) => {
-            if (isValidConversation(conv)) {
-              g().conversationManager?.restoreConversation(conv);
-            } else {
-              console.error("Invalid conversation object in backup:", conv);
-            }
-          });
-        }
-
-        // Reload messages using the current address
-        g().loadMessages(currentAddress);
-
-        // Set flag to trigger API fetching after next account service start
-        localStorage.setItem("kasia_fetch_api_on_start", "true");
-
-        console.log("Import completed successfully");
-        console.log(
-          "Set flag to fetch API messages on next wallet service start"
-        );
-      } catch (error: unknown) {
-        console.error("Error importing messages:", error);
-        if (error instanceof Error) {
-          throw new Error(`Failed to import messages: ${error.message}`);
-        }
-        throw new Error("Failed to import messages: Unknown error");
-      }
+      await g()?.conversationManager?.loadConversations();
+      await g().hydrateOneonOneConversations();
     },
     conversationManager: null,
     initiateHandshake: async (

@@ -1,17 +1,10 @@
 import { create } from "zustand";
-import {
-  KasiaDB,
-  KasiaDBSchema,
-  openDatabase,
-  Repositories,
-} from "./repository/db";
+import { KasiaDB, openDatabase, Repositories } from "./repository/db";
 import { UnlockedWallet } from "../types/wallet.type";
 import { v4 } from "uuid";
-import { DecryptionCache } from "../service/decryption-cache";
 import {
   LEGACY_STORAGE_KEY,
   loadLegacyMessages,
-  loadMessagesForAddress,
 } from "../service/storage-encryption";
 import { PROTOCOL } from "../config/protocol";
 import { FileData, Message } from "./repository/message.repository";

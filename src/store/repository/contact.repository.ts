@@ -77,6 +77,23 @@ export class ContactRepository {
     return;
   }
 
+  async saveBulk(contacts: Omit<Contact, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("contacts", "readwrite");
+    const store = tx.objectStore("contacts");
+
+    for (const contact of contacts) {
+      // Check if contact already exists
+      const existing = await store.get(contact.id);
+      if (!existing) {
+        await store.put(
+          this._contactToDbContact({ ...contact, tenantId: this.tenantId })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
   async reEncrypt(newPassword: string): Promise<void> {
     const transaction = this.db.transaction("contacts", "readwrite");
     const store = transaction.objectStore("contacts");
