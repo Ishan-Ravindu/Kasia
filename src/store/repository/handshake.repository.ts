@@ -111,6 +111,58 @@ export class HandshakeRepository {
     return;
   }
 
+  async saveBulk(handshakes: Omit<Handshake, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("handshakes", "readwrite");
+    const store = tx.objectStore("handshakes");
+
+    for (const handshake of handshakes) {
+      // Check if handshake already exists
+      const existing = await store.get(
+        `${this.tenantId}_${handshake.transactionId}`
+      );
+      if (!existing) {
+        await store.put(
+          this._handshakeToDbHandshake({
+            ...handshake,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("handshakes", "readwrite");
+    const store = transaction.objectStore("handshakes");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbHandshake = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbHandshake.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbHandshake,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
   private _handshakeToDbHandshake(handshake: Handshake): DbHandshake {
     return {
       id: `${handshake.tenantId}_${handshake.transactionId}`,

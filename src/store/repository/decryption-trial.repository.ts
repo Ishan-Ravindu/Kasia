@@ -57,4 +57,25 @@ export class DecryptionTrialRepository {
     await this.db.delete("decryptionTrials", decryptionTrialId);
     return;
   }
+
+  async saveBulk(
+    decryptionTrials: Omit<DecryptionTrial, "tenantId">[]
+  ): Promise<void> {
+    const tx = this.db.transaction("decryptionTrials", "readwrite");
+    const store = tx.objectStore("decryptionTrials");
+
+    for (const trial of decryptionTrials) {
+      // Check if trial already exists
+      const existing = await store.get(`${this.tenantId}_${trial.id}`);
+      if (!existing) {
+        await store.put({
+          id: `${this.tenantId}_${trial.id}`,
+          tenantId: this.tenantId,
+          timestamp: trial.timestamp,
+        });
+      }
+
+      await tx.done;
+    }
+  }
 }

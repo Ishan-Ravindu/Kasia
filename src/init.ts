@@ -1,6 +1,5 @@
 import initKaspaWasm, { initConsolePanicHook } from "kaspa-wasm";
 import initCipherWasm from "cipher";
-import "./utils/debug-commands"; // Import debug commands
 import "./utils/logging";
 import { createRoot, type Root } from "react-dom/client";
 import {

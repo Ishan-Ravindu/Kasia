@@ -60,7 +60,7 @@ export const useOrchestrator = () => {
 
       const freshNetworkStore = useNetworkStore.getState();
 
-      walletStore.setRpcClient(freshNetworkStore.kaspaClient);
+      walletStore.setRpc(freshNetworkStore.rpc);
       walletStore.setSelectedNetwork(freshNetworkStore.network);
     } catch (error) {
       if (error instanceof Error) {
@@ -106,8 +106,8 @@ export const useOrchestrator = () => {
 
     await messagingStore.load(receivedAddressString);
 
-    if (networkStore.kaspaClient.rpc) {
-      liveStore.start(networkStore.kaspaClient.rpc, receivedAddressString);
+    if (networkStore.rpc) {
+      liveStore.start(networkStore.rpc, receivedAddressString);
     }
   };
 

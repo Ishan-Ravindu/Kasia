@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { NetworkType } from "../types/all";
-import { KaspaClient } from "../service/kaspa-client";
+import { Encoding, Resolver, RpcClient } from "kaspa-wasm";
 
 interface NetworkState {
   isConnected: boolean;
   isConnecting: boolean;
   network: NetworkType;
-  kaspaClient: KaspaClient;
+  rpc: RpcClient;
   nodeUrl: string | null;
 
   /**
@@ -32,60 +32,75 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
     import.meta.env.VITE_DEFAULT_KASPA_NETWORK ?? "mainnet";
   const initialNodeUrl =
     localStorage.getItem(`kasia_node_url_${initialNetwork}`) ?? null;
+
+  const onConnectionLost = async () => {
+    const { rpc, connect } = g();
+
+    // remove auto-reconnect
+    rpc.removeEventListener("disconnect", onConnectionLost);
+
+    console.warn("RPC connection lost. Attempting to reconnect...");
+
+    try {
+      await connect();
+      console.log("Reconnected successfully.");
+    } catch (error) {
+      console.error("Failed to reconnect:", error);
+    }
+  };
+
   return {
     isConnected: false,
     isConnecting: false,
     network: initialNetwork,
     nodeUrl: initialNodeUrl,
-    kaspaClient: new KaspaClient({
+    rpc: new RpcClient({
+      encoding: Encoding.Borsh,
       networkId: initialNetwork,
-      nodeUrl: initialNodeUrl ?? undefined,
+      resolver: new Resolver(),
     }),
     async connect(): Promise<void> {
-      let kaspaClient = g().kaspaClient;
+      const rpc = g().rpc;
 
-      const isDifferentNetwork = kaspaClient.networkId !== g().network;
-      const isDifferentUrl =
-        kaspaClient.rpc?.url !== (g().nodeUrl ?? undefined);
+      const isDifferentNetwork = rpc.networkId?.toString() !== g().network;
+      const isDifferentUrl = rpc?.url !== (g().nodeUrl ?? undefined);
 
-      if (!isDifferentNetwork && !isDifferentUrl && g().isConnected) {
-        console.warn(
-          "Trying to connect KaspaClient while it is already connected."
-        );
+      if (!isDifferentNetwork && !isDifferentUrl && rpc.isConnected) {
+        console.warn("Trying to connect RPC while it is already connected.");
         throw new Error("Already connected.");
-      }
-
-      if ((isDifferentNetwork || isDifferentUrl) && kaspaClient.connected) {
-        await kaspaClient.disconnect();
-      }
-
-      if (isDifferentNetwork || isDifferentUrl) {
-        kaspaClient = new KaspaClient({
-          networkId: g().network,
-          nodeUrl: g().nodeUrl ?? undefined,
-        });
-
-        set({
-          kaspaClient,
-        });
       }
 
       set({
         isConnecting: true,
         isConnected: false,
       });
+      await rpc.disconnect();
+
+      if (isDifferentNetwork) {
+        rpc.setNetworkId(g().network);
+      }
 
       try {
-        await kaspaClient.connect();
+        await rpc.connect({
+          blockAsyncConnect: true,
+          retryInterval: 2_000,
+          timeoutDuration: 3_000,
+          url: g().nodeUrl ?? undefined,
+        });
+
+        // register auto-reconnect
+        rpc.addEventListener("disconnect", onConnectionLost);
 
         // persist the nodeUrl uppon successful connection
-        if (kaspaClient.nodeUrl) {
+        if (g().nodeUrl) {
           localStorage.setItem(
-            `kasia_node_url_${kaspaClient.networkId}`,
-            kaspaClient.nodeUrl ?? ""
+            `kasia_node_url_${rpc.networkId?.toString()}`,
+            g().nodeUrl ?? ""
           );
         } else {
-          localStorage.removeItem(`kasia_node_url_${kaspaClient.networkId}`);
+          localStorage.removeItem(
+            `kasia_node_url_${rpc.networkId?.toString()}`
+          );
         }
 
         set({
@@ -101,9 +116,12 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
       }
     },
     async disconnect() {
-      const kaspaClient = g().kaspaClient;
-      if (kaspaClient.connected) {
-        await kaspaClient.disconnect();
+      const rpc = g().rpc;
+      if (rpc.isConnected) {
+        // remove auto-reconnect as this is an explicit disconnection
+        rpc.removeEventListener("disconnect", onConnectionLost);
+
+        await rpc.disconnect();
         set({ isConnected: false });
       }
     },

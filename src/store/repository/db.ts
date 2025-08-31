@@ -1,4 +1,4 @@
-import { DBSchema, IDBPCursorWithValue, IDBPDatabase, openDB } from "idb";
+import { DBSchema, IDBPDatabase, openDB } from "idb";
 import { DbMessage, MessageRepository } from "./message.repository";
 import {
   ConversationRepository,
@@ -18,7 +18,7 @@ import {
   SavedHandhshakeRepository,
 } from "./saved-handshake.repository";
 
-const CURRENT_DB_VERSION = 1;
+const CURRENT_DB_VERSION = 2;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -95,6 +95,7 @@ export interface KasiaDBSchema extends DBSchema {
     value: DbSavedHandshake;
     indexes: {
       "by-id": string;
+      "by-tenant-id": string;
       "by-tenant-id-created-at": [string, Date];
     };
   };
@@ -104,7 +105,7 @@ export type KasiaDB = IDBPDatabase<KasiaDBSchema>;
 
 export const openDatabase = async (): Promise<KasiaDB> => {
   return openDB<KasiaDBSchema>("kasia-db", CURRENT_DB_VERSION, {
-    upgrade(db, oldVersion, newVersion) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       console.log(
         `[DB] - Identity database upgrade from version ${oldVersion} to ${newVersion}`
       );
@@ -228,6 +229,13 @@ export const openDatabase = async (): Promise<KasiaDB> => {
       }
 
       if (oldVersion <= 1) {
+        const savedHandshakesStore = transaction.objectStore("savedHandshakes");
+        if (!savedHandshakesStore.indexNames.contains("by-tenant-id")) {
+          savedHandshakesStore.createIndex("by-tenant-id", "tenantId");
+        }
+      }
+
+      if (oldVersion <= 2) {
         // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
         // add more if branching for each next version
       }

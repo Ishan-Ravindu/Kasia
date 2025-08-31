@@ -10,8 +10,8 @@ import {
   kaspaToSompi,
   PrivateKeyGenerator,
   Generator,
+  RpcClient,
 } from "kaspa-wasm";
-import { KaspaClient } from "./kaspa-client";
 import { encrypt_message } from "cipher";
 import { PriorityFeeConfig } from "../types/all";
 import { UnlockedWallet } from "../types/wallet.type";
@@ -96,20 +96,16 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   private password: string | null = null;
 
   constructor(
-    private readonly rpcClient: KaspaClient,
+    private readonly rpc: RpcClient,
     private readonly unlockedWallet: UnlockedWallet
   ) {
     super();
 
-    if (!rpcClient.rpc) {
-      throw new Error("RPC client is not initialized");
-    }
-
-    this.networkId = rpcClient.networkId;
+    this.networkId = rpc.networkId?.toString() ?? "mainnet";
 
     this.processor = new UtxoProcessor({
       networkId: this.networkId,
-      rpc: rpcClient.rpc,
+      rpc: rpc,
     });
     this.context = new UtxoContext({ processor: this.processor });
 
@@ -119,31 +115,37 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 
-  private get rpc() {
-    if (!this.rpcClient.rpc) throw new Error("RPC client is not initialized");
-    return this.rpcClient.rpc;
-  }
   private get recv(): Address {
     if (!this.receiveAddress)
       throw new Error("Receive address not initialized");
     return this.receiveAddress;
   }
+
   private get ctx(): UtxoContext {
     if (!this.context) throw new Error("UTXO context not initialized");
     return this.context;
   }
+
   private get pwd(): string {
     if (!this.password)
       throw new Error("Password not set - cannot perform operation");
     return this.password;
   }
 
+  private handleBalanceUpdate = async () => {
+    console.log("Balance event received");
+    this._emitBalanceUpdate();
+  };
+
   private assertReady(): asserts this is AccountService & {
     receiveAddress: Address;
     context: UtxoContext;
   } {
-    if (!this.isStarted || !this.rpcClient.rpc)
+    if (!this.isStarted || !this.rpc)
       throw new Error("Account service is not started");
+    if (!this.rpc.isConnected) {
+      throw new Error("Network Not Connected - Refresh Page or Restart App");
+    }
     if (!this.receiveAddress)
       throw new Error("Receive address not initialized");
     if (!this.context) throw new Error("UTXO context not initialized");
@@ -223,10 +225,14 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       // Set up event listeners
       console.log("Setting up event listeners...");
-      this.processor.addEventListener("balance", async () => {
-        console.log("Balance event received");
-        this._emitBalanceUpdate();
-      });
+      this.processor.addEventListener(
+        "balance",
+        this.handleBalanceUpdate.bind(this)
+      );
+
+      // Add RPC connection event listeners
+      this.rpc.removeEventListener("connect", this.start.bind(this));
+      this.rpc.addEventListener("disconnect", this.stop.bind(this));
 
       // start the processor
       console.log("Starting UTXO processor...");
@@ -246,6 +252,14 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   async stop() {
     console.log("Stopping UTXO subscription and processor...");
     try {
+      // Remove event listeners
+      this.processor.removeEventListener(
+        "balance",
+        this.handleBalanceUpdate.bind(this)
+      );
+      this.rpc.addEventListener("connect", this.start.bind(this));
+      this.rpc.removeEventListener("disconnect", this.stop.bind(this));
+
       await this.context.clear();
       // Stop the UTXO processor
       await this.processor.stop();

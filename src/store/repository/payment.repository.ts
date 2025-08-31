@@ -111,6 +111,58 @@ export class PaymentRepository {
     return;
   }
 
+  async saveBulk(payments: Omit<Payment, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("payments", "readwrite");
+    const store = tx.objectStore("payments");
+
+    for (const payment of payments) {
+      // Check if payment already exists
+      const existing = await store.get(
+        `${this.tenantId}_${payment.transactionId}`
+      );
+      if (!existing) {
+        await store.put(
+          this._paymentToDbPayment({
+            ...payment,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("payments", "readwrite");
+    const store = transaction.objectStore("payments");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbPayment = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbPayment.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbPayment,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
   private _paymentToDbPayment(payment: Payment): DbPayment {
     return {
       id: `${payment.tenantId}_${payment.transactionId}`,

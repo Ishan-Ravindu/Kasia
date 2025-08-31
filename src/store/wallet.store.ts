@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import { KaspaClient } from "../service/kaspa-client";
 import { WalletStorageService } from "../service/wallet-storage-service";
 import {
   Address,
   GeneratorSummary,
   Mnemonic,
+  NetworkId,
+  RpcClient,
   sompiToKaspaString,
   UtxoEntryReference,
 } from "kaspa-wasm";
@@ -70,7 +71,7 @@ type WalletState = {
   unlockedWallet: UnlockedWallet | null;
   address: Address | null;
   balance: WalletBalance;
-  rpcClient: KaspaClient | null;
+  rpc: RpcClient | null;
   isAccountServiceRunning: boolean;
   accountService: AccountService | null;
   selectedNetwork: NetworkType;
@@ -138,7 +139,7 @@ type WalletState = {
 
   // Actions
   setSelectedNetwork: (network: NetworkType) => void;
-  setRpcClient: (client: KaspaClient | null) => void;
+  setRpc: (client: RpcClient | null) => void;
 };
 
 let _accountService: AccountService | null = null;
@@ -153,7 +154,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
     unlockedWallet: null,
     address: null,
     balance: null,
-    rpcClient: null,
+    rpc: null,
     isAccountServiceRunning: false,
     accountService: null,
     selectedNetwork: import.meta.env.VITE_DEFAULT_KASPA_NETWORK ?? "mainnet",
@@ -194,7 +195,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
 
     fetchFeeEstimates: async () => {
       const state = get();
-      if (!state.rpcClient?.rpc) return;
+      if (!state.rpc) return;
 
       try {
         // For testing network congestion, uncomment this mock data
@@ -223,7 +224,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
         set({ feeEstimate: mockCongestion });
         return;
         */
-        const result = await state.rpcClient.rpc.getFeeEstimate();
+        const result = await state.rpc.getFeeEstimate();
         set({ feeEstimate: result });
       } catch (err) {
         console.error("Failed to fetch fee estimates:", err);
@@ -255,17 +256,19 @@ export const useWalletStore = create<WalletState>((set, get) => {
     unlock: async (walletId: string, password: string) => {
       const wallet = _walletStorage.getDecrypted(walletId, password);
 
-      const currentRpcClient = get().rpcClient;
-      if (!currentRpcClient) {
+      const currentRpc = get().rpc;
+      if (!currentRpc) {
         throw new Error("RPC client not initialized");
       }
-      wallet.client = currentRpcClient;
+
       set({
         unlockedWallet: wallet,
-        address: wallet.receivePublicKey.toAddress(currentRpcClient.networkId),
+        address: wallet.receivePublicKey.toAddress(
+          currentRpc.networkId ?? new NetworkId("mainnet")
+        ),
       });
 
-      _accountService = new AccountService(currentRpcClient, wallet);
+      _accountService = new AccountService(currentRpc, wallet);
       _accountService.setPassword(password);
       // Set up event listeners
       _accountService.on("balance", (balance) => {
@@ -296,7 +299,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
       }
 
       set({
-        rpcClient: currentRpcClient,
+        rpc: currentRpc,
         isAccountServiceRunning: true,
         accountService: _accountService,
       });
@@ -330,7 +333,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
       get().stopFeeEstimatePolling();
 
       set({
-        rpcClient: null,
+        rpc: null,
         address: null,
         isAccountServiceRunning: false,
       });
@@ -400,17 +403,17 @@ export const useWalletStore = create<WalletState>((set, get) => {
     setSelectedNetwork: (network: NetworkType) =>
       set({ selectedNetwork: network }),
 
-    setRpcClient: (client: KaspaClient | null) => {
+    setRpc: (client: RpcClient | null) => {
       if (!client) {
         // If clearing the client, stop the service first
         if (_accountService) {
           _accountService.stop();
           _accountService = null;
         }
-        set({ rpcClient: null, isAccountServiceRunning: false });
+        set({ rpc: null, isAccountServiceRunning: false });
       } else {
         // Update the RPC client
-        set({ rpcClient: client });
+        set({ rpc: client });
       }
     },
 
