@@ -5,7 +5,7 @@ import {
   WalletLockedFlowContainer,
   Step,
 } from "./containers/WalletLockedFlowContainer";
-import { RequireUnlockedWallet } from "./containers/RequireUnlockedWallet";
+import { RequireUnlockedWallet } from "./components/Layout/RequireUnlockedWallet";
 
 import type { NetworkType } from "./types/all";
 import { useWalletStore } from "./store/wallet.store";
