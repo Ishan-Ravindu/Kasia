@@ -1,5 +1,6 @@
 import { encryptXChaCha20Poly1305, decryptXChaCha20Poly1305 } from "kaspa-wasm";
 import { Message } from "../store/repository/message.repository";
+import { LegacyMessage } from "../types/legacy";
 
 // legacy storage key for backward compatibility
 const LEGACY_STORAGE_KEY = "kaspa_messages_by_wallet";
@@ -14,7 +15,7 @@ export function generateStorageKey(walletId: string, address: string): string {
 // legacy function for backward compatibility - loads all messages for a wallet
 export function loadLegacyMessages(
   password: string
-): Record<string, Message[]> {
+): Record<string, LegacyMessage[]> {
   const encrypted = localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!encrypted) return {};
   try {

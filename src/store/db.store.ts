@@ -13,9 +13,10 @@ import {
   loadMessagesForAddress,
 } from "../service/storage-encryption";
 import { PROTOCOL } from "../config/protocol";
-import { Message } from "./repository/message.repository";
+import { FileData, Message } from "./repository/message.repository";
 import { Handshake } from "./repository/handshake.repository";
 import { Payment } from "./repository/payment.repository";
+import { LegacyMessage } from "../types/legacy";
 
 interface DBState {
   db: KasiaDB | undefined;
@@ -113,36 +114,20 @@ export const useDBStore = create<DBState>((set, get) => ({
         }
       }
 
-      // DECRYPTION TRIAL
-      const decryptionFailedEntries = DecryptionCache.initCache(
-        address.toString()
-      );
-      for (const decryptionFailedEntry of decryptionFailedEntries) {
-        await repositories.decryptionTrialRepository.saveDecryptionTrial({
-          id: decryptionFailedEntry,
-        });
-      }
-
       // MESSAGES
       const legacyMessagesByWallet = loadLegacyMessages(
         unlockedWallet.password
       );
       const legacyMessages = legacyMessagesByWallet[address.toString()] ?? [];
-      const messagesv1 = loadMessagesForAddress(
-        unlockedWallet.id,
-        address.toString(),
-        unlockedWallet.password
-      );
 
-      const mergedDeduplicatedMessages = [
-        ...legacyMessages,
-        ...messagesv1,
-      ].filter((message, index, self) => {
-        return (
-          index ===
-          self.findIndex((m) => m.transactionId === message.transactionId)
-        );
-      });
+      const mergedDeduplicatedMessages = legacyMessages.filter(
+        (message, index, self) => {
+          return (
+            index ===
+            self.findIndex((m) => m.transactionId === message.transactionId)
+          );
+        }
+      );
 
       const contacts = await repositories.contactRepository.getContacts();
 
@@ -151,6 +136,32 @@ export const useDBStore = create<DBState>((set, get) => ({
         handshakes: Handshake[];
         messages: Message[];
       } = { payments: [], handshakes: [], messages: [] };
+
+      const legacyFileDataToNewFileData = (
+        fileData: LegacyMessage["fileData"]
+      ): FileData | undefined => {
+        if (fileData?.type === "file") {
+          return {
+            type: "file",
+            content: fileData.content,
+            mimeType: fileData.mimeType,
+            name: fileData.name,
+            size: fileData.size,
+          };
+        }
+
+        if (fileData?.type === "image") {
+          return {
+            type: "image",
+            content: fileData.content,
+            mimeType: fileData.mimeType,
+            name: fileData.name,
+            size: fileData.size,
+          };
+        }
+
+        return undefined;
+      };
 
       for (const m of mergedDeduplicatedMessages) {
         const partnerAddress =
@@ -222,7 +233,7 @@ export const useDBStore = create<DBState>((set, get) => ({
           createdAt: new Date(m.timestamp),
           transactionId: m.transactionId,
           fee: m.fee,
-          fileData: m.fileData,
+          fileData: legacyFileDataToNewFileData(m.fileData),
           content: m.content ?? "",
           __type: "message",
           fromMe: m.senderAddress === address.toString(),

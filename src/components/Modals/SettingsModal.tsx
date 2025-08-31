@@ -183,6 +183,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setConfirmPassword("");
 
       // reencrypt all messages with the new password
+      // @TODO(storage): decrypt/re-encrypt the whole index db
       await reencryptMessagesForWallet(
         selectedWalletId,
         currentPassword,
