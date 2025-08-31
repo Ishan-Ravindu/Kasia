@@ -63,7 +63,7 @@ export const Home = ({
         />
       </div>
       <TrustMessage />
-      <h2 className="text-text-primary mt-2 mb-2 text-center text-xl font-semibold sm:mt-2 sm:mb-3 sm:text-2xl">
+      <h2 className="text-text-primary mt-2 mb-2 text-center text-xl font-semibold select-none sm:mt-2 sm:mb-3 sm:text-2xl">
         {wallets.length <= 0 ? "No Wallets Found" : "Select Wallet"}
       </h2>
       <div className="mb-3 flex flex-col gap-2 overflow-y-auto sm:gap-4">
