@@ -467,22 +467,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
                         </button>
                       )}
-                      {/* Change Wallet Name */}
-                      <button
-                        onClick={() => {
-                          onClose();
-                          openModal("seed");
-                        }}
-                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
-                      >
-                        <Key className="h-5 w-5" />
-                        <div className="text-left">
-                          <div className="text-sm font-medium">Seed Phrase</div>
-                          <div className="text-muted-foreground text-xs">
-                            View Your Wallets Seed Phrase
-                          </div>
-                        </div>
-                      </button>
+
                       {/* Delete All Messages */}
                       <button
                         onClick={() => {
@@ -748,6 +733,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </button>
 
+                      {/* View Seed Phrase */}
+                      <button
+                        onClick={() => {
+                          onClose();
+                          openModal("seed");
+                        }}
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                      >
+                        <Key className="h-5 w-5" />
+                        <div className="text-left">
+                          <div className="text-sm font-medium">Seed Phrase</div>
+                          <div className="text-muted-foreground text-xs">
+                            View Your Wallets Seed Phrase
+                          </div>
+                        </div>
+                      </button>
+
                       {/* Wallet Security */}
                       <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
                         <div className="text-text-warning mb-2 text-sm font-medium">
@@ -907,7 +909,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className="mb-1 text-sm font-semibold">
                           {item.label}
                         </div>
-                        <div className="text-muted-foreground text-xs">
+                        <div className="text-muted-foreground text-xs whitespace-pre-line">
                           {item.desc}
                         </div>
                       </div>

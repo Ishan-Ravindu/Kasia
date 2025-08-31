@@ -23,8 +23,8 @@ export type FeatureFlips = Record<FeatureFlags, FeatureDescription>;
 
 const featureFlips: FeatureFlips = {
   [FeatureFlags.BROADCAST]: {
-    label: "Broadcasts",
-    desc: "Unencrypted open messages",
+    label: "Broadcasts - Beta Version",
+    desc: `Unencrypted open messages.\nCurrently live messages only, no storage.\nReminder: Broadcasts are unencrypted.`,
     icon: Radio,
   },
   [FeatureFlags.CUSTOM_FEE]: {
