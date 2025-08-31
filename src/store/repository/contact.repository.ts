@@ -77,6 +77,35 @@ export class ContactRepository {
     return;
   }
 
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("contacts", "readwrite");
+    const store = transaction.objectStore("contacts");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbContact = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbContact.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbContact,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
   private _contactToDbContact(contact: Contact): DbContact {
     return {
       id: contact.id,

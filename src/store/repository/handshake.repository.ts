@@ -111,6 +111,36 @@ export class HandshakeRepository {
     return;
   }
 
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("handshakes", "readwrite");
+    const store = transaction.objectStore("handshakes");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbHandshake = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbHandshake.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbHandshake,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
   private _handshakeToDbHandshake(handshake: Handshake): DbHandshake {
     return {
       id: `${handshake.tenantId}_${handshake.transactionId}`,

@@ -113,6 +113,36 @@ export class ConversationRepository {
     return;
   }
 
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("conversations", "readwrite");
+    const store = transaction.objectStore("conversations");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbConversation = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbConversation.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbConversation,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
   async updateLastActivity(
     conversationId: string,
     lastActivityAt: Date
