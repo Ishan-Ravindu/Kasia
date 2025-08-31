@@ -3,7 +3,7 @@ import { Message } from "../store/repository/message.repository";
 import { LegacyMessage } from "../types/legacy";
 
 // legacy storage key for backward compatibility
-const LEGACY_STORAGE_KEY = "kaspa_messages_by_wallet";
+export const LEGACY_STORAGE_KEY = "kaspa_messages_by_wallet";
 
 // new per-address storage key format: msg_{8char wallet id}_{last 10kas address (sender)}
 export function generateStorageKey(walletId: string, address: string): string {

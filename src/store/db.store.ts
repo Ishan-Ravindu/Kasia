@@ -9,6 +9,7 @@ import { UnlockedWallet } from "../types/wallet.type";
 import { v4 } from "uuid";
 import { DecryptionCache } from "../service/decryption-cache";
 import {
+  LEGACY_STORAGE_KEY,
   loadLegacyMessages,
   loadMessagesForAddress,
 } from "../service/storage-encryption";
@@ -72,6 +73,9 @@ export const useDBStore = create<DBState>((set, get) => ({
 
     // migrate to storage v2
     if (!localStorage.getItem(`${unlockedWallet.id}_migrate_storage_v2`)) {
+      // REMOVE Decryption Cache
+      localStorage.removeItem("kasia_failed_decryptions");
+
       // CONVERSATION and CONTACT
       const conversationString = localStorage.getItem(
         `encrypted_conversations_${address.toString()}`
@@ -95,6 +99,14 @@ export const useDBStore = create<DBState>((set, get) => ({
         );
 
         for (const conversation of conversations) {
+          const existingContact = await repositories.contactRepository
+            .getContactByKaspaAddress(conversation.kaspaAddress)
+            .catch(() => null);
+
+          if (existingContact) {
+            continue;
+          }
+
           const contactKey = await repositories.contactRepository.saveContact({
             id: v4(),
             kaspaAddress: conversation.kaspaAddress,
@@ -102,6 +114,7 @@ export const useDBStore = create<DBState>((set, get) => ({
             name: nicknames[conversation.kaspaAddress],
           });
 
+          // @TODO: check conversation status & aliases, seems wrong
           await repositories.conversationRepository.saveConversation({
             id: v4(),
             contactId: contactKey,
@@ -112,6 +125,12 @@ export const useDBStore = create<DBState>((set, get) => ({
             status: conversation.status,
           });
         }
+
+        // Remove migrated conversations and nicknames
+        localStorage.removeItem(
+          `encrypted_conversations_${address.toString()}`
+        );
+        localStorage.removeItem(nicknameStorageKey);
       }
 
       // MESSAGES
@@ -253,6 +272,13 @@ export const useDBStore = create<DBState>((set, get) => ({
       for (const handshake of messageEntities.handshakes) {
         await repositories.handshakeRepository.saveHandshake(handshake);
       }
+
+      // Remove migrated messages
+      delete legacyMessagesByWallet[address.toString()];
+      localStorage.setItem(
+        LEGACY_STORAGE_KEY,
+        JSON.stringify(legacyMessagesByWallet)
+      );
     }
 
     localStorage.setItem(`${unlockedWallet.id}_migrate_storage_v2`, "true");
