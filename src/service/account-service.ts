@@ -132,6 +132,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return this.password;
   }
 
+  private handleBalanceUpdate = async () => {
+    console.log("Balance event received");
+    this._emitBalanceUpdate();
+  };
+
   private assertReady(): asserts this is AccountService & {
     receiveAddress: Address;
     context: UtxoContext;
@@ -139,9 +144,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     if (!this.isStarted || !this.rpc)
       throw new Error("Account service is not started");
     if (!this.rpc.isConnected) {
-      throw new Error(
-        "Network is not connect, refresh the page if the problem persist"
-      );
+      throw new Error("Network Not Connected - Refresh Page or Restart App");
     }
     if (!this.receiveAddress)
       throw new Error("Receive address not initialized");
@@ -222,10 +225,14 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       // Set up event listeners
       console.log("Setting up event listeners...");
-      this.processor.addEventListener("balance", async () => {
-        console.log("Balance event received");
-        this._emitBalanceUpdate();
-      });
+      this.processor.addEventListener(
+        "balance",
+        this.handleBalanceUpdate.bind(this)
+      );
+
+      // Add RPC connection event listeners
+      this.rpc.removeEventListener("connect", this.start.bind(this));
+      this.rpc.addEventListener("disconnect", this.stop.bind(this));
 
       // start the processor
       console.log("Starting UTXO processor...");
@@ -245,6 +252,14 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   async stop() {
     console.log("Stopping UTXO subscription and processor...");
     try {
+      // Remove event listeners
+      this.processor.removeEventListener(
+        "balance",
+        this.handleBalanceUpdate.bind(this)
+      );
+      this.rpc.addEventListener("connect", this.start.bind(this));
+      this.rpc.removeEventListener("disconnect", this.stop.bind(this));
+
       await this.context.clear();
       // Stop the UTXO processor
       await this.processor.stop();
