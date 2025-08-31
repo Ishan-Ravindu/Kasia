@@ -91,6 +91,9 @@ export const MessengerContainer: FC = () => {
 
       messageStore.setOpenedRecipient(null);
 
+      // Clear broadcast store state when leaving messaging
+      useBroadcastStore.getState().reset();
+
       // clear any attachments
       setAttachment(null);
     };

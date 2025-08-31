@@ -23,7 +23,7 @@ interface BroadcastState {
     message: Omit<BroadcastMessage, "id"> | BroadcastMessage
   ) => void;
   addPendingMessage: (
-    message: Omit<BroadcastMessage, "id" | "status">
+    message: Omit<BroadcastMessage, "id" | "status" | "transactionId">
   ) => string;
   updateMessageStatus: (
     messageId: string,
@@ -36,6 +36,7 @@ interface BroadcastState {
 
   clearAllMessages: () => void;
   clearChannelMessages: (channelName: string) => void;
+  reset: () => void;
 
   selectedChannelName: string | null;
   setSelectedChannel: (channelName: string | null) => void;
@@ -207,6 +208,16 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
         (msg) => msg.channelName !== channelName.toLowerCase()
       ),
     }));
+  },
+
+  reset: () => {
+    set({
+      channels: [],
+      messages: [],
+      selectedChannelName: null,
+      isBroadcastMode: false,
+      selectedParticipant: null,
+    });
   },
 
   // UI state
