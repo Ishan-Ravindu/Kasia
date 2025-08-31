@@ -79,7 +79,7 @@ export const BroadcastMessagesList: FC<BroadcastMessagesListProps> = memo(
           const isBottomOfGroup = isPrevSameSender && !isNextSameSender;
 
           return (
-            <div key={message.id}>
+            <div key={message.transactionId || message.id}>
               {showSeparator &&
                 (isFirstToday ? (
                   <div className="my-4 text-center text-xs text-gray-400">

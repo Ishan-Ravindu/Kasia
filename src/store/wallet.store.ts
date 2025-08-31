@@ -118,6 +118,11 @@ type WalletState = {
   sendMessageWithContext: (
     args: WalletStoreSendContextualMessageArgs
   ) => Promise<TransactionId>;
+  sendBroadcastWithContext: (args: {
+    message: string;
+    channelName: string;
+    priorityFee?: PriorityFeeConfig;
+  }) => Promise<TransactionId>;
   getMatureUtxos: () => UtxoEntryReference[];
 
   estimateSendMessageFees: (
@@ -405,6 +410,60 @@ export const useWalletStore = create<WalletState>((set, get) => {
         });
       } catch (error) {
         console.error("Error sending contextual message:", error);
+        throw error;
+      }
+    },
+    sendBroadcastWithContext: async ({ message, channelName, priorityFee }) => {
+      const state = get();
+      if (!state.unlockedWallet || !state.accountService) {
+        throw new Error("Wallet not unlocked or account service not running");
+      }
+
+      try {
+        console.log("Sending broadcast message to channel:", channelName);
+
+        // Retry logic for UTXO conflicts (moved from useBroadcastComposer)
+        let txId: string;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+          try {
+            txId = await state.accountService.createBroadcastTransaction({
+              channelName: channelName.toLowerCase(),
+              message,
+              priorityFee,
+            });
+            break; // Success, exit retry loop
+          } catch (error) {
+            attempts++;
+            console.log(`Broadcast attempt ${attempts} failed:`, error);
+
+            if (attempts >= maxAttempts) {
+              throw error;
+            }
+
+            // Check if it's a UTXO/funds issue that might resolve
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            if (
+              errorMessage.includes("Insufficient funds") ||
+              errorMessage.includes("UTXO") ||
+              errorMessage.includes("balance")
+            ) {
+              // Wait a bit and retry
+              await new Promise((resolve) =>
+                setTimeout(resolve, 100 * attempts)
+              );
+            } else {
+              throw error; // Non-retryable error
+            }
+          }
+        }
+
+        return txId!;
+      } catch (error) {
+        console.error("Error sending broadcast message:", error);
         throw error;
       }
     },

@@ -9,7 +9,6 @@ import { useBroadcastComposer } from "../../hooks/MessageComposer/useBroadcastCo
 import { MessageInput } from "./MessageInput";
 import { FeeDisplay } from "./FeeDisplay";
 import { useFeeEstimate } from "../../hooks/MessageComposer/useFeeEstimate";
-import { toast } from "../../utils/toast-helper";
 
 export const BroadcastComposerShell = ({
   channelName,
@@ -25,6 +24,9 @@ export const BroadcastComposerShell = ({
 
   const { sendBroadcast } = useBroadcastComposer(channelName);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // readines check
+  const canBroadcast = !!channelName && !!sendBroadcast;
 
   const feeState = useFeeEstimate({
     toSelf: true,
@@ -45,10 +47,6 @@ export const BroadcastComposerShell = ({
   };
 
   const onSend = async () => {
-    if (!draft.trim()) {
-      toast.error("Please enter a message to broadcast");
-      return;
-    }
     await sendBroadcast();
   };
 
@@ -67,13 +65,17 @@ export const BroadcastComposerShell = ({
         <div className="relative flex items-center">
           <MessageInput
             ref={messageInputRef}
-            value={draft}
+            value={canBroadcast ? draft : ""}
             onChange={handleDraftChange}
             onSend={onSend}
-            onDragOver={false} // no drag support
-            onPaste={() => {}} // no pasting
-            placeholder="Type your broadcast..."
-            disabled={sendState.status === "loading"}
+            onDragOver={false}
+            onPaste={() => {}}
+            placeholder={
+              canBroadcast
+                ? "Type your broadcast..."
+                : "Wallet not ready for broadcasting..."
+            }
+            disabled={sendState.status === "loading" || !canBroadcast}
           />
 
           <div className="absolute right-2 flex h-full items-center gap-1">

@@ -1068,16 +1068,28 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             return state;
           }
 
+          // Check if this event already exists to prevent duplicates
+          const existingEventIndex = state.oneOnOneConversations[
+            ooocToUpdateIndex
+          ].events.findIndex(
+            (event) => event.transactionId === kasiaEvent.transactionId
+          );
+
           const updatedConversation = {
             ...state.oneOnOneConversations[ooocToUpdateIndex],
             conversation: {
               ...state.oneOnOneConversations[ooocToUpdateIndex].conversation,
               lastActivityAt: transaction.createdAt,
             },
-            events: [
-              ...state.oneOnOneConversations[ooocToUpdateIndex].events,
-              kasiaEvent,
-            ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+            events:
+              existingEventIndex === -1
+                ? [
+                    ...state.oneOnOneConversations[ooocToUpdateIndex].events,
+                    kasiaEvent,
+                  ].sort(
+                    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+                  )
+                : state.oneOnOneConversations[ooocToUpdateIndex].events, // Event already exists, don't add duplicate
           };
 
           updatedConversationWithContacts[ooocToUpdateIndex] =

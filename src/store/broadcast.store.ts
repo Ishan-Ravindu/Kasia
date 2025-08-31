@@ -8,23 +8,23 @@ export type BroadcastMessage = {
   senderAddress: string;
   content: string;
   timestamp: Date;
-  transactionId: string;
+  transactionId: string | null;
   status: "pending" | "confirmed" | "failed";
 };
 
 interface BroadcastState {
-  // Channel management (persisted in DB)
   channels: BroadcastChannel[];
   loadChannels: () => Promise<void>;
   addChannel: (channelName: string, channelValue: string) => Promise<void>;
   deleteChannel: (channelName: string) => Promise<void>;
 
-  // Message management (in-memory only)
   messages: BroadcastMessage[];
-  addMessage: (message: Omit<BroadcastMessage, "id">) => void;
+  addMessage: (
+    message: Omit<BroadcastMessage, "id"> | BroadcastMessage
+  ) => void;
   addPendingMessage: (
     message: Omit<BroadcastMessage, "id" | "status">
-  ) => string; // Returns message ID
+  ) => string;
   updateMessageStatus: (
     messageId: string,
     status: "confirmed" | "failed",
@@ -37,15 +37,12 @@ interface BroadcastState {
   clearAllMessages: () => void;
   clearChannelMessages: (channelName: string) => void;
 
-  // UI state
   selectedChannelName: string | null;
   setSelectedChannel: (channelName: string | null) => void;
 
-  // Broadcast mode state
   isBroadcastMode: boolean;
   setIsBroadcastMode: (enabled: boolean) => void;
 
-  // Participant info state
   selectedParticipant: {
     address: string;
     nickname?: string;
@@ -56,7 +53,6 @@ interface BroadcastState {
 }
 
 export const useBroadcastStore = create<BroadcastState>((set, get) => ({
-  // Channel management
   channels: [],
 
   loadChannels: async () => {
@@ -108,10 +104,10 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
         channelName
       );
 
-      // Clear messages for this channel
+      // clear messages for this channel
       get().clearChannelMessages(channelName);
 
-      // If this was the selected channel, clear selection
+      // if this was the selected channel, clear selection
       if (get().selectedChannelName === channelName) {
         set({ selectedChannelName: null });
       }
@@ -126,26 +122,42 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   // Message management (in-memory)
   messages: [],
 
-  addMessage: (message: Omit<BroadcastMessage, "id">) => {
-    const newMessage: BroadcastMessage = {
-      ...message,
-      id: crypto.randomUUID(),
-      status: "confirmed", // Default status for incoming messages
-      channelName: message.channelName.toLowerCase(),
-    };
+  addMessage: (message: Omit<BroadcastMessage, "id"> | BroadcastMessage) => {
+    // Handle both cases: messages with/without pre-set id
+    const hasId = "id" in message;
+    const newMessage: BroadcastMessage = hasId
+      ? { ...message } // Use as-is if id is already set
+      : {
+          ...message,
+          id: crypto.randomUUID(),
+          status: "confirmed", // Default status for incoming messages
+          channelName: message.channelName.toLowerCase(),
+        };
 
-    set((state) => ({
-      messages: [...state.messages, newMessage].sort(
-        (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-      ),
-    }));
+    // check for duplicates to prevent double processing
+    const existingMessage = get().messages.find(
+      (msg) =>
+        msg.transactionId === newMessage.transactionId &&
+        newMessage.transactionId
+    );
+
+    if (!existingMessage) {
+      set((state) => ({
+        messages: [...state.messages, newMessage].sort(
+          (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+        ),
+      }));
+    }
   },
 
-  addPendingMessage: (message: Omit<BroadcastMessage, "id" | "status">) => {
-    const messageId = crypto.randomUUID();
+  addPendingMessage: (
+    message: Omit<BroadcastMessage, "id" | "status" | "transactionId">
+  ) => {
+    const tempId = crypto.randomUUID();
     const newMessage: BroadcastMessage = {
       ...message,
-      id: messageId,
+      id: tempId,
+      transactionId: null,
       status: "pending",
       channelName: message.channelName.toLowerCase(),
     };
@@ -156,7 +168,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       ),
     }));
 
-    return messageId;
+    return tempId;
   },
 
   updateMessageStatus: (
@@ -167,7 +179,11 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     set((state) => ({
       messages: state.messages.map((msg) =>
         msg.id === messageId
-          ? { ...msg, status, ...(transactionId && { transactionId }) }
+          ? {
+              ...msg,
+              status,
+              ...(transactionId && { transactionId }),
+            }
           : msg
       ),
     }));
