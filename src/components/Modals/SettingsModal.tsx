@@ -200,9 +200,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setNewPassword("");
       setConfirmPassword("");
 
-      // reEncrypt all messages with the new password
-      // @TODO(storage): decrypt/re-encrypt the whole index db
-
       // Show success for 2 seconds, then go back
       setTimeout(() => {
         setShowPasswordChange(false);
