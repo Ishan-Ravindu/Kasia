@@ -78,6 +78,19 @@ VITE_INDEXER_MAINNET_URL=
 VITE_INDEXER_TESTNET_URL=
 ```
 
+## Historical Messages
+For UX purposes, Kasia team built [Kasia Indexer](https://github.com/K-Kluster/kasia-indexer), while not required, it offers cross-device synchronization capabilities. In short, it scans the Kaspa network continuously and store the Kasia protocol messages.
+
+For maximum sovergnty, it is recommended to run your own indexer, it has very-few hardware requirements thanks to its well-architectured design, it easily can handle 3,000 transactions per second.
+
+The application itself only use it to retreieve data when a wallet session opens.
+
+## Public Infrastructure
+To allow easier on-boarding, Kluster hosts [Kasia Public Infrastructure](https://github.com/K-Kluster/infrastructure), at the time of writing, it contains:
+* Kaspa nodes
+* Kasia indexers
+* A few other plateform utils
+
 ## Contributing
 
 We welcome contributions from everyone! If you're interested in contributing to Kasia, please read our [Contributing Guide](CONTRIBUTING.md) for detailed instructions on how to get started.

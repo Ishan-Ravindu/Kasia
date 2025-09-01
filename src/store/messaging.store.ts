@@ -190,16 +190,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const knownEventIds = new Set(oooc.events.map((e) => e.id.split("_")[1]));
       const newIndexerPayments = indexerPayments.filter(
-        (p, idx, self) =>
-          !knownEventIds.has(p.tx_id) &&
-          // @todo: remove when indexer dedup filter
-          idx === self.findIndex((o) => o.tx_id === p.tx_id)
+        (p) => !knownEventIds.has(p.tx_id)
       );
       const newIndexerMessages = indexerMessages.filter(
-        (m, idx, self) =>
-          !knownEventIds.has(m.tx_id) &&
-          // @todo: remove when indexer dedup filter
-          idx === self.findIndex((o) => o.tx_id === m.tx_id)
+        (m) => !knownEventIds.has(m.tx_id)
       );
 
       const newKasiaTransactions: KasiaTransaction[] = [];

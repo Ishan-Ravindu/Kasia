@@ -377,15 +377,6 @@ export class ConversationManagerService {
       this.events?.onHandshakeCompleted?.(updatedConversation, existingContact);
     }
 
-    // @TODO(indexdb): useless?
-    // // Update mappings
-    // if (existingContact.kaspaAddress) {
-    //   this.addressToConversation.set(
-    //     existingContact.kaspaAddress,
-    //     conversation.conversationId
-    //   );
-    // }
-
     if (conversation.myAlias) {
       this.aliasToConversation.set(conversation.myAlias, conversation.id);
     }
