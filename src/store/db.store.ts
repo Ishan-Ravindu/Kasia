@@ -107,7 +107,6 @@ export const useDBStore = create<DBState>((set, get) => ({
             name: nicknames[conversation.kaspaAddress],
           });
 
-          // @TODO: check conversation status & aliases, seems wrong
           await repositories.conversationRepository.saveConversation({
             id: v4(),
             contactId: contactKey,
@@ -115,7 +114,10 @@ export const useDBStore = create<DBState>((set, get) => ({
             lastActivityAt: new Date(conversation.lastActivity),
             myAlias: conversation.myAlias,
             theirAlias: conversation.theirAlias,
-            status: conversation.status,
+            status:
+              conversation.theirAlias && conversation.myAlias
+                ? "active"
+                : conversation.status,
           });
         }
 

@@ -121,6 +121,9 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
     if (this.waitingQueue.size > 0) {
       for (const [txId, waitingContext] of this.waitingQueue) {
         const acceptingBlock = this.acceptingBlockByTransactionId[txId];
+        console.log(
+          `resolving ${txId}, with accepting block ${acceptingBlock}`
+        );
         if (acceptingBlock) {
           const blockResponse = await this.rpcClient.getBlock({
             hash: acceptingBlock,
@@ -128,6 +131,7 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
           });
 
           if (!blockResponse?.block?.header?.daaScore) {
+            console.log(`resolving ${txId}, ${acceptingBlock} not found`);
             continue;
           }
 
@@ -138,12 +142,16 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
               txid: txId,
               acceptingBlockDaaScore: blockResponse.block.header.daaScore,
             })
-            .catch(() => {
+            .catch((err) => {
+              console.log(
+                `resolving ${txId}, ${acceptingBlock} resolution failed with error`,
+                err
+              );
               return null;
             });
 
           if (returnAddressResponse === null && devMode) {
-            console.log(`Resolution Try Failed for ${txId}`, {
+            console.log(`resolving ${txId}, Try Failed for ${txId}`, {
               blockResponse,
               acceptingBlock,
             });
@@ -168,6 +176,37 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
 
     const upperBoundAsString = String(now - this.GARBAGE_COLLECTION_TIMEOUT_MS);
     const acceptingBlockIdsToGarbage: string[] = [];
+
+    // get hashes to invalidate: garbaged collected elements
+    for (const timestampAsString in this.acceptingBlocksByFirstSeen) {
+      if (timestampAsString >= upperBoundAsString) {
+        break;
+      }
+      // mark to garbage
+      acceptingBlockIdsToGarbage.push(
+        ...this.acceptingBlocksByFirstSeen[timestampAsString]
+      );
+
+      // remove from timestamped
+      delete this.acceptingBlocksByFirstSeen[timestampAsString];
+    }
+
+    // also add removed blockhash
+    acceptingBlockIdsToGarbage.push(...data.removedChainBlockHashes);
+
+    // garbage routine
+    for (const acceptingBlockIdToGarbage of acceptingBlockIdsToGarbage) {
+      const txIdsToRemove =
+        this.transactionIdsByAcceptingBlock[
+          acceptingBlockIdToGarbage
+        ]?.values() ?? [];
+
+      delete this.transactionIdsByAcceptingBlock[acceptingBlockIdToGarbage];
+
+      for (const txIdToRemove of txIdsToRemove) {
+        delete this.acceptingBlockByTransactionId[txIdToRemove];
+      }
+    }
 
     for (const acceptedTransactionId of data.acceptedTransactionIds) {
       // update in-memory
@@ -206,37 +245,6 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
       for (const transactionId of acceptedTransactionId.acceptedTransactionIds) {
         this.acceptingBlockByTransactionId[transactionId] =
           acceptedTransactionId.acceptingBlockHash;
-      }
-    }
-
-    // get hashes to invalidate: garbaged collected elements
-    for (const timestampAsString in this.acceptingBlocksByFirstSeen) {
-      if (timestampAsString >= upperBoundAsString) {
-        break;
-      }
-      // mark to garbage
-      acceptingBlockIdsToGarbage.push(
-        ...this.acceptingBlocksByFirstSeen[timestampAsString]
-      );
-
-      // remove from timestamped
-      delete this.acceptingBlocksByFirstSeen[timestampAsString];
-    }
-
-    // also add removed blockhash
-    acceptingBlockIdsToGarbage.push(...data.removedChainBlockHashes);
-
-    // garbage routine
-    for (const acceptingBlockIdToGarbage of acceptingBlockIdsToGarbage) {
-      const txIdsToRemove =
-        this.transactionIdsByAcceptingBlock[
-          acceptingBlockIdToGarbage
-        ]?.values() ?? [];
-
-      delete this.transactionIdsByAcceptingBlock[acceptingBlockIdToGarbage];
-
-      for (const txIdToRemove of txIdsToRemove) {
-        delete this.acceptingBlockByTransactionId[txIdToRemove];
       }
     }
 

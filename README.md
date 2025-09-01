@@ -47,6 +47,9 @@ Follow these steps to run Kasia locally on your machine.
 4. **Install Kaspa WASM Files**
 
    - Download the [latest `kaspa-wasm32-sdk-v1.0.0.zip`](https://github.com/kaspanet/rusty-kaspa/releases) or build the WASM modules yourself.
+
+      :warning: Due to a **needed** feature that still isn't included within the official wasm package, you will need to use [this wasm package instead](https://github.com/IzioDev/rusty-kaspa/releases/tag/v1.0.1-beta1).
+
    - Extract the contents of `kaspa-wasm32-sdk/web/kaspa/*` into the `Kasia/wasm/` directory.
 
 5. **Install Node.js Dependencies**
