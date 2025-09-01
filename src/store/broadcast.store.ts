@@ -12,6 +12,10 @@ export type BroadcastMessage = {
   status: "pending" | "confirmed" | "failed";
 };
 
+// Add normalization utility at the top level
+const normalizeChannel = (s: string | null) =>
+  s ? s.trim().toLowerCase() : null;
+
 interface BroadcastState {
   channels: BroadcastChannel[];
   loadChannels: () => Promise<void>;
@@ -19,6 +23,8 @@ interface BroadcastState {
   deleteChannel: (channelName: string) => Promise<void>;
 
   messages: BroadcastMessage[];
+  messageById: Map<string, BroadcastMessage>;
+  messageByTxId: Map<string, BroadcastMessage>;
   addMessage: (
     message: Omit<BroadcastMessage, "id"> | BroadcastMessage
   ) => void;
@@ -30,9 +36,8 @@ interface BroadcastState {
     status: "confirmed" | "failed",
     transactionId?: string
   ) => void;
-  findPendingMessageByTxId: (
-    transactionId: string
-  ) => BroadcastMessage | undefined;
+  // Renamed method: now works for any status, not just pending
+  findMessageByTxId: (transactionId: string) => BroadcastMessage | undefined;
 
   clearAllMessages: () => void;
   clearChannelMessages: (channelName: string) => void;
@@ -56,6 +61,10 @@ interface BroadcastState {
 export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   channels: [],
 
+  messages: [],
+  messageById: new Map(),
+  messageByTxId: new Map(),
+
   loadChannels: async () => {
     try {
       const repositories = useDBStore.getState().repositories;
@@ -72,9 +81,12 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     try {
       const repositories = useDBStore.getState().repositories;
 
+      const normalizedName = normalizeChannel(channelName);
+      if (!normalizedName) throw new Error("Invalid channel name");
+
       // check if channel already exists
       const existingChannel = get().channels.find(
-        (channel) => channel.channelName === channelName.toLowerCase()
+        (channel) => channel.channelName === normalizedName
       );
 
       if (existingChannel) {
@@ -83,7 +95,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
 
       const newChannel: Omit<BroadcastChannel, "tenantId"> = {
         id: crypto.randomUUID(),
-        channelName: channelName.toLowerCase(),
+        channelName: normalizedName,
         channelValue,
         timestamp: new Date(),
       };
@@ -101,15 +113,18 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   deleteChannel: async (channelName: string) => {
     try {
       const repositories = useDBStore.getState().repositories;
+      const normalizedName = normalizeChannel(channelName);
+      if (!normalizedName) throw new Error("Invalid channel name");
+
       await repositories.broadcastChannelRepository.deleteBroadcastChannelByName(
-        channelName
+        normalizedName
       );
 
       // clear messages for this channel
-      get().clearChannelMessages(channelName);
+      get().clearChannelMessages(normalizedName);
 
       // if this was the selected channel, clear selection
-      if (get().selectedChannelName === channelName) {
+      if (get().selectedChannelName === normalizedName) {
         set({ selectedChannelName: null });
       }
 
@@ -120,34 +135,48 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     }
   },
 
-  // Message management (in-memory)
-  messages: [],
-
   addMessage: (message: Omit<BroadcastMessage, "id"> | BroadcastMessage) => {
-    // Handle both cases: messages with/without pre-set id
     const hasId = "id" in message;
     const newMessage: BroadcastMessage = hasId
-      ? { ...message } // Use as-is if id is already set
+      ? { ...message, channelName: normalizeChannel(message.channelName)! }
       : {
           ...message,
           id: crypto.randomUUID(),
-          status: "confirmed", // Default status for incoming messages
-          channelName: message.channelName.toLowerCase(),
+          status: "confirmed",
+          channelName: normalizeChannel(message.channelName)!,
         };
 
-    // check for duplicates to prevent double processing
-    const existingMessage = get().messages.find(
-      (msg) =>
-        msg.transactionId === newMessage.transactionId &&
-        newMessage.transactionId
-    );
+    const existingMessage = newMessage.transactionId
+      ? get().messageByTxId.get(newMessage.transactionId)
+      : get().messageById.get(newMessage.id);
 
     if (!existingMessage) {
-      set((state) => ({
-        messages: [...state.messages, newMessage].sort(
-          (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-        ),
-      }));
+      set((state) => {
+        const insertIndex = state.messages.findIndex(
+          (msg) => msg.timestamp.getTime() > newMessage.timestamp.getTime()
+        );
+        const newMessages =
+          insertIndex === -1
+            ? [...state.messages, newMessage]
+            : [
+                ...state.messages.slice(0, insertIndex),
+                newMessage,
+                ...state.messages.slice(insertIndex),
+              ];
+
+        const newMessageById = new Map(state.messageById);
+        const newMessageByTxId = new Map(state.messageByTxId);
+        newMessageById.set(newMessage.id, newMessage);
+        if (newMessage.transactionId) {
+          newMessageByTxId.set(newMessage.transactionId, newMessage);
+        }
+
+        return {
+          messages: newMessages,
+          messageById: newMessageById,
+          messageByTxId: newMessageByTxId,
+        };
+      });
     }
   },
 
@@ -160,14 +189,30 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       id: tempId,
       transactionId: null,
       status: "pending",
-      channelName: message.channelName.toLowerCase(),
+      channelName: normalizeChannel(message.channelName)!,
     };
 
-    set((state) => ({
-      messages: [...state.messages, newMessage].sort(
-        (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-      ),
-    }));
+    set((state) => {
+      const insertIndex = state.messages.findIndex(
+        (msg) => msg.timestamp.getTime() > newMessage.timestamp.getTime()
+      );
+      const newMessages =
+        insertIndex === -1
+          ? [...state.messages, newMessage]
+          : [
+              ...state.messages.slice(0, insertIndex),
+              newMessage,
+              ...state.messages.slice(insertIndex),
+            ];
+
+      const newMessageById = new Map(state.messageById);
+      newMessageById.set(newMessage.id, newMessage);
+
+      return {
+        messages: newMessages,
+        messageById: newMessageById,
+      };
+    });
 
     return tempId;
   },
@@ -177,43 +222,91 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     status: "confirmed" | "failed",
     transactionId?: string
   ) => {
-    set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg.id === messageId
-          ? {
-              ...msg,
-              status,
-              ...(transactionId && { transactionId }),
-            }
-          : msg
-      ),
-    }));
+    set((state) => {
+      const message = state.messageById.get(messageId);
+      if (!message) return state;
+
+      const updatedMessage = {
+        ...message,
+        status,
+        ...(transactionId && { transactionId }),
+      };
+
+      const messageIndex = state.messages.findIndex(
+        (msg) => msg.id === messageId
+      );
+      if (messageIndex === -1) return state;
+
+      const newMessages = [...state.messages];
+      newMessages[messageIndex] = updatedMessage;
+
+      const newMessageById = new Map(state.messageById);
+      const newMessageByTxId = new Map(state.messageByTxId);
+      newMessageById.set(messageId, updatedMessage);
+
+      if (transactionId) {
+        newMessageByTxId.set(transactionId, updatedMessage);
+      } else if (message.transactionId) {
+        newMessageByTxId.delete(message.transactionId);
+      }
+
+      return {
+        messages: newMessages,
+        messageById: newMessageById,
+        messageByTxId: newMessageByTxId,
+      };
+    });
   },
 
-  findPendingMessageByTxId: (transactionId: string) => {
+  // Renamed and updated: now finds by txId regardless of status
+  // Note: Pending messages may not have a txId until confirmed, so this often returns undefined for pendings
+  findMessageByTxId: (transactionId: string) => {
     const state = get();
-    return state.messages.find(
-      (msg) => msg.transactionId === transactionId && msg.status === "pending"
-    );
+    return state.messageByTxId.get(transactionId);
   },
 
   // unused - but we might use in the future (so remove this comment if you use it!)
   clearAllMessages: () => {
-    set({ messages: [] });
+    set({
+      messages: [],
+      messageById: new Map(),
+      messageByTxId: new Map(),
+    });
   },
 
   clearChannelMessages: (channelName: string) => {
-    set((state) => ({
-      messages: state.messages.filter(
-        (msg) => msg.channelName !== channelName.toLowerCase()
-      ),
-    }));
+    const normalizedChannelName = normalizeChannel(channelName);
+    if (!normalizedChannelName) return;
+
+    set((state) => {
+      const filteredMessages = state.messages.filter(
+        (msg) => msg.channelName !== normalizedChannelName
+      );
+
+      const newMessageById = new Map();
+      const newMessageByTxId = new Map();
+
+      filteredMessages.forEach((msg) => {
+        newMessageById.set(msg.id, msg);
+        if (msg.transactionId) {
+          newMessageByTxId.set(msg.transactionId, msg);
+        }
+      });
+
+      return {
+        messages: filteredMessages,
+        messageById: newMessageById,
+        messageByTxId: newMessageByTxId,
+      };
+    });
   },
 
   reset: () => {
     set({
       channels: [],
       messages: [],
+      messageById: new Map(),
+      messageByTxId: new Map(),
       selectedChannelName: null,
       isBroadcastMode: false,
       selectedParticipant: null,
@@ -223,7 +316,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   // UI state
   selectedChannelName: null,
   setSelectedChannel: (channelName: string | null) => {
-    set({ selectedChannelName: channelName?.toLowerCase() || null });
+    set({ selectedChannelName: normalizeChannel(channelName) });
   },
 
   // Broadcast mode state

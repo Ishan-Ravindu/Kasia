@@ -117,10 +117,12 @@ export class BlockProcessorService extends EventEmitter<{
        * the same functionality to outgoing chat messages too
        */
       const broadcastStore = useBroadcastStore.getState();
-      const existingPendingMessage =
-        broadcastStore.findPendingMessageByTxId(txId);
+      const existingPendingMessage = broadcastStore.findMessageByTxId(txId);
 
-      if (existingPendingMessage) {
+      if (
+        existingPendingMessage &&
+        existingPendingMessage.status === "pending"
+      ) {
         console.log(
           `updating existing pending message to confirmed: ${existingPendingMessage.id}`
         );
@@ -395,10 +397,12 @@ export class BlockProcessorService extends EventEmitter<{
 
       // Check if we have a pending message with this transaction ID
       // This handles the case where we sent a broadcast and it's now confirmed
-      const existingPendingMessage =
-        broadcastStore.findPendingMessageByTxId(txId);
+      const existingPendingMessage = broadcastStore.findMessageByTxId(txId);
 
-      if (existingPendingMessage) {
+      if (
+        existingPendingMessage &&
+        existingPendingMessage.status === "pending"
+      ) {
         // Update existing pending message to confirmed status
         console.log(
           `Updating existing pending message to confirmed: ${existingPendingMessage.id}`

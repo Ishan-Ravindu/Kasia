@@ -19,7 +19,7 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
   const addChannel = useBroadcastStore((state) => state.addChannel);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toLowerCase();
+    const value = e.target.value;
     setInputValue(value);
 
     // clear error when user starts typing
@@ -61,11 +61,7 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
     setIsLoading(true);
     toast.removeAll();
     try {
-      // add the channel to the store (this will save to db and update state)
-      await addChannel(
-        inputValue.trim(),
-        description.trim() || "Broadcast channel"
-      );
+      await addChannel(inputValue, description.trim() || "Broadcast channel");
       onClose();
     } catch (error) {
       const errorMessage =
@@ -100,7 +96,7 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
                 type="text"
                 value={inputValue}
                 onChange={handleInputChange}
-                placeholder="Enter channel name"
+                placeholder="Name your channel to tune in to (e.g. general)"
                 maxLength={MAX_BROADCAST_LENGTH}
                 className="border-primary-border bg-primary-bg w-full cursor-text items-center rounded-lg border px-3 py-2 transition-colors focus:ring-2 focus:ring-[var(--kas-primary)] focus:outline-none"
               />

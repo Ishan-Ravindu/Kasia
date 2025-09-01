@@ -6,8 +6,8 @@ export const bubbleVar = "--bubble-color";
 export const colorConfig = {
   hueMultiplier: 137.508, // spreads seeds across color wheel
   saturation: {
-    min: 50, // minimum saturation (50%)
-    range: 25, // range (50 + 25 = max 74%)
+    min: 40, // minimum saturation (50%)
+    range: 20, // range (50 + 25 = max 74%)
   },
   lightness: {
     min: 45, // minimum lightness (45%)
