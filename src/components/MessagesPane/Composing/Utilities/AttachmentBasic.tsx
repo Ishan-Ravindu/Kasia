@@ -2,8 +2,8 @@ import { Paperclip, Trash2 } from "lucide-react";
 import {
   useComposerSlice,
   useComposerStore,
-} from "../../store/message-composer.store";
-import { MESSAGE_COMPOSER_MAX_HEIGHT } from "../../config/constants";
+} from "../../../../store/message-composer.store";
+import { MESSAGE_COMPOSER_MAX_HEIGHT } from "../../../../config/constants";
 
 // this component is for rendering either a file or an image when its been attached
 // also adds a trash button to delete

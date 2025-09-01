@@ -11,7 +11,7 @@ import {
   MessageTimestamp,
   MessageContent,
   generateAddressColor,
-} from "../Bubble";
+} from "../Utilities";
 import { AvatarHash } from "../../icons/AvatarHash";
 import { useUiStore } from "../../../store/ui.store";
 import { useWalletStore } from "../../../store/wallet.store";

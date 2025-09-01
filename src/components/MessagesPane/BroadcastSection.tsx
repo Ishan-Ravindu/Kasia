@@ -3,8 +3,8 @@ import { ChevronLeft, AlertTriangle } from "lucide-react";
 import { useBroadcastStore } from "../../store/broadcast.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { useIsMobile } from "../../hooks/useIsMobile";
-import { BroadcastComposerShell } from "../MessageComposer/BroadcastComposerShell";
-import { BroadcastMessagesList } from "../MessageDisplay/Broadcasts/BroadcastMessagesList";
+import { BroadcastComposer } from "./Composing/Broadcast/BroadcastComposer";
+import { BroadcastMessagesList } from "./Broadcasts/BroadcastMessagesList";
 
 export const BroadcastSection: FC<{
   mobileView: "contacts" | "messages";
@@ -111,9 +111,7 @@ export const BroadcastSection: FC<{
       </div>
 
       {/* Broadcast composer */}
-      <BroadcastComposerShell
-        channelName={selectedChannel?.channelName || ""}
-      />
+      <BroadcastComposer channelName={selectedChannel?.channelName || ""} />
     </div>
   );
 };

@@ -3,8 +3,8 @@ import clsx from "clsx";
 import {
   MESSAGE_COMPOSER_MIN_HEIGHT,
   MESSAGE_COMPOSER_MAX_HEIGHT,
-} from "../../config/constants";
-import { MAX_CHAT_INPUT_CHAR } from "../../config/constants";
+} from "../../../../config/constants";
+import { MAX_CHAT_INPUT_CHAR } from "../../../../config/constants";
 
 interface InputBasicProps {
   value: string;

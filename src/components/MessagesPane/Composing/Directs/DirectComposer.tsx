@@ -2,8 +2,8 @@ import { useRef, useState, DragEvent, useEffect } from "react";
 import {
   useComposerSlice,
   useComposerStore,
-} from "../../store/message-composer.store";
-import { useMessageComposer } from "../../hooks/MessageComposer/useMessageComposer";
+} from "../../../../store/message-composer.store";
+import { useMessageComposer } from "../../../../hooks/MessageComposer/useMessageComposer";
 import { SendHorizonal, Paperclip, Camera, Plus } from "lucide-react";
 import clsx from "clsx";
 import {
@@ -12,15 +12,15 @@ import {
   PopoverPanel,
   Transition,
 } from "@headlessui/react";
-import { SendPaymentPopup } from "../SendPaymentPopup";
-import { MessageInput } from "./MessageInput";
-import { FeeDisplay } from "./FeeDisplay";
-import { useMessagingStore } from "../../store/messaging.store";
-import { useFeeEstimate } from "../../hooks/MessageComposer/useFeeEstimate";
-import { toast } from "../../utils/toast-helper";
-import { MAX_CHAT_INPUT_CHAR } from "../../config/constants";
+import { SendPaymentPopup } from "../../../SendPaymentPopup";
+import { MessageInput } from "../Utilities/MessageInput";
+import { FeeDisplay } from "../Utilities/FeeDisplay";
+import { useMessagingStore } from "../../../../store/messaging.store";
+import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate";
+import { toast } from "../../../../utils/toast-helper";
+import { MAX_CHAT_INPUT_CHAR } from "../../../../config/constants";
 
-export const MessageComposerShell = ({ recipient }: { recipient?: string }) => {
+export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const attachment = useComposerSlice((s) => s.attachment);
   const sendState = useComposerSlice((s) => s.sendState);
   const priority = useComposerSlice((s) => s.priority);

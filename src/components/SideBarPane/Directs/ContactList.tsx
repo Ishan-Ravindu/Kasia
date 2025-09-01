@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { ContactCard } from "./ContactCard";
-import { useMessagingStore } from "../../store/messaging.store";
-import { Contact } from "../../store/repository/contact.repository";
+import { useMessagingStore } from "../../../store/messaging.store";
+import { Contact } from "../../../store/repository/contact.repository";
 
 interface ContactListProps {
   contacts: Contact[];

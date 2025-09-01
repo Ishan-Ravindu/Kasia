@@ -1,11 +1,11 @@
 import { FC, useState, useEffect, useRef } from "react";
 import clsx from "clsx";
 
-import { KasiaConversationEvent } from "../../types/all";
-import { useWalletStore } from "../../store/wallet.store";
-import { Conversation } from "../../store/repository/conversation.repository";
-import { Contact } from "../../store/repository/contact.repository";
-import { isImageType } from "../../utils/parse-message";
+import { KasiaConversationEvent } from "../../../types/all";
+import { useWalletStore } from "../../../store/wallet.store";
+import { Conversation } from "../../../store/repository/conversation.repository";
+import { Contact } from "../../../store/repository/contact.repository";
+import { isImageType } from "../../../utils/parse-message";
 
 import {
   ExplorerLink,
@@ -14,9 +14,9 @@ import {
   MessageTimestamp,
   MessageMeta,
   ImageView,
-} from "./Bubble";
+} from "../Utilities";
 
-type MessageDisplayProps = {
+type DirectDisplayProps = {
   event: KasiaConversationEvent;
   isOutgoing: boolean;
   contact: Contact;
@@ -25,7 +25,7 @@ type MessageDisplayProps = {
   groupPosition?: "single" | "top" | "middle" | "bottom";
 };
 
-export const MessageDisplay: FC<MessageDisplayProps> = ({
+export const DirectDisplay: FC<DirectDisplayProps> = ({
   event,
   isOutgoing,
   contact,

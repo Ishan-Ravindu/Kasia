@@ -1,7 +1,7 @@
 import { FC, useEffect } from "react";
 import { BroadcastCard } from "./BroadcastCard";
-import { useBroadcastStore } from "../../store/broadcast.store";
-import { BroadcastChannel } from "../../store/repository/broadcast-channel.repository";
+import { useBroadcastStore } from "../../../store/broadcast.store";
+import { BroadcastChannel } from "../../../store/repository/broadcast-channel.repository";
 
 interface BroadcastListProps {
   searchQuery: string;

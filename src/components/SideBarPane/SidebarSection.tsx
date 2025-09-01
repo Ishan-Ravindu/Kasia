@@ -6,8 +6,8 @@ import { useUiStore } from "../../store/ui.store";
 import { useBroadcastStore } from "../../store/broadcast.store";
 import { DesktopMenu } from "../Layout/DesktopMenu";
 import { Contact } from "../../store/repository/contact.repository";
-import { ContactList } from "./ContactList";
-import { BroadcastList } from "./BroadcastList";
+import { ContactList } from "./Directs/ContactList";
+import { BroadcastList } from "./Broadcasts/BroadcastList";
 import { useFeatureFlagsStore } from "../../store/featureflag.store";
 import { ModeSelector } from "../ModeSelector";
 

@@ -1,11 +1,11 @@
 import { FC, useMemo, useState, useEffect, useRef } from "react";
-import { decodePayload } from "../../utils/format";
-import { useMessagingStore } from "../../store/messaging.store";
-import { AvatarHash } from "../icons/AvatarHash";
-import { PROTOCOL } from "../../config/protocol";
+import { decodePayload } from "../../../utils/format";
+import { useMessagingStore } from "../../../store/messaging.store";
+import { AvatarHash } from "../../icons/AvatarHash";
+import { PROTOCOL } from "../../../config/protocol";
 import clsx from "clsx";
-import { Contact } from "../../store/repository/contact.repository";
-import { getFileTypeFromContent } from "../../utils/parse-message";
+import { Contact } from "../../../store/repository/contact.repository";
+import { getFileTypeFromContent } from "../../../utils/parse-message";
 
 function getMessagePreview(content: string) {
   // check if it's a file or image message

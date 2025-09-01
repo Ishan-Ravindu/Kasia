@@ -1,8 +1,8 @@
 import { FC } from "react";
 import { Radio } from "lucide-react";
 import clsx from "clsx";
-import { BroadcastChannel } from "../../store/repository/broadcast-channel.repository";
-import { HoldToDelete } from "../Common/HoldToDelete";
+import { BroadcastChannel } from "../../../store/repository/broadcast-channel.repository";
+import { HoldToDelete } from "../../Common/HoldToDelete";
 
 export const BroadcastCard: FC<{
   channel: BroadcastChannel;

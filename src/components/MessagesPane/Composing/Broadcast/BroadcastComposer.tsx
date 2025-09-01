@@ -4,23 +4,22 @@ import clsx from "clsx";
 import {
   useComposerStore,
   useComposerSlice,
-} from "../../store/message-composer.store";
-import { useBroadcastComposer } from "../../hooks/MessageComposer/useBroadcastComposer";
-import { MessageInput } from "./MessageInput";
-import { FeeDisplay } from "./FeeDisplay";
-import { useFeeEstimate } from "../../hooks/MessageComposer/useFeeEstimate";
+  ComposerState,
+} from "../../../../store/message-composer.store";
+import { useBroadcastComposer } from "../../../../hooks/MessageComposer/useBroadcastComposer";
+import { MessageInput } from "../Utilities/MessageInput";
+import { FeeDisplay } from "../Utilities/FeeDisplay";
+import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate";
 
-export const BroadcastComposerShell = ({
-  channelName,
-}: {
-  channelName: string;
-}) => {
-  const setDraft = useComposerStore((s) => s.setDraft);
-  const draft = useComposerStore((s) => s.drafts[channelName] || "");
-  const priority = useComposerStore((s) => s.priority);
-  const setPriority = useComposerStore((s) => s.setPriority);
-  const sendState = useComposerSlice((s) => s.sendState);
-  const setSendState = useComposerStore((s) => s.setSendState);
+export const BroadcastComposer = ({ channelName }: { channelName: string }) => {
+  const setDraft = useComposerStore((s: ComposerState) => s.setDraft);
+  const draft = useComposerStore(
+    (s: ComposerState) => s.drafts[channelName] || ""
+  );
+  const priority = useComposerStore((s: ComposerState) => s.priority);
+  const setPriority = useComposerStore((s: ComposerState) => s.setPriority);
+  const sendState = useComposerSlice((s: ComposerState) => s.sendState);
+  const setSendState = useComposerStore((s: ComposerState) => s.setSendState);
 
   const { sendBroadcast } = useBroadcastComposer(channelName);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);

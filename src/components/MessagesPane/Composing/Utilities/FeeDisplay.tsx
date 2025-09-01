@@ -1,10 +1,10 @@
 import clsx from "clsx";
-import { formatKasAmount } from "../../utils/format";
-import { PriorityFeeSelector } from "../PriorityFeeSelector";
-import { PriorityFeeConfig } from "../../types/all";
-import { Attachment } from "../../store/message-composer.store";
-import { FeeState } from "../../types/all";
-import { useWalletStore } from "../../store/wallet.store";
+import { formatKasAmount } from "../../../../utils/format";
+import { PriorityFeeSelector } from "../../../PriorityFeeSelector";
+import { PriorityFeeConfig } from "../../../../types/all";
+import { Attachment } from "../../../../store/message-composer.store";
+import { FeeState } from "../../../../types/all";
+import { useWalletStore } from "../../../../store/wallet.store";
 
 // fee levels for color coding
 // need to extract this and make it setable from the settings

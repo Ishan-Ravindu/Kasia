@@ -2,8 +2,8 @@ import { FC, useEffect, useState, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { FetchApiMessages } from "../FetchApiMessages";
-import { MessagesList } from "../MessageDisplay/MessagesList";
-import { MessageComposerShell } from "../MessageComposer/MessageComposerShell";
+import { DirectsList } from "./Directs/DirectsList";
+import { DirectComposer } from "./Composing/Directs/DirectComposer";
 import { useMessagingStore } from "../../store/messaging.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { KaspaAddress } from "../KaspaAddress";
@@ -15,7 +15,7 @@ import { useUiStore } from "../../store/ui.store";
 import { Contact } from "../../store/repository/contact.repository";
 import { Button } from "../Common/Button";
 
-export const MessageSection: FC<{
+export const DirectsSection: FC<{
   mobileView: "contacts" | "messages";
   setMobileView: (v: "contacts" | "messages") => void;
 }> = ({ mobileView, setMobileView }) => {
@@ -320,13 +320,13 @@ export const MessageSection: FC<{
             className="bg-primary-bg flex-1 overflow-x-hidden overflow-y-auto px-1 py-4 pb-8 sm:px-2"
             ref={messagesScrollRef}
           >
-            <MessagesList
+            <DirectsList
               oneOnOneConversation={oneOnOneConversation}
               lastOutgoing={lastOutgoing}
               lastIncoming={lastIncoming}
             />
           </div>
-          <MessageComposerShell recipient={openedRecipient || undefined} />
+          <DirectComposer recipient={openedRecipient || undefined} />
         </>
       )}
 

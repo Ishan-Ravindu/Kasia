@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import { InputBasic } from "./InputBasic";
 import { AttachmentBasic } from "./AttachmentBasic";
-import { useComposerSlice } from "../../store/message-composer.store";
+import { useComposerSlice } from "../../../../store/message-composer.store";
 
 interface MessageInputProps {
   value: string;

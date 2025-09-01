@@ -6,7 +6,7 @@ import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { SidebarSection } from "../components/SideBarPane/SidebarSection";
-import { MessageSection } from "../components/MessagesPane/MessagesSection";
+import { DirectsSection } from "../components/MessagesPane/DirectsSection";
 import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
 import { Contact } from "../store/repository/contact.repository";
 import { useBroadcastStore } from "../store/broadcast.store";
@@ -194,7 +194,7 @@ export const MessengerContainer: FC = () => {
                   setMobileView={setMobileView}
                 />
               ) : (
-                <MessageSection
+                <DirectsSection
                   mobileView={mobileView}
                   setMobileView={setMobileView}
                 />

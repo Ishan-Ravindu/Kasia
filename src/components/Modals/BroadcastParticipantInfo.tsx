@@ -3,7 +3,7 @@ import { AvatarHash } from "../icons/AvatarHash";
 import { Button } from "../Common/Button";
 import { Copy } from "lucide-react";
 import { copyToClipboard } from "../../utils/copy-to-clipboard";
-import { generateAddressColor } from "../MessageDisplay/Bubble";
+import { generateAddressColor } from "../MessagesPane/Utilities";
 import clsx from "clsx";
 
 type BroadcastParticipantInfoProps = {
