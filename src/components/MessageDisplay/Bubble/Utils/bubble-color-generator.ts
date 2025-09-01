@@ -44,12 +44,3 @@ export const generateAddressColor = (address: string) => {
     colorConfig.lightness.min + ((seed >>> 16) % colorConfig.lightness.range); // 45–79%
   return hslToHex(hue, sat, lig); // solid color
 };
-
-// get bubble CSS vars from address
-export const getBubbleStyle = (address?: string) => {
-  if (!address) return undefined;
-  const hex = generateAddressColor(address);
-  return {
-    [bubbleVar]: hex,
-  } as React.CSSProperties;
-};

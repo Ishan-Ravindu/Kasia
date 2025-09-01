@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { bubbleVar } from "./bubble-color-generator";
 
 type GroupPosition = "single" | "top" | "middle" | "bottom";
 type BubbleClassOptions = {
@@ -8,7 +7,7 @@ type BubbleClassOptions = {
   className?: string;
   noBubble?: boolean;
   status?: "pending" | "confirmed" | "failed";
-  addressForCustomColor?: string;
+  customBorderColor?: string;
 };
 
 export const generateBubbleClasses = ({
@@ -17,7 +16,7 @@ export const generateBubbleClasses = ({
   className,
   noBubble,
   status = "confirmed",
-  addressForCustomColor: address,
+  customBorderColor,
 }: BubbleClassOptions) => {
   if (noBubble) return;
 
@@ -45,8 +44,9 @@ export const generateBubbleClasses = ({
         return "border border-[var(--accent-red)] bg-[var(--accent-red)]/10";
       return "border border-[var(--button-primary)] bg-[var(--button-primary)]/20";
     } else {
-      if (address)
-        return `border border-[var(${bubbleVar})]/45 bg-[var(${bubbleVar})]/35`;
+      if (customBorderColor) {
+        return `border-2 bg-[var(--secondary-bg)]`;
+      }
       return "bg-[var(--secondary-bg)]";
     }
   };

@@ -22,7 +22,7 @@ import {
   BroadcastChannelRepository,
 } from "./broadcast-channel.repository";
 
-const CURRENT_DB_VERSION = 2;
+const CURRENT_DB_VERSION = 3;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -247,9 +247,6 @@ export const openDatabase = async (): Promise<KasiaDB> => {
       }
 
       if (oldVersion <= 2) {
-        // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
-        // add more if branching for each next version
-        // BROADCAST CHANNELS
         const broadcastChannelsStore = db.createObjectStore(
           "broadcastChannels",
           {

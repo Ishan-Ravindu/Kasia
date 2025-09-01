@@ -10,7 +10,7 @@ import {
   ExplorerLink,
   MessageTimestamp,
   MessageContent,
-  getBubbleStyle,
+  generateAddressColor,
 } from "../Bubble";
 import { AvatarHash } from "../../icons/AvatarHash";
 import { useUiStore } from "../../../store/ui.store";
@@ -33,6 +33,11 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
   const { openModal } = useUiStore();
   const { setSelectedParticipant } = useBroadcastStore();
   const { selectedNetwork } = useWalletStore();
+
+  // Get the hex color for both bubble border and avatar overlay
+  const customColor = !isOutgoing
+    ? generateAddressColor(message.senderAddress)
+    : undefined;
 
   const createdAtMs = message.timestamp.getTime();
   const isRecent = Date.now() - createdAtMs < 12 * 60 * 60 * 1000;
@@ -76,6 +81,7 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
             address={message.senderAddress}
             size={36}
             className="rounded-full bg-[var(--secondary-bg)]"
+            customColor={customColor}
           />
           {/* overlay last 2 characters of address */}
           <div className="absolute top-2.5 left-[10px] text-xs font-bold text-[var(--text-primary)]">
@@ -94,16 +100,14 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
 
       <div
         onClick={() => setShowMeta((p) => !p)}
-        style={getBubbleStyle(!isOutgoing ? message.senderAddress : undefined)}
+        style={customColor ? { borderColor: customColor } : undefined}
         className={clsx(
           "my-0.5 cursor-pointer text-base leading-relaxed",
           generateBubbleClasses({
             isOutgoing,
             groupPosition,
             status: message.status,
-            addressForCustomColor: !isOutgoing
-              ? message.senderAddress
-              : undefined,
+            customBorderColor: customColor,
           })
         )}
       >

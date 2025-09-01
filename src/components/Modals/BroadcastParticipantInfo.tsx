@@ -3,6 +3,7 @@ import { AvatarHash } from "../icons/AvatarHash";
 import { Button } from "../Common/Button";
 import { Copy } from "lucide-react";
 import { copyToClipboard } from "../../utils/copy-to-clipboard";
+import { generateAddressColor } from "../MessageDisplay/Bubble";
 import clsx from "clsx";
 
 type BroadcastParticipantInfoProps = {
@@ -15,6 +16,9 @@ export const BroadcastParticipantInfo: FC<BroadcastParticipantInfoProps> = ({
   address,
   nickname,
 }) => {
+  // Generate custom color for avatar based on address
+  const customColor = generateAddressColor(address);
+
   const handleCopyAddress = async () => {
     if (!address) {
       return;
@@ -32,9 +36,10 @@ export const BroadcastParticipantInfo: FC<BroadcastParticipantInfoProps> = ({
               address={address}
               size={48}
               className={clsx({
-                "opacity-60": !!nickname?.trim()?.[0],
+                "opacity-80": !!nickname?.trim()?.[0],
               })}
               selected={true}
+              customColor={customColor}
             />
             {nickname && (
               <span
@@ -42,7 +47,7 @@ export const BroadcastParticipantInfo: FC<BroadcastParticipantInfoProps> = ({
                   "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+1px)]",
                   "pointer-events-none select-none",
                   "flex h-12 w-12 items-center justify-center",
-                  "rounded-full text-base leading-none font-bold tracking-wide text-[var(--text-primary)]/80"
+                  "rounded-full text-base leading-none font-bold tracking-wide text-[var(--text-primary)]"
                 )}
               >
                 {nickname.toUpperCase()}
