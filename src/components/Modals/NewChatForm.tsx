@@ -7,7 +7,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { kaspaToSompi } from "kaspa-wasm";
+import { Address, kaspaToSompi } from "kaspa-wasm";
 import clsx from "clsx";
 import { knsIntegrationService_getDomainResolution } from "../../service/integrations/kns-integration-service";
 import { unknownErrorToErrorLike } from "../../utils/errors";
@@ -43,6 +43,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
   const balance = useWalletStore((state) => state.balance);
+  const rpc = useWalletStore((s) => s.rpc);
 
   const detectedRecipientInputValueFormat = useMemo<
     "address" | "kns" | "undetermined"
@@ -148,26 +149,18 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
       setRecipientWarning(null);
 
       try {
-        const networkId = walletStore.accountService?.networkId || "mainnet";
-        const baseUrl =
-          networkId === "mainnet"
-            ? "https://api.kaspa.org"
-            : "https://api-tn10.kaspa.org";
+        const participantAddressBalance = await rpc?.getBalanceByAddress({
+          address: address,
+        });
 
-        const encodedAddress = encodeURIComponent(address);
-        const response = await fetch(
-          `${baseUrl}/addresses/${encodedAddress}/balance`
-        );
-
-        if (!response.ok) {
+        if (!participantAddressBalance) {
           setRecipientWarning(
             "Could not verify recipient balance. They may not be able to respond if they have no KAS."
           );
           return;
         }
 
-        const balanceData = await response.json();
-        const balance = BigInt(balanceData.balance || 0);
+        const balance = participantAddressBalance.balance;
 
         if (balance === BigInt(0)) {
           setRecipientWarning(
@@ -185,7 +178,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
         setIsCheckingRecipient(false);
       }
     },
-    [walletStore.accountService]
+    [rpc]
   );
 
   // Debounced recipient balance check (use knsRecipientAddress)
