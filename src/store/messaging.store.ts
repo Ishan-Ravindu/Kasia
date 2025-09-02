@@ -17,7 +17,6 @@ import {
   decryptXChaCha20Poly1305,
   encryptXChaCha20Poly1305,
   kaspaToSompi,
-  NetworkType,
 } from "kaspa-wasm";
 import { ConversationManagerService } from "../service/conversation-manager-service";
 import { useWalletStore } from "./wallet.store";
@@ -33,7 +32,6 @@ import {
   ActiveConversation,
   Conversation,
 } from "./repository/conversation.repository";
-import { loadLegacyMessages } from "../service/storage-encryption";
 import { PROTOCOL, toHex } from "../config/protocol";
 import { Payment } from "./repository/payment.repository";
 import { Message } from "./repository/message.repository";
@@ -509,8 +507,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const processOneSender = async (senderAddress: string) => {
         let oooc = ooocsByAddress.get(senderAddress);
 
-        console.log(`No oooc found for ${senderAddress}, creating new one`);
-
         const lastSentHS = lastSentHSBySenderAddress.get(senderAddress);
         if (lastSentHS) {
           try {
@@ -527,7 +523,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         }
 
         const lastReceivedHS = lastReceivedHSBySenderAddress.get(senderAddress);
-        if (lastReceivedHS) {
+        if (lastReceivedHS?.handshake?.sender) {
           try {
             await g().conversationManager?.processHandshake(
               senderAddress,
