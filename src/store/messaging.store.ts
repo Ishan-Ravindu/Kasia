@@ -53,7 +53,6 @@ import {
   exportData,
   importData,
 } from "../service/import-export-service";
-import { getNetworkTypeFromAddress } from "../utils/network";
 
 interface MessagingState {
   isLoaded: boolean;

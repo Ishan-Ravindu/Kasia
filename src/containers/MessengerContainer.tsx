@@ -23,7 +23,7 @@ export const MessengerContainer: FC = () => {
   );
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
-  const { isBroadcastMode } = useBroadcastStore();
+  const { isBroadcastMode, selectedChannelName } = useBroadcastStore();
   const setAttachment = useComposerStore((s) => s.setAttachment);
 
   const isMobile = useIsMobile();
@@ -63,8 +63,11 @@ export const MessengerContainer: FC = () => {
   useEffect(() => {
     const syncToWidth = () => {
       if (isMobile) {
-        // On mobile, show messages if there's an opened recipient, otherwise show contacts
-        if (messageStore.openedRecipient) {
+        // On mobile, show messages if there's an opened conversation or broadcast channel
+        const hasOpenedConversation = messageStore.openedRecipient;
+        const hasOpenedBroadcast = isBroadcastMode && selectedChannelName;
+
+        if (hasOpenedConversation || hasOpenedBroadcast) {
           setMobileView("messages");
         } else {
           setMobileView("contacts");
@@ -77,7 +80,12 @@ export const MessengerContainer: FC = () => {
     syncToWidth(); // run once on mount
     window.addEventListener("resize", syncToWidth);
     return () => window.removeEventListener("resize", syncToWidth);
-  }, [messageStore.openedRecipient, isMobile]);
+  }, [
+    messageStore.openedRecipient,
+    isMobile,
+    isBroadcastMode,
+    selectedChannelName,
+  ]);
 
   // Clean up useEffect
   useEffect(() => {
@@ -144,16 +152,25 @@ export const MessengerContainer: FC = () => {
     isMobile,
   ]);
 
-  // Effect to update mobile view when opened recipient changes
+  // Effect to update mobile view when opened recipient or broadcast channel changes
   useEffect(() => {
     if (isMobile && messageStore.isLoaded) {
-      if (messageStore.openedRecipient) {
+      const hasOpenedConversation = messageStore.openedRecipient;
+      const hasOpenedBroadcast = isBroadcastMode && selectedChannelName;
+
+      if (hasOpenedConversation || hasOpenedBroadcast) {
         setMobileView("messages");
       } else {
         setMobileView("contacts");
       }
     }
-  }, [isMobile, messageStore.openedRecipient, messageStore.isLoaded]);
+  }, [
+    isMobile,
+    messageStore.openedRecipient,
+    messageStore.isLoaded,
+    isBroadcastMode,
+    selectedChannelName,
+  ]);
 
   const onContactClicked = useCallback(
     (contact: Contact) => {
@@ -171,7 +188,7 @@ export const MessengerContainer: FC = () => {
     <>
       {/* Main Message Section*/}
       <div className="bg-primary-bg flex items-center">
-        <div className="flex h-[100dvh] min-h-[300px] w-full overflow-hidden sm:h-[calc(100dvh-69px)]">
+        <div className="flex h-[100dvh] w-full overflow-hidden sm:h-[calc(100dvh-69px)]">
           {isWalletReady &&
           messageStore.isLoaded &&
           walletStore.isAccountServiceRunning ? (
