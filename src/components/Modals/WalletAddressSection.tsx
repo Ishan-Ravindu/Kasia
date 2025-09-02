@@ -13,7 +13,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
   address = "",
 }) => {
   const [showQRCode, setShowQRCode] = useState(false);
-  const [qrCodeURL, setQRCodeURL] = useState<string | null>(null);
+  const [qrCodeURL, setQRCodeURL] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!address) return;
@@ -121,8 +121,14 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
           </div>
         </div>
 
-        {showQRCode && qrCodeURL && (
-          <div className="border-primary-border bg-primary-bg mt-2 flex w-full flex-col items-center rounded-lg border p-4 transition-opacity duration-300 sm:w-auto">
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            showQRCode && qrCodeURL
+              ? "mt-4 max-h-96 opacity-100"
+              : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="border-primary-border bg-primary-bg flex w-full flex-col items-center rounded-lg border p-4 sm:w-auto">
             <h4 className="mb-4 text-center">QR Code for Address</h4>
             <div className="flex flex-col items-center gap-4">
               <img
@@ -138,7 +144,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
               <p className="text-center text-sm">Scan to get wallet address</p>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
