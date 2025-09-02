@@ -229,7 +229,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
       return false;
     }
     const existingConversationWithContact = messageStore
-      .getActiveConversationsWithContacts()
+      .getConversationsWithContacts()
       .find((oooc) => oooc.contact.kaspaAddress === knsRecipientAddress);
 
     if (existingConversationWithContact) {
