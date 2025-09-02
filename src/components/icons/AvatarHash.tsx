@@ -56,6 +56,16 @@ export const AvatarHash: FC<{
     ? [customColor, ...basePalette]
     : basePalette;
 
+  // ensure good color distribution by cycling through palette more evenly
+  const getDistributedColor = (index: number) => {
+    const paletteSize = dynamicPalette.length;
+
+    if (!selected && customColor && index === 0) {
+      return customColor;
+    }
+    return dynamicPalette[index % paletteSize];
+  };
+
   // rotation offset so different hashes shift the ring
   const angleOffset = (hash / 0xffffffff) * 2 * Math.PI;
 
@@ -76,7 +86,7 @@ export const AvatarHash: FC<{
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       className={clsx(
-        "rounded-full bg-[var(--primary-bg)]",
+        "rounded-full bg-[var(--secondary-bg)]",
         !selected && "opacity-80",
         className
       )}
@@ -84,7 +94,7 @@ export const AvatarHash: FC<{
       {base.map(({ cx, cy }, i) => {
         const idx = i % (SEGMENTS / 2);
         const on = idx < segments;
-        const col = dynamicPalette[(hash >> (idx + 7)) % dynamicPalette.length];
+        const col = getDistributedColor(idx);
         return (
           <circle
             key={i}

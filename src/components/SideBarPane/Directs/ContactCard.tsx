@@ -155,7 +155,7 @@ export const ContactCard: FC<{
             size={32}
             selected={isSelected}
             className={clsx(
-              { "opacity-60": !!avatarLetter },
+              { "opacity-80": !!avatarLetter },
               showNewMsgAlert && "animate-spin opacity-90"
             )}
           />
@@ -211,7 +211,7 @@ export const ContactCard: FC<{
               address={contact.kaspaAddress}
               size={40}
               selected={isSelected}
-              className={clsx({ "opacity-60": !!avatarLetter })}
+              className={clsx({ "opacity-80": !!avatarLetter })}
             />
             {avatarLetter && (
               <span
