@@ -4,7 +4,6 @@ import { useMessagingStore } from "../../../store/messaging.store";
 import { Contact } from "../../../store/repository/contact.repository";
 
 interface ContactListProps {
-  contacts: Contact[];
   searchQuery: string;
   onContactClicked: (contact: Contact) => void;
   openedRecipient: string | null;
@@ -14,7 +13,6 @@ interface ContactListProps {
 }
 
 export const ContactList: FC<ContactListProps> = ({
-  contacts,
   searchQuery,
   onContactClicked,
   openedRecipient,
@@ -23,6 +21,10 @@ export const ContactList: FC<ContactListProps> = ({
   isMobile,
 }) => {
   const messageStore = useMessagingStore();
+
+  const contacts = messageStore.oneOnOneConversations.map(
+    (oooc) => oooc.contact
+  );
 
   // order contacts by last activity (most recent first)
   const orderedContacts = contacts.sort((a, b) => {

@@ -104,6 +104,14 @@ export const useOrchestrator = () => {
 
     await dbStore.migrateStorage(receivedAddressString);
 
+    // Clear old conversations and related state before loading new wallet data to prevent flash
+    useMessagingStore.setState({
+      oneOnOneConversations: [],
+      openedRecipient: null,
+      isLoaded: false,
+      conversationManager: null,
+    });
+
     await messagingStore.load(receivedAddressString);
 
     if (networkStore.rpc) {

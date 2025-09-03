@@ -194,9 +194,6 @@ export const MessengerContainer: FC = () => {
           walletStore.isAccountServiceRunning ? (
             <>
               <SidebarSection
-                contacts={messageStore.oneOnOneConversations.map(
-                  (oooc) => oooc.contact
-                )}
                 onContactClicked={onContactClicked}
                 openedRecipient={messageStore.openedRecipient}
                 walletAddress={walletStore.address?.toString()}

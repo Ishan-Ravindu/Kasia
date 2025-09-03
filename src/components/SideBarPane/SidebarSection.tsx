@@ -12,7 +12,6 @@ import { useFeatureFlagsStore } from "../../store/featureflag.store";
 import { ModeSelector } from "../ModeSelector";
 
 interface SidebarSectionProps {
-  contacts: Contact[];
   onContactClicked: (contact: Contact) => void;
   openedRecipient: string | null;
   walletAddress: string | undefined;
@@ -23,7 +22,6 @@ interface SidebarSectionProps {
 }
 
 export const SidebarSection: FC<SidebarSectionProps> = ({
-  contacts,
   onContactClicked,
   openedRecipient,
   walletAddress,
@@ -157,7 +155,6 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
           />
         ) : (
           <ContactList
-            contacts={contacts}
             searchQuery={searchQuery}
             onContactClicked={onContactClicked}
             openedRecipient={openedRecipient}
