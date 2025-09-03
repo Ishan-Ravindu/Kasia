@@ -25,7 +25,6 @@ export const ContactList: FC<ContactListProps> = ({
   const contacts = messageStore.oneOnOneConversations.map(
     (oooc) => oooc.contact
   );
-
   // order contacts by last activity (most recent first)
   const orderedContacts = contacts.sort((a, b) => {
     const conversationA = messageStore.oneOnOneConversations.find(
