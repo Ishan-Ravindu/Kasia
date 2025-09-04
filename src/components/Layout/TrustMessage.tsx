@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useState } from "react";
+import React, { FC, useState } from "react";
 import { Lock } from "lucide-react";
 import { KasIcon } from "../icons/KasCoin";
 import { setDevMode } from "../../config/dev-mode";
@@ -10,17 +10,18 @@ export const TrustMessage: FC = () => {
 
   const [, setDevModeClickTimes] = useState(0);
 
-  const activateDevModeOnClickFiveTimes = useCallback(() => {
+  const activateDevModeOnClickFiveTimes = () => {
     setDevModeClickTimes((v) => {
       if (v === 6) {
         setDevMode(true);
-        toast.info("Dev mode activated");
+        // Defer the toast to avoid setState during render
+        setTimeout(() => toast.info("Dev mode activated"), 0);
         return 0;
       } else {
         return v + 1;
       }
     });
-  }, []);
+  };
 
   return (
     <div className="mb-2 sm:mb-5">

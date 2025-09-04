@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useState } from "react";
 import { NetworkSelector } from "../NetworkSelector";
 import { useNetworkStore } from "../../store/network.store";
 import { NetworkType } from "../../types/all";
@@ -32,15 +32,15 @@ export const LockedSettingsModal: React.FC = () => {
 
   const [connectionError, setConnectionError] = useState<string | undefined>();
 
-  const deleteIndexDB = useCallback(async () => {
+  const deleteIndexDB = async () => {
     if (dbStore.db) {
       await deleteDB(dbStore.db.name);
     }
 
     await dbStore.initDB();
-  }, [dbStore]);
+  };
 
-  const devInfo = useMemo(() => {
+  const devInfo = () => {
     if (!devMode) {
       return null;
     }
@@ -59,7 +59,7 @@ export const LockedSettingsModal: React.FC = () => {
         </div>
       </div>
     );
-  }, [deleteIndexDB]);
+  };
 
   const connectWithErrorWrapper = async (
     networkType: NetworkType,
@@ -152,7 +152,7 @@ export const LockedSettingsModal: React.FC = () => {
         </div>
       )}
 
-      {devInfo}
+      {devInfo()}
     </div>
   );
 };
