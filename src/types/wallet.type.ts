@@ -1,4 +1,3 @@
-import { KaspaClient } from "../service/kaspa-client";
 import { PublicKey, PublicKeyGenerator } from "wasm/kaspa";
 
 export type Wallet = {
@@ -18,7 +17,6 @@ export type UnlockedWallet = {
   encryptedXPrv: string;
   password: string;
   receivePublicKey: PublicKey;
-  client?: KaspaClient;
   // Add derivation type to unlocked wallet
   derivationType: WalletDerivationType;
 };

@@ -13,7 +13,7 @@ import { ColorPicker } from "../Common/ColorPicker";
 import { NetworkSelector } from "../NetworkSelector";
 import { Switch } from "@headlessui/react";
 import clsx from "clsx";
-import { reencryptMessagesForWallet } from "../../service/storage-encryption";
+import { reEncryptMessagesForWallet } from "../../service/storage-encryption";
 import {
   DEFAULT_COLORS,
   type CustomColorPalette,
@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toHex, PROTOCOL } from "../../config/protocol";
 import { devMode } from "../../config/dev-mode";
+import { useDBStore } from "../../store/db.store";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -76,6 +77,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const changeWalletName = useWalletStore((s) => s.changeWalletName);
   const sendTransaction = useWalletStore((s) => s.sendTransaction);
   const networkStore = useNetworkStore();
+  const repositories = useDBStore((s) => s.repositories);
+  const initRepositories = useDBStore((s) => s.initRepositories);
   const { flags, flips, setFlag } = useFeatureFlagsStore();
 
   const tabs = [
@@ -176,18 +179,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setPasswordChangeError("");
 
     try {
+      await reEncryptMessagesForWallet(
+        selectedWalletId,
+        repositories,
+        newPassword
+      );
+
       await changePassword(selectedWalletId, currentPassword, newPassword);
+
+      const updatedWallet = useWalletStore.getState().unlockedWallet;
+
+      if (!updatedWallet) {
+        throw new Error("Updated Wallet is null.");
+      }
+
+      initRepositories(updatedWallet);
+
       setPasswordChangeSuccess(true);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-
-      // reencrypt all messages with the new password
-      await reencryptMessagesForWallet(
-        selectedWalletId,
-        currentPassword,
-        newPassword
-      );
 
       // Show success for 2 seconds, then go back
       setTimeout(() => {
@@ -237,7 +248,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsChangingName(true);
 
     try {
-      await changeWalletName(selectedWalletId, newWalletName.trim());
+      changeWalletName(selectedWalletId, newWalletName.trim());
       setNameChangeSuccess(true);
       setNewWalletName("");
 
@@ -377,7 +388,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={clsx(
                     "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-colors",
                     {
-                      "mx-2 min-w-14 flex-col items-center justify-center":
+                      "mx-1 min-w-14 flex-col items-center justify-center":
                         isMobile,
                       "w-full": !isMobile,
                       "text-primary border-primary border-b-2":
@@ -399,7 +410,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           {/* Content */}
           <div
-            className={clsx("flex-1 overflow-y-auto p-6", {
+            className={clsx("flex-1 overflow-y-auto p-1 sm:p-6", {
               "h-[calc(80vh-80px)]": isMobile,
             })}
           >
@@ -722,6 +733,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       </button>
 
+                      {/* View Seed Phrase */}
+                      <button
+                        onClick={() => {
+                          onClose();
+                          openModal("seed");
+                        }}
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                      >
+                        <Key className="h-5 w-5" />
+                        <div className="text-left">
+                          <div className="text-sm font-medium">Seed Phrase</div>
+                          <div className="text-muted-foreground text-xs">
+                            View Your Wallets Seed Phrase
+                          </div>
+                        </div>
+                      </button>
+
                       {/* Wallet Security */}
                       <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
                         <div className="text-text-warning mb-2 text-sm font-medium">
@@ -881,7 +909,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className="mb-1 text-sm font-semibold">
                           {item.label}
                         </div>
-                        <div className="text-muted-foreground text-xs">
+                        <div className="text-muted-foreground text-xs whitespace-pre-line">
                           {item.desc}
                         </div>
                       </div>
@@ -918,7 +946,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="mt-4 space-y-6 sm:mt-0"></div>
                 <h3 className="mb-4 text-lg font-medium">Development Mode</h3>
 
-                <Button onClick={sendSelfStash}>Trigger Send Self Stash</Button>
+                <div className="my-2">
+                  <h4>Protocol:</h4>
+                  <Button onClick={sendSelfStash}>
+                    Trigger Send Self Stash
+                  </Button>
+                </div>
+
+                <div className="my-2">
+                  <h4>Network:</h4>
+                  <p>isConnected: {networkStore.isConnected ? "yes" : "no"}</p>
+                  <p>url: {networkStore.nodeUrl} </p>
+                  <p>network: {networkStore.network}</p>
+
+                  <div className="my-1 flex gap-2">
+                    <Button onClick={() => networkStore.connect()}>
+                      Connect
+                    </Button>
+                    <Button onClick={() => networkStore.disconnect()}>
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
               </>
             ) : null}
           </div>

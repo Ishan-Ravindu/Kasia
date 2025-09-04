@@ -13,7 +13,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
   address = "",
 }) => {
   const [showQRCode, setShowQRCode] = useState(false);
-  const [qrCodeURL, setQRCodeURL] = useState<string | null>(null);
+  const [qrCodeURL, setQRCodeURL] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!address) return;
@@ -68,7 +68,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
 
   if (!address) return null;
   return (
-    <div className="relative">
+    <div className="relative my-2 sm:mx-2">
       <div className="mb-2">
         <strong>Address:</strong>
         <div className="address-actions my-1 flex flex-col items-center gap-2 sm:flex-row">
@@ -105,7 +105,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
               title="Copy address to clipboard"
               type="button"
               variant="primary"
-              className="flex h-14 w-full items-center justify-center p-0"
+              className="flex h-14 w-full items-center justify-center rounded-xl p-0"
             >
               <Copy className="h-8 w-8 sm:h-6 sm:w-6" />
             </Button>
@@ -114,15 +114,21 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
               title="Show QR code"
               type="button"
               variant="primary"
-              className="flex h-14 w-full items-center justify-center p-0"
+              className="flex h-14 w-full items-center justify-center rounded-xl p-0"
             >
               <QrCode className="h-8 w-8 sm:h-6 sm:w-6" />
             </Button>
           </div>
         </div>
 
-        {showQRCode && qrCodeURL && (
-          <div className="border-primary-border bg-primary-bg mt-2 flex w-full flex-col items-center rounded-lg border p-4 transition-opacity duration-300 sm:w-auto">
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            showQRCode && qrCodeURL
+              ? "mt-4 max-h-96 opacity-100"
+              : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="border-primary-border bg-primary-bg flex w-full flex-col items-center rounded-lg border p-4 sm:w-auto">
             <h4 className="mb-4 text-center">QR Code for Address</h4>
             <div className="flex flex-col items-center gap-4">
               <img
@@ -138,7 +144,7 @@ export const WalletAddressSection: FC<AddressSectionProps> = ({
               <p className="text-center text-sm">Scan to get wallet address</p>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

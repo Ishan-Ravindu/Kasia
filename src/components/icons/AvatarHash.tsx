@@ -1,7 +1,6 @@
-import { FC, useEffect, useMemo, useRef, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
-const palette = ["#49EACB", "#70C7BA", "#9CA3AF", "#1F2937"];
 const MIN_SEG = 2,
   MAX_SEG = 14,
   STATIC_SEG = 4,
@@ -13,7 +12,8 @@ export const AvatarHash: FC<{
   size?: number;
   className?: string;
   selected?: boolean;
-}> = ({ address, size = 32, className, selected = false }) => {
+  customColor?: string;
+}> = ({ address, size = 32, className, selected = false, customColor }) => {
   const [segments, setSegments] = useState(STATIC_SEG);
   const raf = useRef<number | null>(null);
 
@@ -45,15 +45,29 @@ export const AvatarHash: FC<{
   }, [selected]);
 
   /* deterministic 32-bit hash */
-  const hash = useMemo(() => {
-    let h = 0;
-    for (let i = 0; i < address.length; i++)
-      h = ((h << 5) - h + address.charCodeAt(i)) | 0;
-    return h >>> 0;
-  }, [address]);
+  let h = 0;
+  for (let i = 0; i < address.length; i++)
+    h = ((h << 5) - h + address.charCodeAt(i)) | 0;
+  const hash = h >>> 0;
+
+  // dynamic palette that includes custom color when provided
+  const basePalette = ["#49EACB", "#70C7BA", "#9CA3AF", "#1F2937"];
+  const dynamicPalette = customColor
+    ? [customColor, ...basePalette]
+    : basePalette;
+
+  // ensure good color distribution by cycling through palette more evenly
+  const getDistributedColor = (index: number) => {
+    const paletteSize = dynamicPalette.length;
+
+    if (!selected && customColor && index === 0) {
+      return customColor;
+    }
+    return dynamicPalette[index % paletteSize];
+  };
 
   // rotation offset so different hashes shift the ring
-  const angleOffset = useMemo(() => (hash / 0xffffffff) * 2 * Math.PI, [hash]);
+  const angleOffset = (hash / 0xffffffff) * 2 * Math.PI;
 
   const c = size / 2,
     rDot = size * 0.09,
@@ -61,14 +75,10 @@ export const AvatarHash: FC<{
     start = -Math.PI / 2;
 
   /* precalculate all 32 dots with per-dot visibility */
-  const base = useMemo(
-    () =>
-      Array.from({ length: SEGMENTS }, (_, i) => {
-        const θ = start + angleOffset + (2 * Math.PI * i) / SEGMENTS;
-        return { cx: c + rRing * Math.cos(θ), cy: c + rRing * Math.sin(θ) };
-      }),
-    [c, rRing, angleOffset]
-  );
+  const base = Array.from({ length: SEGMENTS }, (_, i) => {
+    const θ = start + angleOffset + (2 * Math.PI * i) / SEGMENTS;
+    return { cx: c + rRing * Math.cos(θ), cy: c + rRing * Math.sin(θ) };
+  });
 
   return (
     <svg
@@ -76,7 +86,7 @@ export const AvatarHash: FC<{
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       className={clsx(
-        "rounded-full bg-[var(--primary-bg)]",
+        "rounded-full bg-[var(--secondary-bg)]",
         !selected && "opacity-80",
         className
       )}
@@ -84,7 +94,7 @@ export const AvatarHash: FC<{
       {base.map(({ cx, cy }, i) => {
         const idx = i % (SEGMENTS / 2);
         const on = idx < segments;
-        const col = palette[(hash >> (idx + 7)) & 3];
+        const col = getDistributedColor(idx);
         return (
           <circle
             key={i}

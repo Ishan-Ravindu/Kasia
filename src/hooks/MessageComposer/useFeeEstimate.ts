@@ -4,6 +4,7 @@ import {
   useComposerStore,
 } from "../../store/message-composer.store";
 import { useWalletStore } from "../../store/wallet.store";
+import { useBroadcastStore } from "../../store/broadcast.store"; // Add this import
 import { Address } from "kaspa-wasm";
 import { FeeState } from "../../types/all";
 
@@ -12,11 +13,16 @@ export const useFeeEstimate = ({
   recipient,
   draft,
   attachment,
+  broadcastOptions,
 }: {
   toSelf?: boolean;
   recipient?: string;
   draft?: string;
   attachment?: Attachment;
+  broadcastOptions?: {
+    isBroadcast: boolean;
+    channelName: string;
+  };
 }) => {
   const [feeState, setFeeState] = useState<FeeState>({ status: "idle" });
 
@@ -24,8 +30,13 @@ export const useFeeEstimate = ({
     priority,
     sendState: { status: sendStatus },
   } = useComposerStore();
-  const { unlockedWallet, estimateSendMessageFees, address, balance } =
-    useWalletStore();
+  const {
+    unlockedWallet,
+    estimateSendMessageFees,
+    estimateSendBroadcastFees,
+    address,
+    balance,
+  } = useWalletStore();
 
   useEffect(() => {
     // when toSelf is true, we need user's address; otherwise we need recipient
@@ -37,6 +48,12 @@ export const useFeeEstimate = ({
       !unlockedWallet ||
       sendStatus === "loading"
     ) {
+      setFeeState({ status: "idle" });
+      return;
+    }
+
+    // For broadcasts, we need channel options
+    if (broadcastOptions?.isBroadcast && !broadcastOptions.channelName) {
       setFeeState({ status: "idle" });
       return;
     }
@@ -69,7 +86,16 @@ export const useFeeEstimate = ({
       // use attachment content if available, otherwise use draft text
       const messageContent = attachment ? attachment.content : draft || "";
 
-      estimateSendMessageFees(messageContent, parsedAddress, priority)
+      const estimatePromise = broadcastOptions?.isBroadcast
+        ? estimateSendBroadcastFees(
+            messageContent,
+            parsedAddress,
+            broadcastOptions.channelName,
+            priority
+          )
+        : estimateSendMessageFees(messageContent, parsedAddress, priority);
+
+      estimatePromise
         .then((estimate) => {
           if (!isCancelled) {
             const fee = Number(estimate.fees) / 100_000_000;
@@ -94,10 +120,12 @@ export const useFeeEstimate = ({
     address,
     draft,
     attachment,
+    broadcastOptions,
     priority,
     sendStatus,
     unlockedWallet,
     estimateSendMessageFees,
+    estimateSendBroadcastFees,
     balance,
   ]);
 

@@ -6,6 +6,9 @@ export type DbDecryptionTrial = {
    * @note tenantId is automatically added upon saving
    */
   id: string;
+
+  tenantId: string;
+  timestamp: Date;
 };
 
 export type DecryptionTrial = DbDecryptionTrial;
@@ -40,14 +43,39 @@ export class DecryptionTrialRepository {
   /**
    * @param decryptionTrial id of the transaction to mark as failed, `tenantId` is automatically added
    */
-  async saveDecryptionTrial(decryptionTrial: DecryptionTrial): Promise<string> {
+  async saveDecryptionTrial(
+    decryptionTrial: Omit<DecryptionTrial, "tenantId">
+  ): Promise<string> {
     return this.db.put("decryptionTrials", {
       id: `${this.tenantId}_${decryptionTrial.id}`,
+      tenantId: this.tenantId,
+      timestamp: decryptionTrial.timestamp,
     });
   }
 
   async deleteDecryptionTrial(decryptionTrialId: string): Promise<void> {
     await this.db.delete("decryptionTrials", decryptionTrialId);
     return;
+  }
+
+  async saveBulk(
+    decryptionTrials: Omit<DecryptionTrial, "tenantId">[]
+  ): Promise<void> {
+    const tx = this.db.transaction("decryptionTrials", "readwrite");
+    const store = tx.objectStore("decryptionTrials");
+
+    for (const trial of decryptionTrials) {
+      // Check if trial already exists
+      const existing = await store.get(`${this.tenantId}_${trial.id}`);
+      if (!existing) {
+        await store.put({
+          id: `${this.tenantId}_${trial.id}`,
+          tenantId: this.tenantId,
+          timestamp: trial.timestamp,
+        });
+      }
+
+      await tx.done;
+    }
   }
 }

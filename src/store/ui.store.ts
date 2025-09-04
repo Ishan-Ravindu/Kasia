@@ -17,7 +17,10 @@ export type ModalType =
   | "seed"
   | "settings"
   | "contact-info-modal"
-  | "image";
+  | "image"
+  | "new-chat"
+  | "new-broadcast"
+  | "broadcast-participant-info";
 type Theme = "light" | "dark" | "system" | "custom";
 
 type UiState = {
@@ -48,10 +51,6 @@ type UiState = {
   // Contact Info Modal state
   oneOnOneConversation: OneOnOneConversation | null;
   setOneOnOneConversation: (oooc: OneOnOneConversation | null) => void;
-
-  // Warn Costy Send Message Modal callback
-  sendMessageCallback: (() => void) | null;
-  setSendMessageCallback: (callback: (() => void) | null) => void;
 
   // image presenter content
   imagePresenterImage: string | null;
@@ -203,10 +202,6 @@ export const useUiStore = create<UiState>()((set, get) => ({
   // Contact Info Modal state
   oneOnOneConversation: null,
   setOneOnOneConversation: (c) => set({ oneOnOneConversation: c }),
-
-  // Warn Costy Send Message Modal callback
-  sendMessageCallback: null,
-  setSendMessageCallback: (callback) => set({ sendMessageCallback: callback }),
 
   // image presenter content
   imagePresenterImage: null,

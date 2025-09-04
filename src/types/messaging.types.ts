@@ -3,6 +3,9 @@ import { Conversation } from "../store/repository/conversation.repository";
 
 export interface HandshakePayload {
   type: "handshake";
+  /**
+   * my alias, the one I write to
+   */
   alias: string;
   theirAlias?: string; // Used in response to confirm both aliases
   timestamp: number;
@@ -11,6 +14,10 @@ export interface HandshakePayload {
   sendToRecipient?: boolean; // Flag to indicate if message should be sent to recipient
   isResponse?: boolean; // Flag to indicate this is a response
 }
+
+export type SavedHandshakePayload = HandshakePayload & {
+  recipientAddress: string;
+};
 
 export interface PaymentPayload {
   type: "payment";

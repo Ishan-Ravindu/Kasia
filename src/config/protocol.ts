@@ -1,4 +1,10 @@
-type Kind = "ciph_msg" | "handshake" | "comm" | "payment" | "self_stash";
+type Kind =
+  | "ciph_msg"
+  | "handshake"
+  | "comm"
+  | "payment"
+  | "self_stash"
+  | "bcast";
 type Prefix = { type: Kind; string: string; hex: string };
 
 export const VERSION = "1";
@@ -29,5 +35,6 @@ export const PROTOCOL = {
     COMM: mk("comm"),
     PAYMENT: mk("payment"),
     SELF_STASH: mk("self_stash"),
+    BROADCAST: mk("bcast"),
   },
 } as const;

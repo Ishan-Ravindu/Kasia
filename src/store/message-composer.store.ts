@@ -5,7 +5,7 @@ import { FileData } from "./repository/message.repository";
 
 export type Attachment = FileData | null;
 
-interface ComposerState {
+export interface ComposerState {
   drafts: Record<string, string>;
 
   attachment: Attachment | null;

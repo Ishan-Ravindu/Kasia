@@ -8,6 +8,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   test: {
     printConsoleTrace: true,
+    // mock kaspa wasm and cipher globally
+    setupFiles: ["src/vitest.setup.ts"],
   },
   plugins: [
     react({
@@ -47,8 +49,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // 13 mb
-        maximumFileSizeToCacheInBytes: 13000000,
+        // 14 mb
+        maximumFileSizeToCacheInBytes: 14000000,
       },
     }),
   ],

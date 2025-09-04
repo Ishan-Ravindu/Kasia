@@ -8,6 +8,7 @@ import { prepareFileForUpload } from "../../service/upload-file-service";
 import { MAX_PAYLOAD_SIZE } from "../../config/constants";
 import { KasiaTransaction, FeeState } from "../../types/all";
 import { FileData } from "../../store/repository/message.repository";
+import { PROTOCOL } from "../../config/protocol";
 
 export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
   const {
@@ -50,6 +51,7 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
   };
 
   const send = async (myAlias: string) => {
+    toast.removeAll();
     if (!recipient) {
       toast.error("Error, please select a contact.");
       return;
@@ -106,6 +108,10 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
         priorityFee: priority,
       });
 
+      const decryptedContent = fileDataForStorage
+        ? JSON.stringify(fileDataForStorage)
+        : draft;
+
       const event: KasiaTransaction = {
         transactionId: txId,
         senderAddress: walletStore.unlockedWallet.receivePublicKey
@@ -113,9 +119,7 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
           .toString(),
         recipientAddress: recipient,
         createdAt: new Date(),
-        content: fileDataForStorage
-          ? JSON.stringify(fileDataForStorage)
-          : draft,
+        content: `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${myAlias}:${decryptedContent}`,
         amount: 20000000,
         fee: feeState.value || 0,
         payload: "",
@@ -129,7 +133,6 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
       setSendState({ status: "idle" });
     } catch (error) {
       setSendState({ status: "error", error: error as Error });
-      toast.removeAll();
       toast.error(`Failed to send message: ${unknownErrorToErrorLike(error)}`);
     }
   };

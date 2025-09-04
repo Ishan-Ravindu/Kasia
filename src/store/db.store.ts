@@ -2,15 +2,15 @@ import { create } from "zustand";
 import { KasiaDB, openDatabase, Repositories } from "./repository/db";
 import { UnlockedWallet } from "../types/wallet.type";
 import { v4 } from "uuid";
-import { DecryptionCache } from "../service/decryption-cache";
 import {
+  LEGACY_STORAGE_KEY,
   loadLegacyMessages,
-  loadMessagesForAddress,
 } from "../service/storage-encryption";
 import { PROTOCOL } from "../config/protocol";
-import { Message } from "./repository/message.repository";
+import { FileData, Message } from "./repository/message.repository";
 import { Handshake } from "./repository/handshake.repository";
 import { Payment } from "./repository/payment.repository";
+import { LegacyMessage } from "../types/legacy";
 
 interface DBState {
   db: KasiaDB | undefined;
@@ -26,10 +26,7 @@ interface DBState {
    * @param unlockedWallet wallet
    * @param walletPassword used for encryption and decription of locally stored sensitive data
    */
-  initRepositories: (
-    unlockedWallet: UnlockedWallet,
-    walletPassword: string
-  ) => void;
+  initRepositories: (unlockedWallet: UnlockedWallet) => void;
 
   migrateStorage: (address: string) => Promise<void>;
 }
@@ -42,21 +39,22 @@ export const useDBStore = create<DBState>((set, get) => ({
 
   initDB: async () => {
     const db = await openDatabase();
+
     set({ db });
   },
-  initRepositories: (unlockedWallet, walletPassword) => {
+  initRepositories: (unlockedWallet) => {
     const db = get().db;
     if (!db) {
       throw new Error("DB not initialized");
     }
 
-    if (!unlockedWallet?.id || !walletPassword) {
+    if (!unlockedWallet?.id || !unlockedWallet.password) {
       throw new Error("Tenant ID and wallet password are required");
     }
 
     const repositories = new Repositories(
       db,
-      walletPassword,
+      unlockedWallet.password,
       unlockedWallet.id
     );
     set({ repositories, unlockedWallet });
@@ -68,6 +66,9 @@ export const useDBStore = create<DBState>((set, get) => ({
 
     // migrate to storage v2
     if (!localStorage.getItem(`${unlockedWallet.id}_migrate_storage_v2`)) {
+      // REMOVE Decryption Cache
+      localStorage.removeItem("kasia_failed_decryptions");
+
       // CONVERSATION and CONTACT
       const conversationString = localStorage.getItem(
         `encrypted_conversations_${address.toString()}`
@@ -91,6 +92,14 @@ export const useDBStore = create<DBState>((set, get) => ({
         );
 
         for (const conversation of conversations) {
+          const existingContact = await repositories.contactRepository
+            .getContactByKaspaAddress(conversation.kaspaAddress)
+            .catch(() => null);
+
+          if (existingContact) {
+            continue;
+          }
+
           const contactKey = await repositories.contactRepository.saveContact({
             id: v4(),
             kaspaAddress: conversation.kaspaAddress,
@@ -105,19 +114,18 @@ export const useDBStore = create<DBState>((set, get) => ({
             lastActivityAt: new Date(conversation.lastActivity),
             myAlias: conversation.myAlias,
             theirAlias: conversation.theirAlias,
-            status: conversation.status,
+            status:
+              conversation.theirAlias && conversation.myAlias
+                ? "active"
+                : conversation.status,
           });
         }
-      }
 
-      // DECRYPTION TRIAL
-      const decryptionFailedEntries = DecryptionCache.initCache(
-        address.toString()
-      );
-      for (const decryptionFailedEntry of decryptionFailedEntries) {
-        await repositories.decryptionTrialRepository.saveDecryptionTrial({
-          id: decryptionFailedEntry,
-        });
+        // Remove migrated conversations and nicknames
+        localStorage.removeItem(
+          `encrypted_conversations_${address.toString()}`
+        );
+        localStorage.removeItem(nicknameStorageKey);
       }
 
       // MESSAGES
@@ -125,21 +133,15 @@ export const useDBStore = create<DBState>((set, get) => ({
         unlockedWallet.password
       );
       const legacyMessages = legacyMessagesByWallet[address.toString()] ?? [];
-      const messagesv1 = loadMessagesForAddress(
-        unlockedWallet.id,
-        address.toString(),
-        unlockedWallet.password
-      );
 
-      const mergedDeduplicatedMessages = [
-        ...legacyMessages,
-        ...messagesv1,
-      ].filter((message, index, self) => {
-        return (
-          index ===
-          self.findIndex((m) => m.transactionId === message.transactionId)
-        );
-      });
+      const mergedDeduplicatedMessages = legacyMessages.filter(
+        (message, index, self) => {
+          return (
+            index ===
+            self.findIndex((m) => m.transactionId === message.transactionId)
+          );
+        }
+      );
 
       const contacts = await repositories.contactRepository.getContacts();
 
@@ -148,6 +150,32 @@ export const useDBStore = create<DBState>((set, get) => ({
         handshakes: Handshake[];
         messages: Message[];
       } = { payments: [], handshakes: [], messages: [] };
+
+      const legacyFileDataToNewFileData = (
+        fileData: LegacyMessage["fileData"]
+      ): FileData | undefined => {
+        if (fileData?.type === "file") {
+          return {
+            type: "file",
+            content: fileData.content,
+            mimeType: fileData.mimeType,
+            name: fileData.name,
+            size: fileData.size,
+          };
+        }
+
+        if (fileData?.type === "image") {
+          return {
+            type: "image",
+            content: fileData.content,
+            mimeType: fileData.mimeType,
+            name: fileData.name,
+            size: fileData.size,
+          };
+        }
+
+        return undefined;
+      };
 
       for (const m of mergedDeduplicatedMessages) {
         const partnerAddress =
@@ -219,7 +247,7 @@ export const useDBStore = create<DBState>((set, get) => ({
           createdAt: new Date(m.timestamp),
           transactionId: m.transactionId,
           fee: m.fee,
-          fileData: m.fileData,
+          fileData: legacyFileDataToNewFileData(m.fileData),
           content: m.content ?? "",
           __type: "message",
           fromMe: m.senderAddress === address.toString(),
@@ -239,6 +267,13 @@ export const useDBStore = create<DBState>((set, get) => ({
       for (const handshake of messageEntities.handshakes) {
         await repositories.handshakeRepository.saveHandshake(handshake);
       }
+
+      // Remove migrated messages
+      delete legacyMessagesByWallet[address.toString()];
+      localStorage.setItem(
+        LEGACY_STORAGE_KEY,
+        JSON.stringify(legacyMessagesByWallet)
+      );
     }
 
     localStorage.setItem(`${unlockedWallet.id}_migrate_storage_v2`, "true");

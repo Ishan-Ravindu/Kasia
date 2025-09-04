@@ -13,8 +13,16 @@ import { ContactRepository, DbContact } from "./contact.repository";
 import { DbHandshake, HandshakeRepository } from "./handshake.repository";
 import { DbPayment, PaymentRepository } from "./payment.repository";
 import { KasiaConversationEvent } from "../../types/all";
+import {
+  DbSavedHandshake,
+  SavedHandhshakeRepository,
+} from "./saved-handshake.repository";
+import {
+  DbBroadcastChannel,
+  BroadcastChannelRepository,
+} from "./broadcast-channel.repository";
 
-const CURRENT_DB_VERSION = 1;
+const CURRENT_DB_VERSION = 3;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -31,9 +39,9 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-conversation-id-tenant-id": [string, string];
-      "by-created-at": number;
-      "by-conversation-created-at": [string, number];
+      "by-tenant-id-conversation-id": [string, string];
+      "by-tenant-id-created-at": [string, Date];
+      "by-tenant-id-conversation-id-created-at": [string, string, Date];
     };
   };
   payments: {
@@ -42,9 +50,9 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-conversation-id-tenant-id": [string, string];
-      "by-created-at": number;
-      "by-conversation-created-at": [string, number];
+      "by-tenant-id-conversation-id": [string, string];
+      "by-tenant-id-created-at": [string, Date];
+      "by-tenant-id-conversation-id-created-at": [string, string, Date];
     };
   };
   handshakes: {
@@ -53,9 +61,9 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-conversation-id-tenant-id": [string, string];
-      "by-created-at": number;
-      "by-conversation-created-at": [string, number];
+      "by-tenant-id-conversation-id": [string, string];
+      "by-tenant-id-created-at": [string, Date];
+      "by-tenant-id-conversation-id-created-at": [string, string, Date];
     };
   };
   conversations: {
@@ -63,9 +71,9 @@ export interface KasiaDBSchema extends DBSchema {
     value: DbConversation;
     indexes: {
       "by-tenant-id": string;
-      "by-status": ConversationStatus;
-      "by-last-activity": number;
-      "by-status-last-activity": [ConversationStatus, number];
+      "by-tenant-id-status": [string, ConversationStatus];
+      "by-tenant-id-last-activity": [string, Date];
+      "by-tenant-id-status-last-activity": [string, ConversationStatus, Date];
       "by-contact-id": string;
     };
   };
@@ -75,12 +83,29 @@ export interface KasiaDBSchema extends DBSchema {
     indexes: {
       "by-id": string;
       "by-tenant-id": string;
-      "by-timestamp": number;
+      "by-tenant-id-timestamp": [string, Date];
     };
   };
   contacts: {
     key: string;
     value: DbContact;
+    indexes: {
+      "by-tenant-id": string;
+      "by-tenant-id-timestamp": [string, Date];
+    };
+  };
+  savedHandshakes: {
+    key: string;
+    value: DbSavedHandshake;
+    indexes: {
+      "by-id": string;
+      "by-tenant-id": string;
+      "by-tenant-id-created-at": [string, Date];
+    };
+  };
+  broadcastChannels: {
+    key: string;
+    value: DbBroadcastChannel;
     indexes: {
       "by-tenant-id": string;
     };
@@ -91,7 +116,7 @@ export type KasiaDB = IDBPDatabase<KasiaDBSchema>;
 
 export const openDatabase = async (): Promise<KasiaDB> => {
   return openDB<KasiaDBSchema>("kasia-db", CURRENT_DB_VERSION, {
-    upgrade(db, oldVersion, newVersion) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       console.log(
         `[DB] - Identity database upgrade from version ${oldVersion} to ${newVersion}`
       );
@@ -106,14 +131,18 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         messagesStore.createIndex("by-id", "id", { unique: true });
         messagesStore.createIndex("by-tenant-id", "tenantId");
-        messagesStore.createIndex("by-conversation-id-tenant-id", [
-          "conversationId",
+        messagesStore.createIndex("by-tenant-id-created-at", [
           "tenantId",
+          "createdAt",
         ]);
-        messagesStore.createIndex("by-created-at", "createdAt");
-        messagesStore.createIndex("by-conversation-created-at", [
+        messagesStore.createIndex("by-tenant-id-conversation-id-created-at", [
+          "tenantId",
           "conversationId",
           "createdAt",
+        ]);
+        messagesStore.createIndex("by-tenant-id-conversation-id", [
+          "tenantId",
+          "conversationId",
         ]);
 
         // PAYMENTS
@@ -122,14 +151,18 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         paymentsStore.createIndex("by-id", "id", { unique: true });
         paymentsStore.createIndex("by-tenant-id", "tenantId");
-        paymentsStore.createIndex("by-conversation-id-tenant-id", [
-          "conversationId",
+        paymentsStore.createIndex("by-tenant-id-conversation-id-created-at", [
           "tenantId",
-        ]);
-        paymentsStore.createIndex("by-created-at", "createdAt");
-        paymentsStore.createIndex("by-conversation-created-at", [
           "conversationId",
           "createdAt",
+        ]);
+        paymentsStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
+          "createdAt",
+        ]);
+        paymentsStore.createIndex("by-tenant-id-conversation-id", [
+          "tenantId",
+          "conversationId",
         ]);
 
         // HANDSHAKES
@@ -138,14 +171,18 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         handshakesStore.createIndex("by-id", "id", { unique: true });
         handshakesStore.createIndex("by-tenant-id", "tenantId");
-        handshakesStore.createIndex("by-conversation-id-tenant-id", [
-          "conversationId",
+        handshakesStore.createIndex("by-tenant-id-conversation-id-created-at", [
           "tenantId",
-        ]);
-        handshakesStore.createIndex("by-created-at", "createdAt");
-        handshakesStore.createIndex("by-conversation-created-at", [
           "conversationId",
           "createdAt",
+        ]);
+        handshakesStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
+          "createdAt",
+        ]);
+        handshakesStore.createIndex("by-tenant-id-conversation-id", [
+          "tenantId",
+          "conversationId",
         ]);
 
         // CONVERSATIONS
@@ -153,10 +190,17 @@ export const openDatabase = async (): Promise<KasiaDB> => {
           keyPath: "id",
         });
         conversationsStore.createIndex("by-tenant-id", "tenantId");
-        conversationsStore.createIndex("by-status", "status");
-        conversationsStore.createIndex("by-last-activity", "lastActivityAt");
+        conversationsStore.createIndex("by-tenant-id-status", [
+          "tenantId",
+          "status",
+        ]);
+        conversationsStore.createIndex("by-tenant-id-last-activity", [
+          "tenantId",
+          "lastActivityAt",
+        ]);
         conversationsStore.createIndex("by-contact-id", "contactId");
-        conversationsStore.createIndex("by-status-last-activity", [
+        conversationsStore.createIndex("by-tenant-id-status-last-activity", [
+          "tenantId",
           "status",
           "lastActivityAt",
         ]);
@@ -167,15 +211,57 @@ export const openDatabase = async (): Promise<KasiaDB> => {
         });
         decryptionTrialsStore.createIndex("by-id", "id", { unique: true });
         decryptionTrialsStore.createIndex("by-tenant-id", "tenantId");
-        decryptionTrialsStore.createIndex("by-timestamp", "timestamp");
+        decryptionTrialsStore.createIndex("by-tenant-id-timestamp", [
+          "tenantId",
+          "timestamp",
+        ]);
 
         // CONTACTS
         const contactsStore = db.createObjectStore("contacts", {
           keyPath: "id",
         });
         contactsStore.createIndex("by-tenant-id", "tenantId");
+        contactsStore.createIndex("by-tenant-id-timestamp", [
+          "tenantId",
+          "timestamp",
+        ]);
 
-        console.log("Database schema created successfully with all indexes");
+        // SAVED HANDSHAKES
+        const savedHandshakesStore = db.createObjectStore("savedHandshakes", {
+          keyPath: "id",
+        });
+        savedHandshakesStore.createIndex("by-id", "id", { unique: true });
+        savedHandshakesStore.createIndex("by-tenant-id-created-at", [
+          "tenantId",
+          "createdAt",
+        ]);
+
+        console.log("Database schema initiated to v1");
+      }
+
+      if (oldVersion <= 1) {
+        const savedHandshakesStore = transaction.objectStore("savedHandshakes");
+        if (!savedHandshakesStore.indexNames.contains("by-tenant-id")) {
+          savedHandshakesStore.createIndex("by-tenant-id", "tenantId");
+        }
+      }
+
+      if (oldVersion <= 2) {
+        const broadcastChannelsStore = db.createObjectStore(
+          "broadcastChannels",
+          {
+            keyPath: "id",
+          }
+        );
+        broadcastChannelsStore.createIndex("by-tenant-id", "tenantId");
+
+        console.log("Database schema initiated to v1");
+      }
+
+      if (oldVersion <= 3) {
+        // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
+        // add more if branching for each next version
+        // BROADCAST CHANNELS
       }
     },
   });
@@ -188,6 +274,8 @@ export class Repositories {
   public readonly paymentRepository: PaymentRepository;
   public readonly messageRepository: MessageRepository;
   public readonly handshakeRepository: HandshakeRepository;
+  public readonly savedHandshakeRepository: SavedHandhshakeRepository;
+  public readonly broadcastChannelRepository: BroadcastChannelRepository;
 
   constructor(
     readonly db: KasiaDB,
@@ -229,24 +317,31 @@ export class Repositories {
       tenantId,
       walletPassword
     );
+
+    // no wallet password there is no encryption/decryption
+    this.savedHandshakeRepository = new SavedHandhshakeRepository(db, tenantId);
+    this.broadcastChannelRepository = new BroadcastChannelRepository(
+      db,
+      tenantId,
+      walletPassword
+    );
   }
 
-  getKasiaEventsByConversationId(
+  async getKasiaEventsByConversationId(
     conversationId: string
   ): Promise<KasiaConversationEvent[]> {
-    return Promise.all([
+    const [messages, payments, handshakes] = await Promise.all([
       this.messageRepository.getMessagesByConversationId(conversationId),
       this.paymentRepository.getPaymentsByConversationId(conversationId),
       this.handshakeRepository.getHanshakesByConversationId(conversationId),
-    ]).then(([messages, payments, handshakes]) => {
-      return [...messages, ...payments, ...handshakes].sort((a, b) => {
-        return a.createdAt.getTime() - b.createdAt.getTime();
-      });
+    ]);
+    return [...messages, ...payments, ...handshakes].sort((a, b) => {
+      return a.createdAt.getTime() - b.createdAt.getTime();
     });
   }
 
-  doesKasiaEventExistsById(id: string): Promise<boolean> {
-    return Promise.all([
+  async doesKasiaEventExistsById(id: string): Promise<boolean> {
+    const [message, payment, handshake] = await Promise.all([
       this.messageRepository
         .doesExistsById(`${this.tenantId}_${id}`)
         .catch(() => false),
@@ -256,8 +351,10 @@ export class Repositories {
       this.handshakeRepository
         .doesExistsById(`${this.tenantId}_${id}`)
         .catch(() => false),
-    ]).then(([message, payment, handshake]) => {
-      return !!message || !!payment || !!handshake;
-    });
+      this.savedHandshakeRepository
+        .doesExistsById(`${this.tenantId}_${id}`)
+        .catch(() => false),
+    ]);
+    return !!message || !!payment || !!handshake;
   }
 }

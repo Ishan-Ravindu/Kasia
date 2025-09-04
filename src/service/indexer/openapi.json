@@ -327,6 +327,71 @@
           }
         }
       }
+    },
+    "/self-stash/by-owner": {
+      "get": {
+        "tags": ["self_stash"],
+        "operationId": "get_self_stash_by_owner",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": ["integer", "null"], "minimum": 0 }
+          },
+          {
+            "name": "block_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": ["integer", "null"],
+              "format": "int64",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get Self stash by owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SelfStashResponse" }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -492,6 +557,23 @@
           "message": { "type": "string" },
           "receiver": { "type": "string" },
           "sender": { "type": ["string", "null"] },
+          "tx_id": { "type": "string" }
+        }
+      },
+      "SelfStashResponse": {
+        "type": "object",
+        "required": ["tx_id", "scope", "block_time", "stashed_data"],
+        "properties": {
+          "accepting_block": { "type": ["string", "null"] },
+          "accepting_daa_score": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "minimum": 0
+          },
+          "block_time": { "type": "integer", "format": "int64", "minimum": 0 },
+          "owner": { "type": ["string", "null"] },
+          "scope": { "type": "string" },
+          "stashed_data": { "type": "string" },
           "tx_id": { "type": "string" }
         }
       }
