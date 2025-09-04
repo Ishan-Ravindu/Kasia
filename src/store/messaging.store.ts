@@ -56,6 +56,7 @@ interface MessagingState {
   isLoaded: boolean;
   isCreatingNewChat: boolean;
   oneOnOneConversations: OneOnOneConversation[];
+  processingTransactionIds: Set<string>;
   ingestRawResolvedKasiaTransaction: (
     tx: RawResolvedKasiaTransaction
   ) => Promise<void>;
@@ -177,10 +178,16 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const knownEventIds = new Set(oooc.events.map((e) => e.id.split("_")[1]));
       const newIndexerPayments = indexerPayments.filter(
-        (p) => !knownEventIds.has(p.tx_id)
+        (p, idx, self) =>
+          !knownEventIds.has(p.tx_id) &&
+          // @todo: remove when indexer dedup filter
+          idx === self.findIndex((o) => o.tx_id === p.tx_id)
       );
       const newIndexerMessages = indexerMessages.filter(
-        (m) => !knownEventIds.has(m.tx_id)
+        (m, idx, self) =>
+          !knownEventIds.has(m.tx_id) &&
+          // @todo: remove when indexer dedup filter
+          idx === self.findIndex((o) => o.tx_id === m.tx_id)
       );
 
       const newKasiaTransactions: KasiaTransaction[] = [];
@@ -286,6 +293,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
     isCreatingNewChat: false,
     openedRecipient: null,
     oneOnOneConversations: [],
+    processingTransactionIds: new Set<string>(),
     async load(address) {
       const initLazyHistoricalHandshakeLoad = (
         lastSavedHanshakeTimestamp: number,
@@ -715,96 +723,213 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         throw new Error("Address is not available");
       }
 
+      // In-memory deduplication to prevent concurrent processing of the same transaction
       for (const transaction of transactions) {
-        const isFromMe = transaction.senderAddress === address.toString();
-        const participantAddress = isFromMe
-          ? transaction.recipientAddress
-          : transaction.senderAddress;
+        const transactionId = transaction.transactionId;
 
-        if (
-          await repositories.doesKasiaEventExistsById(
-            `${unlockedWallet.id}_${transaction.transactionId}`
-          )
-        ) {
+        // Check if this transaction is already being processed
+        if (g().processingTransactionIds.has(transactionId)) {
           console.warn(
-            "Skipping already processed transaction: ",
-            transaction.transactionId
+            `Skipping transaction already in processing: ${transactionId}`
           );
           continue;
         }
+        set((state) => ({
+          processingTransactionIds: new Set([
+            ...state.processingTransactionIds,
+            transactionId,
+          ]),
+        }));
 
-        console.log("Processing transaction: ", {
-          ...transaction,
-          isFromMe,
-          participantAddress,
-        });
+        try {
+          const isFromMe = transaction.senderAddress === address.toString();
+          const participantAddress = isFromMe
+            ? transaction.recipientAddress
+            : transaction.senderAddress;
 
-        // HANDSHAKE
-        if (
-          transaction.content.startsWith(PROTOCOL.prefix.string) &&
-          transaction.content.includes(":handshake:")
-        ) {
-          try {
-            // Parse the handshake payload
+          if (
+            await repositories.doesKasiaEventExistsById(
+              `${unlockedWallet.id}_${transaction.transactionId}`
+            )
+          ) {
+            console.warn(
+              "Skipping already processed transaction: ",
+              transaction.transactionId
+            );
+            continue;
+          }
+
+          console.log("Processing transaction: ", {
+            ...transaction,
+            isFromMe,
+            participantAddress,
+          });
+
+          // HANDSHAKE
+          if (
+            transaction.content.startsWith(PROTOCOL.prefix.string) &&
+            transaction.content.includes(":handshake:")
+          ) {
+            try {
+              // Parse the handshake payload
+              const parts = transaction.content.split(":");
+              const jsonPart = parts.slice(3).join(":");
+              const handshakePayload = JSON.parse(jsonPart);
+
+              // Skip handshake processing if it's a self-message
+              if (
+                transaction.senderAddress === address.toString() &&
+                transaction.recipientAddress === address.toString()
+              ) {
+                console.log("Skipping self-handshake message");
+                continue;
+              }
+
+              if (
+                // received handshake
+                transaction.recipientAddress === address.toString()
+              ) {
+                // Check if this handshake has already been processed
+                const handshakeId = `${unlockedWallet.id}_${transaction.transactionId}`;
+
+                const handshakeExists = await repositories.handshakeRepository
+                  .doesExistsById(handshakeId)
+                  .catch(() => false);
+
+                if (handshakeExists) {
+                  console.warn(
+                    `Skipping already processed handshake: ${handshakeId}`
+                  );
+                  continue;
+                }
+
+                console.log("Processing handshake message:", {
+                  senderAddress: transaction.senderAddress,
+                  recipientAddress: transaction.recipientAddress,
+                  isResponse: handshakePayload.isResponse,
+                  handshakePayload,
+                });
+                await g()
+                  .processHandshake(
+                    transaction.senderAddress,
+                    transaction.content
+                  )
+                  .catch((error) => {
+                    if (
+                      error.message === "Cannot create conversation with self"
+                    ) {
+                      console.log("Skipping self-conversation handshake");
+                      return;
+                    }
+                    console.error("Error processing handshake:", error);
+                  });
+
+                const conversationWithContact =
+                  g().conversationManager?.getConversationWithContactByAddress(
+                    transaction.senderAddress
+                  );
+
+                // persist in-memory & db kasia events
+                if (conversationWithContact) {
+                  const handshake: Handshake = {
+                    __type: "handshake",
+                    amount: transaction.amount,
+                    contactId: conversationWithContact.contact.id,
+                    content: transaction.content,
+                    conversationId: conversationWithContact.conversation.id,
+                    createdAt: transaction.createdAt,
+                    fromMe: isFromMe,
+                    id: `${unlockedWallet.id}_${transaction.transactionId}`,
+                    tenantId: unlockedWallet.id,
+                    transactionId: transaction.transactionId,
+                    fee: transaction.fee,
+                  };
+                  await repositories.handshakeRepository.saveHandshake(
+                    handshake
+                  );
+
+                  // if already exists in memory, add even in place else add new one on one conversation
+                  const existingConversationIndex =
+                    g().oneOnOneConversations.findIndex(
+                      (c) =>
+                        c.conversation.id ===
+                        conversationWithContact.conversation.id
+                    );
+
+                  if (existingConversationIndex !== -1) {
+                    const updatedConversations = [...g().oneOnOneConversations];
+                    updatedConversations[existingConversationIndex] = {
+                      ...updatedConversations[existingConversationIndex],
+                      conversation: conversationWithContact.conversation,
+                      events: [
+                        ...updatedConversations[existingConversationIndex]
+                          .events,
+                        handshake,
+                      ],
+                    };
+                    set({ oneOnOneConversations: updatedConversations });
+                  } else {
+                    set({
+                      oneOnOneConversations: [
+                        ...g().oneOnOneConversations,
+                        {
+                          contact: conversationWithContact.contact,
+                          events: [handshake],
+                          conversation: conversationWithContact.conversation,
+                        },
+                      ],
+                    });
+                  }
+                }
+                continue;
+              }
+            } catch (error) {
+              console.error("Error processing handshake message:", error);
+              throw error;
+            }
+          }
+
+          // SELF STASH - SAVED HANDSHAKE
+          if (
+            transaction.content.startsWith(PROTOCOL.prefix.string) &&
+            transaction.content.includes(":handshake:")
+          ) {
+            // prefix:1:self_stash[:optional_scope]:data
             const parts = transaction.content.split(":");
-            const jsonPart = parts.slice(3).join(":");
-            const handshakePayload = JSON.parse(jsonPart);
 
-            // Skip handshake processing if it's a self-message
-            if (
-              transaction.senderAddress === address.toString() &&
-              transaction.recipientAddress === address.toString()
-            ) {
-              console.log("Skipping self-handshake message");
+            const hasSavedHandshakeScope = parts[3] === "saved_handshake";
+
+            if (!hasSavedHandshakeScope) {
               continue;
             }
 
-            if (
-              // received handshake
-              transaction.recipientAddress === address.toString()
-            ) {
-              console.log("Processing handshake message:", {
-                senderAddress: transaction.senderAddress,
-                recipientAddress: transaction.recipientAddress,
-                isResponse: handshakePayload.isResponse,
-                handshakePayload,
-              });
-              await g()
-                .processHandshake(
-                  transaction.senderAddress,
-                  transaction.content
-                )
-                .catch((error) => {
-                  if (
-                    error.message === "Cannot create conversation with self"
-                  ) {
-                    console.log("Skipping self-conversation handshake");
-                    return;
-                  }
-                  console.error("Error processing handshake:", error);
-                });
+            try {
+              const payload: SavedHandshakePayload = JSON.parse(parts[4]);
+
+              await g().conversationManager?.hydrateFromSavedHanshaked(
+                payload,
+                transaction.transactionId
+              );
 
               const conversationWithContact =
                 g().conversationManager?.getConversationWithContactByAddress(
                   transaction.senderAddress
                 );
 
-              // persist in-memory & db kasia events
               if (conversationWithContact) {
                 const handshake: Handshake = {
                   __type: "handshake",
                   amount: transaction.amount,
                   contactId: conversationWithContact.contact.id,
-                  content: transaction.content,
                   conversationId: conversationWithContact.conversation.id,
+                  content: "Handshake sent",
+                  fromMe: true,
                   createdAt: transaction.createdAt,
-                  fromMe: isFromMe,
-                  id: `${unlockedWallet.id}_${transaction.transactionId}`,
                   tenantId: unlockedWallet.id,
                   transactionId: transaction.transactionId,
-                  fee: transaction.fee,
+                  id: `${unlockedWallet.id}_${transaction.transactionId}`,
+                  fee: 0,
                 };
-                await repositories.handshakeRepository.saveHandshake(handshake);
 
                 // if already exists in memory, add even in place else add new one on one conversation
                 const existingConversationIndex =
@@ -837,260 +962,186 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                     ],
                   });
                 }
+
+                console.log("saving", { handshake });
+
+                await repositories.handshakeRepository.saveHandshake(handshake);
               }
+            } catch (error) {
+              console.error(`Error while handling saved handshake`, error);
               continue;
             }
-          } catch (error) {
-            console.error("Error processing handshake message:", error);
-            throw error;
-          }
-        }
-
-        // SELF STASH - SAVED HANDSHAKE
-        if (
-          transaction.content.startsWith(PROTOCOL.prefix.string) &&
-          transaction.content.includes(":handshake:")
-        ) {
-          // prefix:1:self_stash[:optional_scope]:data
-          const parts = transaction.content.split(":");
-
-          const hasSavedHandshakeScope = parts[3] === "saved_handshake";
-
-          if (!hasSavedHandshakeScope) {
             continue;
           }
 
-          try {
-            const payload: SavedHandshakePayload = JSON.parse(parts[4]);
-
-            await g().conversationManager?.hydrateFromSavedHanshaked(
-              payload,
-              transaction.transactionId
+          const existingConversationWithContactIndex =
+            state.oneOnOneConversations.findIndex(
+              (c) => c.contact.kaspaAddress === participantAddress
             );
 
-            const conversationWithContact =
-              g().conversationManager?.getConversationWithContactByAddress(
-                transaction.senderAddress
-              );
+          if (existingConversationWithContactIndex === -1) {
+            throw new Error("Conversation not found, ignoring message");
+          }
 
-            if (conversationWithContact) {
-              const handshake: Handshake = {
-                __type: "handshake",
-                amount: transaction.amount,
-                contactId: conversationWithContact.contact.id,
-                conversationId: conversationWithContact.conversation.id,
-                content: "Handshake sent",
-                fromMe: true,
-                createdAt: transaction.createdAt,
-                tenantId: unlockedWallet.id,
-                transactionId: transaction.transactionId,
-                id: `${unlockedWallet.id}_${transaction.transactionId}`,
-                fee: 0,
-              };
+          const existingConversationWithContact =
+            state.oneOnOneConversations[existingConversationWithContactIndex];
 
-              // if already exists in memory, add even in place else add new one on one conversation
-              const existingConversationIndex =
-                g().oneOnOneConversations.findIndex(
-                  (c) =>
-                    c.conversation.id ===
-                    conversationWithContact.conversation.id
-                );
+          const isTransactionAlreadyIngested =
+            existingConversationWithContact.events.some(
+              (e) => e.transactionId === transaction.transactionId
+            );
 
-              if (existingConversationIndex !== -1) {
-                const updatedConversations = [...g().oneOnOneConversations];
-                updatedConversations[existingConversationIndex] = {
-                  ...updatedConversations[existingConversationIndex],
-                  conversation: conversationWithContact.conversation,
-                  events: [
-                    ...updatedConversations[existingConversationIndex].events,
-                    handshake,
-                  ],
-                };
-                set({ oneOnOneConversations: updatedConversations });
-              } else {
-                set({
-                  oneOnOneConversations: [
-                    ...g().oneOnOneConversations,
-                    {
-                      contact: conversationWithContact.contact,
-                      events: [handshake],
-                      conversation: conversationWithContact.conversation,
-                    },
-                  ],
-                });
+          if (isTransactionAlreadyIngested) {
+            console.warn("Transaction already ingested, ignoring message");
+            return;
+          }
+
+          let kasiaEvent: KasiaConversationEvent | null = null;
+
+          // PAYMENT
+          if (
+            transaction.payload.startsWith(PROTOCOL.prefix.hex) &&
+            transaction.payload.includes(PROTOCOL.headers.PAYMENT.hex)
+          ) {
+            let paymentContent = transaction.content ?? "";
+            if (
+              !_isIncomingContentAllowed(
+                existingConversationWithContact.conversation,
+                isFromMe
+              )
+            ) {
+              // drop note for incoming payments if not accepted/alias unknown
+              try {
+                const parsed = JSON.parse(paymentContent);
+                if (parsed && parsed.type === PROTOCOL.headers.PAYMENT.type) {
+                  delete parsed.message;
+                  paymentContent = JSON.stringify(parsed);
+                }
+              } catch {
+                paymentContent = "";
               }
-
-              console.log("saving", { handshake });
-
-              await repositories.handshakeRepository.saveHandshake(handshake);
             }
-          } catch (error) {
-            console.error(`Error while handling saved handshake`, error);
+            const payment: Payment = {
+              __type: "payment",
+              amount: transaction.amount,
+              contactId: existingConversationWithContact.contact.id,
+              conversationId: existingConversationWithContact.conversation.id,
+              content: paymentContent,
+              createdAt: transaction.createdAt,
+              fromMe: transaction.senderAddress === address.toString(),
+              id: `${unlockedWallet.id}_${transaction.transactionId}`,
+              tenantId: unlockedWallet.id,
+              transactionId: transaction.transactionId,
+              fee: transaction.fee,
+            };
+
+            await repositories.paymentRepository.savePayment(payment);
+
+            kasiaEvent = payment;
+          }
+
+          if (
+            transaction.content.startsWith(PROTOCOL.prefix.hex) &&
+            transaction.content.includes(PROTOCOL.headers.COMM.hex)
+          ) {
+            // block incoming messages unless conversation is accepted and alias known
+            if (
+              !_isIncomingContentAllowed(
+                existingConversationWithContact.conversation,
+                isFromMe
+              )
+            ) {
+              continue;
+            }
+            const decryptedContent = transaction.content.substring(
+              transaction.content.indexOf(":") + 1
+            );
+
+            const message: Message = {
+              __type: "message",
+              amount: transaction.amount,
+              contactId: existingConversationWithContact.contact.id,
+              conversationId: existingConversationWithContact.conversation.id,
+              content: decryptedContent ?? "",
+              createdAt: transaction.createdAt,
+              fromMe: transaction.senderAddress === address.toString(),
+              id: `${unlockedWallet.id}_${transaction.transactionId}`,
+              tenantId: unlockedWallet.id,
+              transactionId: transaction.transactionId,
+              fee: transaction.fee,
+            };
+
+            await repositories.messageRepository.saveMessage(message);
+
+            kasiaEvent = message;
+          }
+
+          // touch conversation last activity
+          await repositories.conversationRepository.updateLastActivity(
+            existingConversationWithContact.conversation.id,
+            transaction.createdAt
+          );
+
+          if (!kasiaEvent) {
             continue;
           }
-          continue;
-        }
 
-        const existingConversationWithContactIndex =
-          state.oneOnOneConversations.findIndex(
-            (c) => c.contact.kaspaAddress === participantAddress
-          );
+          set((state) => {
+            const updatedConversationWithContacts = [
+              ...state.oneOnOneConversations,
+            ];
 
-        if (existingConversationWithContactIndex === -1) {
-          throw new Error("Conversation not found, ignoring message");
-        }
+            const ooocToUpdateIndex = state.oneOnOneConversations.findIndex(
+              (oooc) => oooc.contact.kaspaAddress === participantAddress
+            );
 
-        const existingConversationWithContact =
-          state.oneOnOneConversations[existingConversationWithContactIndex];
-
-        const isTransactionAlreadyIngested =
-          existingConversationWithContact.events.some(
-            (e) => e.transactionId === transaction.transactionId
-          );
-
-        if (isTransactionAlreadyIngested) {
-          console.warn("Transaction already ingested, ignoring message");
-          return;
-        }
-
-        let kasiaEvent: KasiaConversationEvent | null = null;
-
-        // PAYMENT
-        if (
-          transaction.payload.startsWith(PROTOCOL.prefix.hex) &&
-          transaction.payload.includes(PROTOCOL.headers.PAYMENT.hex)
-        ) {
-          let paymentContent = transaction.content ?? "";
-          if (
-            !_isIncomingContentAllowed(
-              existingConversationWithContact.conversation,
-              isFromMe
-            )
-          ) {
-            // drop note for incoming payments if not accepted/alias unknown
-            try {
-              const parsed = JSON.parse(paymentContent);
-              if (parsed && parsed.type === PROTOCOL.headers.PAYMENT.type) {
-                delete parsed.message;
-                paymentContent = JSON.stringify(parsed);
-              }
-            } catch {
-              paymentContent = "";
+            if (ooocToUpdateIndex === -1) {
+              console.log("ooocToUpdateIndex not found", participantAddress);
+              return state;
             }
-          }
-          const payment: Payment = {
-            __type: "payment",
-            amount: transaction.amount,
-            contactId: existingConversationWithContact.contact.id,
-            conversationId: existingConversationWithContact.conversation.id,
-            content: paymentContent,
-            createdAt: transaction.createdAt,
-            fromMe: transaction.senderAddress === address.toString(),
-            id: `${unlockedWallet.id}_${transaction.transactionId}`,
-            tenantId: unlockedWallet.id,
-            transactionId: transaction.transactionId,
-            fee: transaction.fee,
-          };
 
-          await repositories.paymentRepository.savePayment(payment);
+            // Check if this event already exists to prevent duplicates
+            const existingEventIndex = state.oneOnOneConversations[
+              ooocToUpdateIndex
+            ].events.findIndex(
+              (event) => event.transactionId === kasiaEvent.transactionId
+            );
 
-          kasiaEvent = payment;
+            const updatedConversation = {
+              ...state.oneOnOneConversations[ooocToUpdateIndex],
+              conversation: {
+                ...state.oneOnOneConversations[ooocToUpdateIndex].conversation,
+                lastActivityAt: transaction.createdAt,
+              },
+              events:
+                existingEventIndex === -1
+                  ? [
+                      ...state.oneOnOneConversations[ooocToUpdateIndex].events,
+                      kasiaEvent,
+                    ].sort(
+                      (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+                    )
+                  : state.oneOnOneConversations[ooocToUpdateIndex].events, // Event already exists, don't add duplicate
+            };
+
+            updatedConversationWithContacts[ooocToUpdateIndex] =
+              updatedConversation;
+
+            console.log(
+              "updatedConversationWithContacts",
+              updatedConversationWithContacts
+            );
+
+            return { oneOnOneConversations: updatedConversationWithContacts };
+          });
+        } finally {
+          // remove transaction ID from processing set
+          set((state) => {
+            const newSet = new Set(state.processingTransactionIds);
+            newSet.delete(transactionId);
+            return { processingTransactionIds: newSet };
+          });
         }
-
-        if (
-          transaction.content.startsWith(PROTOCOL.prefix.hex) &&
-          transaction.content.includes(PROTOCOL.headers.COMM.hex)
-        ) {
-          // block incoming messages unless conversation is accepted and alias known
-          if (
-            !_isIncomingContentAllowed(
-              existingConversationWithContact.conversation,
-              isFromMe
-            )
-          ) {
-            continue;
-          }
-          const decryptedContent = transaction.content.substring(
-            transaction.content.indexOf(":") + 1
-          );
-
-          const message: Message = {
-            __type: "message",
-            amount: transaction.amount,
-            contactId: existingConversationWithContact.contact.id,
-            conversationId: existingConversationWithContact.conversation.id,
-            content: decryptedContent ?? "",
-            createdAt: transaction.createdAt,
-            fromMe: transaction.senderAddress === address.toString(),
-            id: `${unlockedWallet.id}_${transaction.transactionId}`,
-            tenantId: unlockedWallet.id,
-            transactionId: transaction.transactionId,
-            fee: transaction.fee,
-          };
-
-          await repositories.messageRepository.saveMessage(message);
-
-          kasiaEvent = message;
-        }
-
-        // touch conversation last activity
-        await repositories.conversationRepository.updateLastActivity(
-          existingConversationWithContact.conversation.id,
-          transaction.createdAt
-        );
-
-        if (!kasiaEvent) {
-          continue;
-        }
-
-        set((state) => {
-          const updatedConversationWithContacts = [
-            ...state.oneOnOneConversations,
-          ];
-
-          const ooocToUpdateIndex = state.oneOnOneConversations.findIndex(
-            (oooc) => oooc.contact.kaspaAddress === participantAddress
-          );
-
-          if (ooocToUpdateIndex === -1) {
-            console.log("ooocToUpdateIndex not found", participantAddress);
-            return state;
-          }
-
-          // Check if this event already exists to prevent duplicates
-          const existingEventIndex = state.oneOnOneConversations[
-            ooocToUpdateIndex
-          ].events.findIndex(
-            (event) => event.transactionId === kasiaEvent.transactionId
-          );
-
-          const updatedConversation = {
-            ...state.oneOnOneConversations[ooocToUpdateIndex],
-            conversation: {
-              ...state.oneOnOneConversations[ooocToUpdateIndex].conversation,
-              lastActivityAt: transaction.createdAt,
-            },
-            events:
-              existingEventIndex === -1
-                ? [
-                    ...state.oneOnOneConversations[ooocToUpdateIndex].events,
-                    kasiaEvent,
-                  ].sort(
-                    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-                  )
-                : state.oneOnOneConversations[ooocToUpdateIndex].events, // Event already exists, don't add duplicate
-          };
-
-          updatedConversationWithContacts[ooocToUpdateIndex] =
-            updatedConversation;
-
-          console.log(
-            "updatedConversationWithContacts",
-            updatedConversationWithContacts
-          );
-
-          return { oneOnOneConversations: updatedConversationWithContacts };
-        });
       }
     },
     flushWalletHistory: (address: string) => {
