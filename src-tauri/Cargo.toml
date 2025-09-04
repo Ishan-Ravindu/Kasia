@@ -1,10 +1,10 @@
 [package]
 name = "app"
-version = "0.2.0"
-description = "A Tauri App"
+version = "0.5.0-beta1"
+description = "Kasia"
 authors = ["you"]
-license = ""
-repository = ""
+license = "ISC"
+repository = "https://github.com/K-Kluster/Kasia/"
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -30,7 +30,7 @@ incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
 codegen-units = 1 # Allows LLVM to perform better optimization.
-lto = true # Enables link-time-optimizations.
-opt-level = "s" # Prioritizes small binary size. Use `3` if you prefer speed.
-panic = "abort" # Higher performance by disabling panic handlers.
-strip = true # Ensures debug symbols are removed.
+lto = true        # Enables link-time-optimizations.
+opt-level = "s"   # Prioritizes small binary size. Use `3` if you prefer speed.
+panic = "abort"   # Higher performance by disabling panic handlers.
+strip = true      # Ensures debug symbols are removed.
