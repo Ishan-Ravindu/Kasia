@@ -14,6 +14,10 @@ export const MAX_PRIORITY_FEE = BigInt(2 * 100_000_000);
 // Maximum fee pre sign and submit (max priority plus 10% buffer)
 export const MAX_TX_FEE = (MAX_PRIORITY_FEE * BigInt(11)) / BigInt(10);
 
+// UTXO related constants
+export const HIGH_UTXO_THRESHOLD = 20; // Threshold for showing high UTXO warning
+export const UTXO_MIN_COMPOUND_COUNT = 2;
+
 // Standard transaction mass in grams (typical Kaspa transaction)
 export const STANDARD_TRANSACTION_MASS = 2036;
 

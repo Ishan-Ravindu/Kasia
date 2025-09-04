@@ -4,11 +4,13 @@ import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
 import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
-import { unknownErrorToErrorLike } from "../utils/errors";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { ContactSection } from "./ContactSection";
-import { MessageSection } from "./MessagesSection";
+import { SidebarSection } from "../components/SideBarPane/SidebarSection";
+import { DirectsSection } from "../components/MessagesPane/DirectsSection";
+import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
 import { Contact } from "../store/repository/contact.repository";
+import { useBroadcastStore } from "../store/broadcast.store";
+import { useComposerStore } from "../store/message-composer.store";
 
 export const MessengerContainer: FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -19,9 +21,10 @@ export const MessengerContainer: FC = () => {
   const [mobileView, setMobileView] = useState<"contacts" | "messages">(
     "contacts"
   );
-
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
+  const { isBroadcastMode, selectedChannelName } = useBroadcastStore();
+  const setAttachment = useComposerStore((s) => s.setAttachment);
 
   const isMobile = useIsMobile();
   const { closeAllModals } = useUiStore();
@@ -60,8 +63,11 @@ export const MessengerContainer: FC = () => {
   useEffect(() => {
     const syncToWidth = () => {
       if (isMobile) {
-        // On mobile, show messages if there's an opened recipient, otherwise show contacts
-        if (messageStore.openedRecipient) {
+        // On mobile, show messages if there's an opened conversation or broadcast channel
+        const hasOpenedConversation = messageStore.openedRecipient;
+        const hasOpenedBroadcast = isBroadcastMode && selectedChannelName;
+
+        if (hasOpenedConversation || hasOpenedBroadcast) {
           setMobileView("messages");
         } else {
           setMobileView("contacts");
@@ -74,7 +80,12 @@ export const MessengerContainer: FC = () => {
     syncToWidth(); // run once on mount
     window.addEventListener("resize", syncToWidth);
     return () => window.removeEventListener("resize", syncToWidth);
-  }, [messageStore.openedRecipient, isMobile]);
+  }, [
+    messageStore.openedRecipient,
+    isMobile,
+    isBroadcastMode,
+    selectedChannelName,
+  ]);
 
   // Clean up useEffect
   useEffect(() => {
@@ -87,25 +98,14 @@ export const MessengerContainer: FC = () => {
       closeAllModals();
 
       messageStore.setOpenedRecipient(null);
-      messageStore.setIsCreatingNewChat(false);
+
+      // Clear broadcast store state when leaving messaging
+      useBroadcastStore.getState().reset();
+
+      // clear any attachments
+      setAttachment(null);
     };
   }, []);
-
-  const onNewChatClicked = useCallback(async () => {
-    try {
-      if (!walletStore.unlockedWallet?.password) {
-        setErrorMessage("Please unlock your wallet first");
-        return;
-      }
-
-      messageStore.setIsCreatingNewChat(true);
-    } catch (error) {
-      console.error("Failed to start new chat:", error);
-      setErrorMessage(
-        `Failed to start new chat: ${unknownErrorToErrorLike(error)}`
-      );
-    }
-  }, [walletStore.unlockedWallet, messageStore]);
 
   useEffect(() => {
     if (
@@ -152,16 +152,25 @@ export const MessengerContainer: FC = () => {
     isMobile,
   ]);
 
-  // Effect to update mobile view when opened recipient changes
+  // Effect to update mobile view when opened recipient or broadcast channel changes
   useEffect(() => {
     if (isMobile && messageStore.isLoaded) {
-      if (messageStore.openedRecipient) {
+      const hasOpenedConversation = messageStore.openedRecipient;
+      const hasOpenedBroadcast = isBroadcastMode && selectedChannelName;
+
+      if (hasOpenedConversation || hasOpenedBroadcast) {
         setMobileView("messages");
       } else {
         setMobileView("contacts");
       }
     }
-  }, [isMobile, messageStore.openedRecipient, messageStore.isLoaded]);
+  }, [
+    isMobile,
+    messageStore.openedRecipient,
+    messageStore.isLoaded,
+    isBroadcastMode,
+    selectedChannelName,
+  ]);
 
   const onContactClicked = useCallback(
     (contact: Contact) => {
@@ -170,7 +179,6 @@ export const MessengerContainer: FC = () => {
         return;
       }
 
-      messageStore.setIsCreatingNewChat(false);
       messageStore.setOpenedRecipient(contact.kaspaAddress);
     },
     [messageStore, walletStore.address]
@@ -180,16 +188,12 @@ export const MessengerContainer: FC = () => {
     <>
       {/* Main Message Section*/}
       <div className="bg-primary-bg flex items-center">
-        <div className="flex h-[100dvh] min-h-[300px] w-full overflow-hidden sm:h-[calc(100dvh-69px)]">
+        <div className="flex h-[100dvh] w-full overflow-hidden sm:h-[calc(100dvh-69px)]">
           {isWalletReady &&
           messageStore.isLoaded &&
           walletStore.isAccountServiceRunning ? (
             <>
-              <ContactSection
-                contacts={messageStore.oneOnOneConversations.map(
-                  (oooc) => oooc.contact
-                )}
-                onNewChatClicked={onNewChatClicked}
+              <SidebarSection
                 onContactClicked={onContactClicked}
                 openedRecipient={messageStore.openedRecipient}
                 walletAddress={walletStore.address?.toString()}
@@ -198,10 +202,17 @@ export const MessengerContainer: FC = () => {
                 setContactsCollapsed={setContactsCollapsed}
                 setMobileView={setMobileView}
               />
-              <MessageSection
-                mobileView={mobileView}
-                setMobileView={setMobileView}
-              />
+              {isBroadcastMode ? (
+                <BroadcastSection
+                  mobileView={mobileView}
+                  setMobileView={setMobileView}
+                />
+              ) : (
+                <DirectsSection
+                  mobileView={mobileView}
+                  setMobileView={setMobileView}
+                />
+              )}
             </>
           ) : isWalletReady ? (
             <div className="flex w-full flex-col items-center text-xs">

@@ -38,26 +38,26 @@ export const Modal: FC<{
         {
           "opacity-0": !mounted,
           "opacity-100": mounted,
-        },
-        className
+        }
       )}
       onClick={handleClose}
     >
       <div
         className={clsx(
-          "border-primary-border bg-secondary-bg relative mx-4 w-full max-w-2xl rounded-2xl border p-3 transition-all duration-200 sm:p-6",
+          "border-primary-border bg-secondary-bg relative mx-4 w-full max-w-2xl rounded-2xl border p-3 shadow-2xl shadow-(color:--button-primary)/30 transition-all duration-200 sm:p-6",
           {
             "translate-y-0 opacity-100": mounted,
             "-translate-y-5 opacity-0": !mounted,
-          }
+          },
+          className
         )}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={handleClose}
-          className="hover:text-kas-secondary absolute top-0.5 right-0.5 z-60 cursor-pointer p-2 hover:scale-110 sm:top-2 sm:right-2"
+          className="hover:text-kas-secondary absolute top-0.5 right-0.5 z-60 cursor-pointer hover:scale-110 active:scale-90 active:opacity-80 sm:top-2 sm:right-2"
         >
-          <X className="bg-primary-bg border-primary-border h-7 w-7 rounded-3xl border p-1" />
+          <X className="h-7 w-7 rounded-3xl" />
         </button>
         {children}
       </div>

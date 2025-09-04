@@ -114,7 +114,10 @@ export const useDBStore = create<DBState>((set, get) => ({
             lastActivityAt: new Date(conversation.lastActivity),
             myAlias: conversation.myAlias,
             theirAlias: conversation.theirAlias,
-            status: conversation.status,
+            status:
+              conversation.theirAlias && conversation.myAlias
+                ? "active"
+                : conversation.status,
           });
         }
 

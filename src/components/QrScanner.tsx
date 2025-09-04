@@ -131,7 +131,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan }) => {
       </button>
       {/* need to lift the z of the modal because its usually stacked on another modal */}
       {showModal && (
-        <Modal onClose={() => setShowModal(false)} className={"z-60"}>
+        <Modal onClose={() => setShowModal(false)} className={"z-80 w-full"}>
           <div className="flex flex-col items-center border-none bg-transparent p-4">
             <video
               ref={videoRef}

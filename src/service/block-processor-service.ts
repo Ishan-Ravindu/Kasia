@@ -1,4 +1,4 @@
-import { Address, IBlockAdded, ITransaction, RpcClient } from "kaspa-wasm";
+import { IBlockAdded, ITransaction, RpcClient } from "kaspa-wasm";
 import { BlockAddedData, Header } from "../types/all";
 import { SenderAndAcceptanceResolutionService } from "./sender-and-acceptance-resolution-service";
 import { useMessagingStore } from "../store/messaging.store";
@@ -9,9 +9,14 @@ import {
 } from "../utils/message-payload";
 import { useDBStore } from "../store/db.store";
 import { PROTOCOL } from "../config/protocol";
-import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
+import {
+  tryParseBase64AsHexToHex,
+  hexToBytes,
+} from "../utils/payload-encoding";
 import EventEmitter from "eventemitter3";
 import { devMode } from "../config/dev-mode";
+import { useBroadcastStore } from "../store/broadcast.store";
+import { getTransactionId } from "../types/transactions";
 
 export type RawResolvedKasiaTransaction = {
   id: string;
@@ -106,6 +111,29 @@ export class BlockProcessorService extends EventEmitter<{
         return;
       }
 
+      /*
+       * Temp hacky solution to mark out pending broadcasts as confirmed
+       * This is planned to be unified with a single pending set so we can extend
+       * the same functionality to outgoing chat messages too
+       */
+      const broadcastStore = useBroadcastStore.getState();
+      const existingPendingMessage = broadcastStore.findMessageByTxId(txId);
+
+      if (
+        existingPendingMessage &&
+        existingPendingMessage.status === "pending"
+      ) {
+        console.log(
+          `updating existing pending message to confirmed: ${existingPendingMessage.id}`
+        );
+        broadcastStore.updateMessageStatus(
+          existingPendingMessage.id,
+          "confirmed",
+          txId
+        );
+        return;
+      }
+
       // try to resolve sender
       const resolvedSenderData = await this.saars.askResolution(txId);
       const resolvedSenderAddress = resolvedSenderData.sender.toString();
@@ -147,6 +175,18 @@ export class BlockProcessorService extends EventEmitter<{
             }
           );
         return;
+      }
+
+      // handle broadcast messages separately (they are never encrypted)
+      if (messageType === PROTOCOL.headers.BROADCAST.type) {
+        if (this.shouldProcessBroadcasts()) {
+          await this.processBroadcastTransaction(
+            tx,
+            Number(header.timestamp),
+            resolvedSenderAddress
+          );
+        }
+        return; // broadcasts don't go through regular encrypted message processing
       }
 
       // note: hacky way of determining the recipient and the amount
@@ -260,6 +300,140 @@ export class BlockProcessorService extends EventEmitter<{
       });
     } catch (error) {
       console.error("Error updating monitored conversations:", error);
+    }
+  }
+
+  /*
+   * Check if broadcasts are enabled and we should process broadcast messages
+   */
+  private shouldProcessBroadcasts(): boolean {
+    try {
+      const broadcastStore = useBroadcastStore.getState();
+      return (
+        broadcastStore.isBroadcastMode && broadcastStore.channels.length > 0
+      );
+    } catch (error) {
+      console.error("Error checking broadcast status:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Process broadcast messages with the :bcast: prefix
+   */
+  private async processBroadcastTransaction(
+    tx: ITransaction,
+    blockTime: number,
+    resolvedSenderAddress: string
+  ) {
+    const payload = tx.payload;
+    if (!payload.startsWith(PROTOCOL.prefix.hex)) {
+      return;
+    }
+
+    // Verify this is actually a broadcast message
+    if (!payload.includes(PROTOCOL.headers.BROADCAST.hex)) {
+      return;
+    }
+
+    const txId = getTransactionId(tx);
+    if (!txId) {
+      console.warn("Transaction ID is missing in broadcast processing");
+      return;
+    }
+
+    // Prevent duplicate processing
+    if (
+      await useDBStore.getState().repositories.doesKasiaEventExistsById(txId)
+    ) {
+      console.log(`Broadcast transaction ${txId} already processed`);
+      return;
+    }
+
+    try {
+      // Parse the broadcast payload: ciph_msg:1:bcast:{channelName}:{content}
+      // Convert hex payload to string for parsing
+      const hexBytes = hexToBytes(payload);
+      const payloadString = new TextDecoder().decode(hexBytes);
+      console.log(`Broadcast payload string: ${payloadString}`);
+      const parts = payloadString.split(":");
+
+      // Validate broadcast message format
+      if (parts.length < 5 || parts[2] !== "bcast") {
+        console.log(
+          `Invalid broadcast format: parts.length=${parts.length}, parts[2]=${parts[2]}`
+        );
+        return; // Not a valid broadcast message
+      }
+
+      const channelName = parts[3]?.toLowerCase();
+      if (!channelName) {
+        console.warn("No channel name found in broadcast message");
+        return;
+      }
+
+      console.log(`Extracted channel name: ${channelName}`);
+
+      // Check if we're subscribed to this channel
+      const broadcastStore = useBroadcastStore.getState();
+      console.log(
+        `Available channels:`,
+        broadcastStore.channels.map((c) => c.channelName)
+      );
+      const isSubscribed = broadcastStore.channels.some(
+        (channel) => channel.channelName === channelName
+      );
+
+      console.log(`Is subscribed to channel ${channelName}: ${isSubscribed}`);
+
+      if (!isSubscribed) {
+        console.log(`Not subscribed to broadcast channel: ${channelName}`);
+        return;
+      }
+
+      // Extract message content (everything after the channel name)
+      const messageContent = parts.slice(4).join(":");
+      console.log(`Extracted message content: ${messageContent}`);
+
+      // Check if we have a pending message with this transaction ID
+      // This handles the case where we sent a broadcast and it's now confirmed
+      const existingPendingMessage = broadcastStore.findMessageByTxId(txId);
+
+      if (
+        existingPendingMessage &&
+        existingPendingMessage.status === "pending"
+      ) {
+        // Update existing pending message to confirmed status
+        console.log(
+          `Updating existing pending message to confirmed: ${existingPendingMessage.id}`
+        );
+
+        broadcastStore.updateMessageStatus(
+          existingPendingMessage.id,
+          "confirmed",
+          txId
+        );
+      } else {
+        // Add new incoming broadcast message to store
+        console.log(
+          `Adding new broadcast message to store for channel: ${channelName}`
+        );
+
+        broadcastStore.addMessage({
+          channelName,
+          senderAddress: resolvedSenderAddress,
+          content: messageContent,
+          timestamp: new Date(blockTime),
+          transactionId: txId,
+          status: "confirmed",
+        });
+      }
+
+      console.log(
+        `Successfully processed broadcast message for channel: ${channelName}`
+      );
+    } catch (error) {
+      console.error(`Error processing broadcast transaction ${txId}:`, error);
     }
   }
 }

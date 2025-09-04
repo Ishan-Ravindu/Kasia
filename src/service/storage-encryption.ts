@@ -37,6 +37,7 @@ export async function reEncryptMessagesForWallet(
       repositories.handshakeRepository.reEncrypt(newPassword),
       repositories.messageRepository.reEncrypt(newPassword),
       repositories.paymentRepository.reEncrypt(newPassword),
+      repositories.broadcastChannelRepository.reEncrypt(newPassword),
     ]);
 
     console.log(`Successfully reEncrypted messages for wallet ${walletId}`);

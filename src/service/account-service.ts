@@ -17,6 +17,8 @@ import { PriorityFeeConfig } from "../types/all";
 import { UnlockedWallet } from "../types/wallet.type";
 import { TransactionId } from "../types/transactions";
 import { useMessagingStore } from "../store/messaging.store";
+import { useBroadcastStore } from "../store/broadcast.store";
+import { useDBStore } from "../store/db.store";
 import { PROTOCOL } from "../config/protocol";
 import { PLACEHOLDER_ALIAS } from "../config/constants";
 import { hexToBytes, getEncoder } from "../utils/payload-encoding";
@@ -47,10 +49,14 @@ type SendMessageArgs = {
   priorityFee?: PriorityFeeConfig; // Add priority fee support
 };
 
-type EstimateSendMessageFeesArgs = {
+type EstimateSendFeesArgs = {
   toAddress: Address;
   message: string;
   priorityFee?: PriorityFeeConfig; // Add priority fee support
+};
+
+type EstimateSendBroadcastFeesArgs = EstimateSendFeesArgs & {
+  channelName: string;
 };
 
 type SendMessageWithContextArgs = {
@@ -72,6 +78,12 @@ type CreateTransactionArgs = {
 type CreateWithdrawTransactionArgs = {
   address: Address;
   amount: bigint;
+  priorityFee?: PriorityFeeConfig; // Add priority fee support
+};
+
+type CreateBroadcastTransactionArgs = {
+  channelName: string;
+  message: string;
   priorityFee?: PriorityFeeConfig; // Add priority fee support
 };
 
@@ -495,6 +507,64 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     }
   }
 
+  public async createBroadcastTransaction(
+    broadcastTransaction: CreateBroadcastTransactionArgs
+  ): Promise<TransactionId> {
+    this.assertReady();
+
+    if (!broadcastTransaction.channelName) {
+      throw new Error("Channel name is required for broadcast");
+    }
+
+    if (!broadcastTransaction.message.trim()) {
+      throw new Error("Message content is required for broadcast");
+    }
+
+    console.log("=== CREATING BROADCAST TRANSACTION ===");
+    const primaryAddress = this.recv;
+    console.log(
+      "Broadcasting from primary address:",
+      primaryAddress.toString()
+    );
+    console.log(
+      "Destination: Self (broadcast to own address)",
+      primaryAddress.toString()
+    );
+    console.log(`Channel: #${broadcastTransaction.channelName}`);
+    console.log(`Message: ${broadcastTransaction.message}`);
+
+    try {
+      // Create broadcast payload: ciph_msg:1:bcast:{channelName}:{messageContent}
+      // Note: Broadcasts are never encrypted - they're plain text in the payload
+      const protocolString = `ciph_msg:1:bcast:${broadcastTransaction.channelName.toLowerCase()}:${broadcastTransaction.message}`;
+      const payloadBytes = getEncoder().encode(protocolString);
+
+      console.log(`Broadcast payload length: ${payloadBytes.length} bytes`);
+
+      // Use default broadcast amount (0.2 KAS)
+      const broadcastAmount = kaspaToSompi("0.2");
+      if (!broadcastAmount) {
+        throw new Error("Failed to convert broadcast amount");
+      }
+
+      const generator = TransactionGeneratorService.createForTransaction({
+        context: this.ctx,
+        networkId: this.networkId,
+        receiveAddress: this.recv,
+        destinationAddress: this.recv, // Broadcast to self
+        amount: broadcastAmount,
+        payload: payloadBytes,
+        priorityFee: broadcastTransaction.priorityFee,
+      });
+
+      console.log("Generating broadcast transaction...");
+      return this.processGeneratorTransactions(generator);
+    } catch (error) {
+      console.error("Error creating broadcast transaction:", error);
+      throw error;
+    }
+  }
+
   public async sendMessage(
     sendMessage: SendMessageArgs
   ): Promise<TransactionId> {
@@ -559,7 +629,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
   // estimation with context 1:1 base64
   public async estimateSendMessageFees(
-    sendMessage: EstimateSendMessageFeesArgs
+    sendMessage: EstimateSendFeesArgs
   ): Promise<GeneratorSummary> {
     this.assertReady();
 
@@ -575,7 +645,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       ensureAddressPrefix(sendMessage.toAddress.toString(), this.networkId)
     );
     const addressString = destinationAddress.toString();
+
+    console.log("sendMessage:", {
+      message: sendMessage.message,
+      toAddress: sendMessage.toAddress.toString(),
+      networkId: this.networkId,
+    });
+
     // Message needs to be encrypted
+    console.log("Encrypting message...");
     const encryptedMessage = encrypt_message(
       addressString,
       sendMessage.message
@@ -589,7 +667,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     // Build the full protocol string with all components to match sendMessageWithContext
     const protocolString = `ciph_msg:1:comm:${PLACEHOLDER_ALIAS}:${base64Data}`;
+    console.log("Encrypted protocol string:", protocolString);
+
+    console.log("Final protocol string:", protocolString);
     const payload = getEncoder().encode(protocolString);
+    console.log("Encoded payload:", payload);
 
     if (!payload) {
       throw new Error("Failed to create message payload");
@@ -604,6 +686,60 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         amount: BigInt(0.2 * 100_000_000),
         payload: payload,
         priorityFee: sendMessage.priorityFee,
+      }).estimate();
+    } catch (error) {
+      console.error("Error estimating transaction fees:", error);
+      throw error;
+    }
+  }
+
+  // estimation for unencrypted broadcast 1:1
+  public async estimateSendBroadcastFees(
+    sendBroadcast: EstimateSendBroadcastFeesArgs
+  ): Promise<GeneratorSummary> {
+    this.assertReady();
+
+    if (!sendBroadcast.toAddress) {
+      throw new Error("Destination address is required");
+    }
+
+    if (!sendBroadcast.message) {
+      throw new Error("Message is required");
+    }
+
+    const destinationAddress = new Address(
+      ensureAddressPrefix(sendBroadcast.toAddress.toString(), this.networkId)
+    );
+
+    console.log("sendMessage:", {
+      message: sendBroadcast.message,
+      toAddress: sendBroadcast.toAddress.toString(),
+      networkId: this.networkId,
+    });
+
+    // Message needs to be encrypted
+
+    // Handle unencrypted message
+    const protocolString = `ciph_msg:1:bcast:${sendBroadcast.channelName}:${sendBroadcast.message}`;
+    console.log("Unencrypted protocol string:", protocolString);
+
+    console.log("Final protocol string:", protocolString);
+    const payload = getEncoder().encode(protocolString);
+    console.log("Encoded payload:", payload);
+
+    if (!payload) {
+      throw new Error("Failed to create message payload");
+    }
+
+    try {
+      return TransactionGeneratorService.createForTransaction({
+        context: this.ctx,
+        networkId: this.networkId,
+        receiveAddress: this.recv,
+        destinationAddress: destinationAddress,
+        amount: BigInt(0.2 * 100_000_000),
+        payload: payload,
+        priorityFee: sendBroadcast.priorityFee,
       }).estimate();
     } catch (error) {
       console.error("Error estimating transaction fees:", error);

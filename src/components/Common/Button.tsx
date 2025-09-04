@@ -13,7 +13,7 @@ export const Button: FC<ButtonProps> = ({
   ...props
 }) => {
   const base =
-    "cursor-pointer w-full font-bold py-3 px-4 sm:px-6 rounded-3xl transition-colors duration-200 select-none";
+    "cursor-pointer w-full font-bold py-3 px-4 sm:px-6 rounded-3xl transition-all duration-50 select-none active:scale-98 active:opacity-90";
   const variantClasses =
     variant === "primary"
       ? "bg-[var(--button-primary)] text-white hover:bg-[var(--button-primary)]/80"

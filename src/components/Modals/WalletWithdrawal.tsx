@@ -18,6 +18,7 @@ export const WalletWithdrawal: FC = () => {
   const [amountInputError, setAmountInputError] = useState<string | null>(null);
 
   const closeModal = useUiStore((s) => s.closeModal);
+  const openModal = useUiStore((s) => s.openModal);
 
   const accountService = useWalletStore((store) => store.accountService);
   const balance = useWalletStore((store) => store.balance);
@@ -184,22 +185,35 @@ export const WalletWithdrawal: FC = () => {
             Max
           </button>
         </div>
-        <div className="mt-1 flex items-start justify-start">
+        <div className="mt-0.5 flex items-start justify-start">
           <span className="text-text-secondary me-2">Funds Available:</span>
           <span className="text-text-secondary">
             {balance?.matureDisplay} KAS
           </span>
         </div>
-        <Button
-          onClick={handleWithdraw}
-          disabled={isSending || amountInputError !== null}
-          variant="primary"
-          className="mt-2 w-full"
-        >
-          {isSending ? "Sending..." : "Send"}
-        </Button>
+        <div className="mt-2 flex flex-col-reverse justify-center gap-2 sm:flex-row sm:gap-4">
+          <Button
+            onClick={() => {
+              closeModal("withdraw");
+              openModal("walletInfo");
+            }}
+            variant="secondary"
+            className="!w-full sm:w-auto"
+          >
+            Back to Wallet
+          </Button>
+
+          <Button
+            onClick={handleWithdraw}
+            disabled={isSending || amountInputError !== null}
+            variant="primary"
+            className="!w-full sm:w-auto"
+          >
+            {isSending ? "Sending..." : "Send"}
+          </Button>
+        </div>
         {amountInputError && (
-          <div className="mt-2 text-center text-sm text-red-500">
+          <div className="text-accent-red mt-2 text-center text-sm">
             {amountInputError}
           </div>
         )}

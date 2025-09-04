@@ -239,7 +239,7 @@ export const SendPaymentPopup: FC<{
     <div className="relative">
       <button
         ref={buttonRef}
-        className="flex w-full cursor-pointer items-center gap-2 rounded p-2 hover:bg-white/5"
+        className="flex w-full cursor-pointer items-center gap-2 rounded p-2 hover:bg-white/5 active:scale-90 active:opacity-80"
         title="Send Kaspa payment to recipient"
         onClick={() => setPanelOpen((open) => !open)}
         type="button"

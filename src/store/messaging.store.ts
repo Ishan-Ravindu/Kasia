@@ -17,7 +17,6 @@ import {
   decryptXChaCha20Poly1305,
   encryptXChaCha20Poly1305,
   kaspaToSompi,
-  NetworkType,
 } from "kaspa-wasm";
 import { ConversationManagerService } from "../service/conversation-manager-service";
 import { useWalletStore } from "./wallet.store";
@@ -33,7 +32,6 @@ import {
   ActiveConversation,
   Conversation,
 } from "./repository/conversation.repository";
-import { loadLegacyMessages } from "../service/storage-encryption";
 import { PROTOCOL, toHex } from "../config/protocol";
 import { Payment } from "./repository/payment.repository";
 import { Message } from "./repository/message.repository";
@@ -54,16 +52,6 @@ import {
   importData,
 } from "../service/import-export-service";
 
-// Helper function to determine network type from address
-function getNetworkTypeFromAddress(address: string): NetworkType {
-  if (address.startsWith("kaspatest:")) {
-    return NetworkType.Testnet;
-  } else if (address.startsWith("kaspadev:")) {
-    return NetworkType.Devnet;
-  }
-  return NetworkType.Mainnet;
-}
-
 interface MessagingState {
   isLoaded: boolean;
   isCreatingNewChat: boolean;
@@ -82,7 +70,6 @@ interface MessagingState {
 
   openedRecipient: string | null;
   setOpenedRecipient: (contact: string | null) => void;
-  setIsCreatingNewChat: (isCreatingNewChat: boolean) => void;
 
   load: (address: string) => Promise<void>;
   stop: () => void;
@@ -514,8 +501,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const processOneSender = async (senderAddress: string) => {
         let oooc = ooocsByAddress.get(senderAddress);
 
-        console.log(`No oooc found for ${senderAddress}, creating new one`);
-
         const lastSentHS = lastSentHSBySenderAddress.get(senderAddress);
         if (lastSentHS) {
           try {
@@ -532,7 +517,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         }
 
         const lastReceivedHS = lastReceivedHSBySenderAddress.get(senderAddress);
-        if (lastReceivedHS) {
+        if (lastReceivedHS?.handshake?.sender) {
           try {
             await g().conversationManager?.processHandshake(
               senderAddress,
@@ -1025,8 +1010,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           ) {
             continue;
           }
-
-          const decryptedContent = transaction.content.split(":")[1];
+          const decryptedContent = transaction.content.substring(
+            transaction.content.indexOf(":") + 1
+          );
 
           const message: Message = {
             __type: "message",
@@ -1071,16 +1057,28 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             return state;
           }
 
+          // Check if this event already exists to prevent duplicates
+          const existingEventIndex = state.oneOnOneConversations[
+            ooocToUpdateIndex
+          ].events.findIndex(
+            (event) => event.transactionId === kasiaEvent.transactionId
+          );
+
           const updatedConversation = {
             ...state.oneOnOneConversations[ooocToUpdateIndex],
             conversation: {
               ...state.oneOnOneConversations[ooocToUpdateIndex].conversation,
               lastActivityAt: transaction.createdAt,
             },
-            events: [
-              ...state.oneOnOneConversations[ooocToUpdateIndex].events,
-              kasiaEvent,
-            ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+            events:
+              existingEventIndex === -1
+                ? [
+                    ...state.oneOnOneConversations[ooocToUpdateIndex].events,
+                    kasiaEvent,
+                  ].sort(
+                    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+                  )
+                : state.oneOnOneConversations[ooocToUpdateIndex].events, // Event already exists, don't add duplicate
           };
 
           updatedConversationWithContacts[ooocToUpdateIndex] =
@@ -1161,9 +1159,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           );
         }
       }
-    },
-    setIsCreatingNewChat: (isCreatingNewChat) => {
-      set({ isCreatingNewChat });
     },
     exportMessages: async (wallet, password) => {
       const backup = await exportData(useDBStore.getState().repositories);

@@ -1,7 +1,8 @@
-import { Settings, Trash2 } from "lucide-react";
+import { Settings } from "lucide-react";
 import { NetworkSelector } from "../NetworkSelector";
 import { TrustMessage } from "../Layout/TrustMessage";
 import { Button } from "../Common/Button";
+import { HoldToDelete } from "../Common/HoldToDelete";
 import { Wallet } from "../../types/wallet.type";
 import { NetworkType } from "../../types/all";
 import { ModalType } from "../../store/ui.store";
@@ -45,7 +46,7 @@ export const Home = ({
     <>
       <button
         onClick={() => openModal("settings")}
-        className="absolute top-4 right-4 size-6 hover:cursor-pointer hover:opacity-80"
+        className="absolute top-4 right-4 size-6 text-[var(--text-secondary)] hover:cursor-pointer hover:opacity-80 active:scale-90"
       >
         <Settings className="size-6" />
       </button>
@@ -62,7 +63,7 @@ export const Home = ({
         />
       </div>
       <TrustMessage />
-      <h2 className="text-text-primary mt-2 mb-2 text-center text-xl font-semibold sm:mt-2 sm:mb-3 sm:text-2xl">
+      <h2 className="text-text-primary mt-2 mb-2 text-center text-xl font-semibold select-none sm:mt-2 sm:mb-3 sm:text-2xl">
         {wallets.length <= 0 ? "No Wallets Found" : "Select Wallet"}
       </h2>
       <div className="mb-3 flex flex-col gap-2 overflow-y-auto sm:gap-4">
@@ -70,19 +71,15 @@ export const Home = ({
           <div
             key={w.id}
             onClick={() => onSelectWallet(w)}
-            className="hover:border-kas-secondary border-primary-border relative flex cursor-pointer flex-col items-start gap-2 rounded-lg border bg-[var(--primary-bg)] p-4 hover:bg-[var(--primary-bg)]/50 sm:flex-row sm:items-center sm:justify-between"
+            className="hover:border-kas-secondary border-primary-border group relative flex cursor-pointer flex-col items-start gap-2 rounded-xl border bg-[var(--primary-bg)] p-4 hover:bg-[var(--primary-bg)]/50 sm:flex-row sm:items-center sm:justify-between"
           >
-            {/* delete icon top-right */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteWallet(w.id);
-              }}
-              className="absolute top-2 right-2 cursor-pointer rounded-md bg-[var(--accent-red)]/10 p-[2px] text-[var(--accent-red)]/50 hover:scale-110"
-              title="Delete"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            {/* delete icon positioned on the right */}
+            <HoldToDelete
+              onComplete={() => onDeleteWallet(w.id)}
+              size="md"
+              className="absolute top-1/2 right-2 z-10 -translate-y-1/2 opacity-100 transition-all hover:text-[var(--accent-red)]/80 sm:opacity-0 sm:group-hover:opacity-100"
+              title="Click and hold to delete wallet"
+            />
 
             <div className="flex w-full flex-col gap-1">
               <div className="font-semibold text-[var(--text-primary)]">

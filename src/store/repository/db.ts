@@ -17,8 +17,12 @@ import {
   DbSavedHandshake,
   SavedHandhshakeRepository,
 } from "./saved-handshake.repository";
+import {
+  DbBroadcastChannel,
+  BroadcastChannelRepository,
+} from "./broadcast-channel.repository";
 
-const CURRENT_DB_VERSION = 2;
+const CURRENT_DB_VERSION = 3;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -97,6 +101,13 @@ export interface KasiaDBSchema extends DBSchema {
       "by-id": string;
       "by-tenant-id": string;
       "by-tenant-id-created-at": [string, Date];
+    };
+  };
+  broadcastChannels: {
+    key: string;
+    value: DbBroadcastChannel;
+    indexes: {
+      "by-tenant-id": string;
     };
   };
 }
@@ -236,8 +247,21 @@ export const openDatabase = async (): Promise<KasiaDB> => {
       }
 
       if (oldVersion <= 2) {
+        const broadcastChannelsStore = db.createObjectStore(
+          "broadcastChannels",
+          {
+            keyPath: "id",
+          }
+        );
+        broadcastChannelsStore.createIndex("by-tenant-id", "tenantId");
+
+        console.log("Database schema initiated to v1");
+      }
+
+      if (oldVersion <= 3) {
         // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
         // add more if branching for each next version
+        // BROADCAST CHANNELS
       }
     },
   });
@@ -251,6 +275,7 @@ export class Repositories {
   public readonly messageRepository: MessageRepository;
   public readonly handshakeRepository: HandshakeRepository;
   public readonly savedHandshakeRepository: SavedHandhshakeRepository;
+  public readonly broadcastChannelRepository: BroadcastChannelRepository;
 
   constructor(
     readonly db: KasiaDB,
@@ -295,6 +320,11 @@ export class Repositories {
 
     // no wallet password there is no encryption/decryption
     this.savedHandshakeRepository = new SavedHandhshakeRepository(db, tenantId);
+    this.broadcastChannelRepository = new BroadcastChannelRepository(
+      db,
+      tenantId,
+      walletPassword
+    );
   }
 
   async getKasiaEventsByConversationId(
