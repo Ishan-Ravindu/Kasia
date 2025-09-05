@@ -141,7 +141,7 @@ export const ContactCard: FC<{
   }
 
   if (collapsed) {
-    const avatarLetter = contact.name?.trim()?.[0]?.toUpperCase();
+    const avatarLetter = contact.name?.trim()?.slice(0, 2)?.toUpperCase();
     return (
       <div
         className="relative flex cursor-pointer justify-center py-2"
@@ -163,7 +163,7 @@ export const ContactCard: FC<{
           {avatarLetter && (
             <span
               className={clsx(
-                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+1px)]",
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
                 "pointer-events-none select-none",
                 "flex h-8 w-8 items-center justify-center",
                 "rounded-full text-sm leading-none font-bold tracking-wide text-[var(--text-primary)]/80"
@@ -182,7 +182,7 @@ export const ContactCard: FC<{
   }
 
   // Expanded (full view)
-  const avatarLetter = contact.name?.trim()?.[0]?.toUpperCase();
+  const avatarLetter = contact.name?.trim()?.slice(0, 2)?.toUpperCase();
 
   return (
     <div
@@ -216,7 +216,7 @@ export const ContactCard: FC<{
             {avatarLetter && (
               <span
                 className={clsx(
-                  "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%+1px)]",
+                  "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
                   "pointer-events-none select-none",
                   "flex h-10 w-10 items-center justify-center",
                   "rounded-full text-sm leading-none font-bold tracking-wide text-[var(--text-primary)]/80"
