@@ -317,7 +317,7 @@ export const DirectsSection: FC<{
           </div>
 
           <div
-            className="bg-primary-bg flex-1 overflow-x-hidden overflow-y-auto px-1 py-4 pb-8 sm:px-2"
+            className="bg-primary-bg flex flex-1 flex-col justify-end overflow-x-hidden overflow-y-auto px-1 py-4 pb-8 sm:px-2"
             ref={messagesScrollRef}
           >
             <DirectsList
