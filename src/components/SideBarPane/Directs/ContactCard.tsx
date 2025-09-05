@@ -59,7 +59,10 @@ export const ContactCard: FC<{
       case PROTOCOL.headers.PAYMENT.type:
         return "Payment received";
       case PROTOCOL.headers.HANDSHAKE.type:
-        if (oneOnOneConversation?.conversation.theirAlias) {
+        if (
+          oneOnOneConversation?.conversation.theirAlias &&
+          oneOnOneConversation.conversation.status === "active"
+        ) {
           return "Handshake completed";
         }
 
@@ -71,7 +74,11 @@ export const ContactCard: FC<{
       default:
         return "";
     }
-  }, [lastEvent, oneOnOneConversation?.conversation.theirAlias]);
+  }, [
+    lastEvent,
+    oneOnOneConversation?.conversation.theirAlias,
+    oneOnOneConversation?.conversation.status,
+  ]);
 
   const timestamp = useMemo(() => {
     if (!lastEvent?.createdAt) return "";
