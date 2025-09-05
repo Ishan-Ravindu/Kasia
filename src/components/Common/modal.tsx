@@ -55,7 +55,7 @@ export const Modal: FC<{
       >
         <button
           onClick={handleClose}
-          className="hover:text-kas-secondary absolute top-0.5 right-0.5 z-60 cursor-pointer hover:scale-110 active:scale-90 active:opacity-80 sm:top-2 sm:right-2"
+          className="hover:text-kas-secondary absolute top-0.5 right-0.5 z-60 cursor-pointer p-1 hover:scale-110 active:scale-90 active:opacity-80 sm:top-2 sm:right-2 sm:p-0"
         >
           <X className="h-7 w-7 rounded-3xl" />
         </button>
