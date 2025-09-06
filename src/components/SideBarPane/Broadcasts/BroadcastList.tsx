@@ -29,13 +29,6 @@ export const BroadcastList: FC<BroadcastListProps> = ({
     loadChannels();
   }, [loadChannels]);
 
-  // Auto-select first channel if no channel is currently selected
-  useEffect(() => {
-    if (broadcastChannels.length > 0 && !selectedChannelName) {
-      setSelectedChannel(broadcastChannels[0].channelName);
-    }
-  }, [broadcastChannels, selectedChannelName, setSelectedChannel]);
-
   // Filter channels by search query
   const filteredChannels = searchQuery.trim()
     ? broadcastChannels.filter((channel) =>
