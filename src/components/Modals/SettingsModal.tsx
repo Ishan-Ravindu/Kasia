@@ -10,6 +10,7 @@ import {
 import { Modal } from "../Common/modal";
 import { Button } from "../Common/Button";
 import { ColorPicker } from "../Common/ColorPicker";
+import { MessageBackup } from "./MessageBackup";
 import { Switch } from "@headlessui/react";
 import clsx from "clsx";
 import { reEncryptMessagesForWallet } from "../../service/storage-encryption";
@@ -115,6 +116,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [nameChangeError, setNameChangeError] = useState("");
   const [nameChangeSuccess, setNameChangeSuccess] = useState(false);
   const [isChangingName, setIsChangingName] = useState(false);
+
+  // Import/Export messages state
+  const [showImportExport, setShowImportExport] = useState(false);
 
   // Custom colors state
   const [tempCustomColors, setTempCustomColors] = useState(
@@ -278,6 +282,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setShowNameChange(true);
   };
 
+  const initializeImportExport = () => {
+    setShowImportExport(true);
+  };
+
   // Update temp colors when custom colors change
   useEffect(() => {
     if (customColors) {
@@ -416,7 +424,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {activeTab === "account" && (
               <div className="mt-2 space-y-6 sm:mt-0">
-                {!showNameChange ? (
+                {!showNameChange && !showImportExport ? (
                   <>
                     <h3 className="mb-4 text-lg font-medium">Account</h3>
                     <div className="space-y-2">
@@ -450,10 +458,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       {/* Import/Export Messages */}
                       {messageStore.isLoaded && (
                         <button
-                          onClick={() => {
-                            openModal("backup");
-                            onClose();
-                          }}
+                          onClick={initializeImportExport}
                           className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                         >
                           <Download className="h-5 w-5" />
@@ -488,12 +493,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </button>
                     </div>
                   </>
-                ) : (
+                ) : showNameChange ? (
                   <>
                     <div className="mb-2 flex items-center gap-3">
                       <button
                         onClick={resetNameChangeForm}
-                        className="hover:text-primary text-muted-foreground p-1 transition-colors"
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
                       >
                         <ArrowLeft className="h-5 w-5" />
                       </button>
@@ -569,7 +574,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       )}
                     </div>
                   </>
-                )}
+                ) : showImportExport ? (
+                  <>
+                    <div className="mb-2 flex items-center gap-3">
+                      <button
+                        onClick={() => setShowImportExport(false)}
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                      <h3 className="text-lg font-medium">
+                        Import / Export Messages
+                      </h3>
+                    </div>
+                    <MessageBackup />
+                  </>
+                ) : null}
               </div>
             )}
             {activeTab === "theme" && (
@@ -751,7 +771,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="mb-4 flex items-center gap-3">
                       <button
                         onClick={resetPasswordChangeForm}
-                        className="hover:text-primary text-muted-foreground p-1 transition-colors"
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
                       >
                         <ArrowLeft className="h-5 w-5" />
                       </button>
