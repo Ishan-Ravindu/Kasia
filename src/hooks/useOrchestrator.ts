@@ -119,5 +119,29 @@ export const useOrchestrator = () => {
     }
   };
 
-  return { connect, startSession };
+  /**
+   * Utility for mobile application that can pause
+   */
+  const onPause = async () => {
+    console.log("onPause - checking if disconnect is needed");
+    if (networkStore.rpc.isConnected) {
+      console.log("onPause - disonnect is needed");
+      await networkStore.disconnect();
+      console.log("onPause - disonnected");
+    }
+  };
+
+  /**
+   * Utility for mobile application that can resume
+   */
+  const onResume = async () => {
+    console.log("onResume - checking if reconnect is needed");
+    if (!networkStore.rpc.isConnected) {
+      console.log("onResume - reconnect is needed");
+      await networkStore.connect();
+      console.log("onResume - connect successful");
+    }
+  };
+
+  return { connect, startSession, onPause, onResume };
 };

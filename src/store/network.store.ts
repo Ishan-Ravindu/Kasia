@@ -49,11 +49,6 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
     }
   };
 
-  // trigger initial connection
-  setTimeout(async () => {
-    await g().connect();
-  }, 1);
-
   return {
     isConnected: false,
     isConnecting: false,

@@ -17,13 +17,13 @@ val tauriProperties = Properties().apply {
 }
 
 android {
-    compileSdk = 34
+    compileSdk = 36
     namespace = "kas.kluster.kasia"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
         applicationId = "kas.kluster.kasia"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
@@ -71,6 +71,8 @@ android {
     buildFeatures {
         buildConfig = true
     }
+  buildToolsVersion = "35.0.0"
+  ndkVersion = "29.0.13599879 rc2"
 }
 
 rust {

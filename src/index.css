@@ -15,13 +15,17 @@
   --accent-red: #ef4444;
   --input-bg: #3b3b3b;
   --success: #10b981;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
   --button-primary: #70c7ba;
   --kas-primary: #70c7ba;
   --kas-secondary: #49eacb;
   --text-warning: #fbb81a;
   /* amber-300 */
+
+  /* Older iOS uses constant(); harmless on Android */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 /* Light Theme */
@@ -39,8 +43,6 @@
   --accent-red: #dc2626;
   --input-bg: #f7f7f7;
   --success: #10b981;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
   --button-primary: #70c7ba;
   --kas-primary: #70c7ba;
   --kas-secondary: #49eacb;
@@ -68,8 +70,18 @@
 }
 
 /* we need this to assist with splash > loaded app transition. Its our css limit */
+html,
 body {
   background-color: var(--primary-bg);
+  height: 100%;
+}
+
+body {
+  padding-top: var(--sat);
+  padding-bottom: var(--sab);
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+  box-sizing: border-box;
 }
 
 @keyframes fade-in {

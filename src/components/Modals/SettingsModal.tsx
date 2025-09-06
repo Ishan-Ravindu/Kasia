@@ -665,23 +665,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="mt-4 space-y-6 sm:mt-0">
                 <h3 className="mb-4 text-lg font-medium">Network</h3>
                 <div className="space-y-4">
-                  {/* Network Selector */}
-                  <div className="border-primary-border bg-primary-bg rounded-2xl border p-4">
-                    <div className="mb-4 text-sm font-medium">
-                      Select Network
-                    </div>
-                    <div className="flex justify-center">
-                      <NetworkSelector
-                        selectedNetwork={networkStore.network}
-                        onNetworkChange={(network) =>
-                          networkStore.setNetwork(network)
-                        }
-                        isConnected={networkStore.isConnected}
-                        isConnecting={networkStore.isConnecting}
-                      />
-                    </div>
-                  </div>
-
                   {/* Current Network Info */}
                   <div className="border-primary-border bg-primary-bg rounded-2xl border p-4">
                     <div className="mb-2 text-sm font-medium">

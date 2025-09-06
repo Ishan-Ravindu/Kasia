@@ -4,7 +4,8 @@
     "includes": [
       "src/**/*.{js,jsx,ts,tsx,json,md,mdx,yml,yaml,html,css,scss,sass}",
       "!**/node_modules/**/*",
-      "!**/dist/**"
+      "!**/dist/**",
+      "!**/src-tauri/**/*"
     ],
     "ignoreUnknown": true
   },

@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 import { sri } from "vite-plugin-sri3";
 import { VitePWA } from "vite-plugin-pwa";
 
+const host = process.env.TAURI_DEV_HOST;
+
 // https://vite.dev/config/
 export default defineConfig({
   test: {
@@ -56,7 +58,7 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    host: "0.0.0.0",
+    host: host || "0.0.0.0",
     strictPort: true,
     watch: {
       ignored: ["**/*.test*"],
