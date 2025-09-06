@@ -22,8 +22,14 @@ export const HandshakeResponse: React.FC<{
   // TODO: Refine this, potentially just have a wallet store function that has balance setpoints and return a bool
   // Can then use this in other parts of the app (such as minimum to send message etc)
   const minBalance = kaspaToSompi("0.4");
+  const totalBalance =
+    walletBalance?.mature && walletBalance?.pending
+      ? walletBalance.mature + walletBalance.pending
+      : walletBalance?.mature || BigInt(0);
   const hasInsufficientBalance =
-    !walletBalance?.mature || !minBalance || walletBalance.mature < minBalance;
+    !totalBalance || !minBalance || totalBalance < minBalance;
+  const hasPendingFunds =
+    walletBalance?.pending && walletBalance.pending > BigInt(0);
 
   const handleRespond = async () => {
     try {
@@ -85,7 +91,9 @@ export const HandshakeResponse: React.FC<{
           {isResponding
             ? "Sending Response..."
             : hasInsufficientBalance
-              ? "Insufficient Funds To Respond"
+              ? hasPendingFunds
+                ? "Pending Incoming Funds"
+                : "Insufficient Funds To Respond"
               : "Accept & Send Response"}
         </button>
       )}
