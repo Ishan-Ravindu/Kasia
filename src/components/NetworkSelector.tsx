@@ -17,7 +17,6 @@ export const NetworkSelector: FC<NetworkSelectorProps> = ({
   isConnecting,
 }) => {
   const networkDisplay = useMemo(() => {
-    console.log({ isConnected, isConnecting });
     if (isConnecting) {
       return "Connecting...";
     }
