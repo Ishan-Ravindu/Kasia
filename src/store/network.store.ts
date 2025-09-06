@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { NetworkType } from "../types/all";
-import { Encoding, Resolver, RpcClient } from "kaspa-wasm";
+import { ConnectStrategy, Encoding, Resolver, RpcClient } from "kaspa-wasm";
 
 interface NetworkState {
   isConnected: boolean;
@@ -30,7 +30,7 @@ interface NetworkState {
 export const useNetworkStore = create<NetworkState>((set, g) => {
   const initialNetwork =
     import.meta.env.VITE_DEFAULT_KASPA_NETWORK ?? "mainnet";
-  const initialNodeUrl =
+  const userInitialNodeUrl =
     localStorage.getItem(`kasia_node_url_${initialNetwork}`) ?? null;
 
   const onConnectionLost = async () => {
@@ -53,11 +53,10 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
     isConnected: false,
     isConnecting: false,
     network: initialNetwork,
-    nodeUrl: initialNodeUrl,
+    nodeUrl: userInitialNodeUrl,
     rpc: new RpcClient({
       encoding: Encoding.Borsh,
       networkId: initialNetwork,
-      resolver: new Resolver(),
     }),
     async connect(): Promise<void> {
       const rpc = g().rpc;
@@ -74,19 +73,38 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
         isConnecting: true,
         isConnected: false,
       });
+
+      // remove auto-reconnect
+      rpc.removeEventListener("disconnect", onConnectionLost);
+
       await rpc.disconnect();
 
       if (isDifferentNetwork) {
         rpc.setNetworkId(g().network);
       }
 
+      const kasiaNodeUrl =
+        rpc.networkId?.toString() === "mainnet"
+          ? import.meta.env.VITE_DEFAULT_MAINNET_KASPA_NODE_URL
+          : import.meta.env.VITE_DEFAULT_TESTNET_KASPA_NODE_URL;
+
       try {
         await rpc.connect({
           blockAsyncConnect: true,
           retryInterval: 2_000,
           timeoutDuration: 3_000,
-          url: g().nodeUrl ?? undefined,
+          url: g().nodeUrl ?? kasiaNodeUrl,
+          strategy: ConnectStrategy.Fallback,
         });
+
+        // verify network matches
+        const serverInfo = await rpc.getServerInfo();
+
+        if (serverInfo.networkId !== rpc.networkId?.toString()) {
+          throw new Error(
+            `RPC Node isn't on the correct networkId. Expected: ${rpc.networkId?.toString()}, Got: ${serverInfo.networkId}`
+          );
+        }
 
         // register auto-reconnect
         rpc.addEventListener("disconnect", onConnectionLost);

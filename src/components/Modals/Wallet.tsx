@@ -6,6 +6,7 @@ import { BALANCE_WARN } from "../../config/constants";
 import { Button } from "../Common/Button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { HIGH_UTXO_THRESHOLD } from "../../config/constants";
+import { useNetworkStore } from "../../store/network.store";
 
 type FrozenBalance = { matureUtxoCount: number; matureDisplay: string };
 
@@ -19,6 +20,8 @@ export const Wallet = () => {
   const closeModal = useUiStore((s) => s.closeModal);
   const unlockedWalletName = useWalletStore((s) => s.unlockedWallet?.name);
   const walletBalance = useWalletStore((s) => s.balance);
+  const network = useNetworkStore((s) => s.network);
+
   // use frozen balance if available, otherwise use current balance
   const currentBalance = frozenBalance
     ? {
@@ -32,6 +35,8 @@ export const Wallet = () => {
   const shouldAutoExpand =
     (currentBalance?.matureUtxoCount ?? 0) > HIGH_UTXO_THRESHOLD;
   const isExpanded = isUtxoExpanded || shouldAutoExpand;
+
+  const kasUnitDisplay = network === "mainnet" ? "KAS" : "TKAS";
 
   return (
     <div className="my-2 sm:mx-2">
@@ -51,7 +56,7 @@ export const Wallet = () => {
             </div>
             <div className="text-lg leading-none font-extrabold text-[var(--accent-green)] sm:text-2xl">
               {currentBalance?.matureDisplay}{" "}
-              <span className="opacity-80">KAS</span>
+              <span className="opacity-80">{kasUnitDisplay}</span>
             </div>
           </div>
         </div>
@@ -63,7 +68,7 @@ export const Wallet = () => {
             </div>
             <div className="font-semibold text-[var(--accent-green)]">
               {currentBalance?.pendingDisplay}{" "}
-              <span className="opacity-70">KAS</span>
+              <span className="opacity-70">{kasUnitDisplay}</span>
             </div>
           </div>
 
@@ -73,7 +78,7 @@ export const Wallet = () => {
             </div>
             <div className="font-semibold text-[var(--accent-green)]">
               {currentBalance?.outgoingDisplay}{" "}
-              <span className="opacity-70">KAS</span>
+              <span className="opacity-70">{kasUnitDisplay}</span>
             </div>
           </div>
 
@@ -90,7 +95,7 @@ export const Wallet = () => {
           {(currentBalance?.mature ?? 0) > BALANCE_WARN && (
             <div className="col-span-2 items-center justify-end">
               <div className="text-text-secondary text-xs font-semibold">
-                That's a lot of KAS. Consider cold storage.
+                That's a lot of {kasUnitDisplay}. Consider cold storage.
               </div>
             </div>
           )}
@@ -99,7 +104,7 @@ export const Wallet = () => {
         {(currentBalance?.matureUtxoCount ?? 0) > BALANCE_WARN && (
           <div className="mt-3 sm:hidden">
             <div className="text-text-secondary text-center text-xs font-semibold">
-              That's a lot of KAS. Consider cold storage.
+              That's a lot of {kasUnitDisplay}. Consider cold storage.
             </div>
           </div>
         )}

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useDBStore } from "./db.store";
 import { BroadcastChannel } from "./repository/broadcast-channel.repository";
+import { v4 } from "uuid";
 
 export type BroadcastMessage = {
   id: string;
@@ -94,7 +95,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       }
 
       const newChannel: Omit<BroadcastChannel, "tenantId"> = {
-        id: crypto.randomUUID(),
+        id: v4(),
         channelName: normalizedName,
         channelValue,
         timestamp: new Date(),
@@ -141,7 +142,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       ? { ...message, channelName: normalizeChannel(message.channelName)! }
       : {
           ...message,
-          id: crypto.randomUUID(),
+          id: v4(),
           status: "confirmed",
           channelName: normalizeChannel(message.channelName)!,
         };
@@ -183,7 +184,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   addPendingMessage: (
     message: Omit<BroadcastMessage, "id" | "status" | "transactionId">
   ) => {
-    const tempId = crypto.randomUUID();
+    const tempId = v4();
     const newMessage: BroadcastMessage = {
       ...message,
       id: tempId,

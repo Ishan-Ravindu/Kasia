@@ -25,6 +25,7 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
 
   const passwordRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const passphraseRef = useRef<HTMLInputElement>(null);
 
   const { createWallet } = useWalletStore();
 
@@ -44,12 +45,20 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
     }
     try {
       const mnemonic = new Mnemonic(mnemonicValue);
-      await createWallet(nameRef.current.value, mnemonic, pw, derivationType);
+      const passphrase = passphraseRef.current?.value || undefined;
+      await createWallet(
+        nameRef.current.value,
+        mnemonic,
+        pw,
+        derivationType,
+        passphrase
+      );
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid mnemonic");
     } finally {
       setMnemonicValue("");
+      if (passphraseRef.current?.value) passphraseRef.current.value = "";
       if (passwordRef.current?.value) passwordRef.current.value = "";
     }
   };
@@ -90,7 +99,7 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
               key={opt.value}
               as="label"
               value={opt.value}
-              className="group hover:border-kas-secondary/50 border-primary-border flex cursor-pointer flex-col items-start gap-y-1 rounded-2xl border bg-[var(--primary-bg)] p-3 transition-colors duration-200 hover:bg-[var(--primary-bg)]/50 data-checked:border-[var(--color-kas-secondary)] data-checked:bg-[var(--color-kas-secondary)]/5"
+              className="group hover:border-kas-secondary/50 border-primary-border flex cursor-pointer flex-col items-start gap-y-1 rounded-2xl border bg-[var(--primary-bg)] p-3 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl data-checked:border-[var(--color-kas-secondary)] data-checked:bg-[var(--color-kas-secondary)]/5"
             >
               <span className="text-sm font-semibold text-[var(--text-primary)] group-data-checked:text-[var(--color-kas-secondary)] sm:text-base">
                 {opt.label}
@@ -131,7 +140,7 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
               key={val}
               as="label"
               value={val}
-              className="group hover:border-kas-secondary/50 border-primary-border flex cursor-pointer flex-col items-start gap-y-1 rounded-2xl border bg-[var(--primary-bg)] p-3 transition-colors duration-200 hover:bg-[var(--primary-bg)]/50 data-checked:border-[var(--color-kas-secondary)] data-checked:bg-[var(--color-kas-secondary)]/5"
+              className="group hover:border-kas-secondary/50 border-primary-border flex cursor-pointer flex-col items-start gap-y-1 rounded-2xl border bg-[var(--primary-bg)] p-3 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl data-checked:border-[var(--color-kas-secondary)] data-checked:bg-[var(--color-kas-secondary)]/5"
             >
               <span className="text-sm font-semibold text-[var(--text-primary)] group-data-checked:text-[var(--color-kas-secondary)] sm:text-base">
                 {val} words
@@ -144,6 +153,7 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
       <MnemonicEntry
         seedPhraseLength={seedPhraseLength}
         onMnemonicChange={setMnemonicValue}
+        passphraseRef={passphraseRef}
       />
 
       <div className="mb-6">

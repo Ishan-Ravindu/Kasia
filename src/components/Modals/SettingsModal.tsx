@@ -10,7 +10,7 @@ import {
 import { Modal } from "../Common/modal";
 import { Button } from "../Common/Button";
 import { ColorPicker } from "../Common/ColorPicker";
-import { NetworkSelector } from "../NetworkSelector";
+import { MessageBackup } from "./MessageBackup";
 import { Switch } from "@headlessui/react";
 import clsx from "clsx";
 import { reEncryptMessagesForWallet } from "../../service/storage-encryption";
@@ -88,7 +88,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: "security", label: "Security", icon: Shield },
     // only show if there are >0 flips
     ...(Object.keys(flips).length > 0
-      ? [{ id: "extras", label: "Extras", icon: RectangleEllipsis }]
+      ? [{ id: "extras", label: "Extra", icon: RectangleEllipsis }]
       : []),
     ...(devMode
       ? [
@@ -116,6 +116,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [nameChangeError, setNameChangeError] = useState("");
   const [nameChangeSuccess, setNameChangeSuccess] = useState(false);
   const [isChangingName, setIsChangingName] = useState(false);
+
+  // Import/Export messages state
+  const [showImportExport, setShowImportExport] = useState(false);
+
+  // Custom theme state
+  const [showCustomTheme, setShowCustomTheme] = useState(false);
 
   // Custom colors state
   const [tempCustomColors, setTempCustomColors] = useState(
@@ -279,6 +285,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setShowNameChange(true);
   };
 
+  const initializeImportExport = () => {
+    setShowImportExport(true);
+  };
+
+  const initializeCustomTheme = () => {
+    setTheme("custom");
+    setShowCustomTheme(true);
+  };
+
   // Update temp colors when custom colors change
   useEffect(() => {
     if (customColors) {
@@ -351,6 +366,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
   }, [isOpen]);
 
+  // Reset custom theme state when switching away from custom theme
+  useEffect(() => {
+    if (theme !== "custom") {
+      setShowCustomTheme(false);
+    }
+  }, [theme]);
+
   if (!isOpen) return null;
 
   return (
@@ -378,7 +400,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <nav
               className={clsx({
                 "flex space-x-4 overflow-x-auto pb-2": isMobile,
-                "space-y-1": !isMobile,
+                "space-y-2": !isMobile,
               })}
             >
               {tabs.map((tab) => (
@@ -386,16 +408,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={clsx(
-                    "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-colors",
+                    "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
                     {
                       "mx-1 min-w-14 flex-col items-center justify-center":
                         isMobile,
                       "w-full": !isMobile,
                       "text-primary border-primary border-b-2":
                         isMobile && activeTab === tab.id,
-                      "text-primary bg-primary-bg border-primary-border rounded-lg border":
+                      "text-primary bg-primary-bg border-kas-secondary rounded-lg border":
                         !isMobile && activeTab === tab.id,
-                      "text-muted-foreground": activeTab !== tab.id,
+                      "text-muted-foreground hover:text-primary border border-transparent":
+                        activeTab !== tab.id,
                     }
                   )}
                 >
@@ -415,11 +438,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             })}
           >
             {activeTab === "account" && (
-              <div className="mt-4 space-y-6 sm:mt-0">
-                {!showNameChange ? (
+              <div className="mt-2 space-y-6 sm:mt-0">
+                {!showNameChange && !showImportExport ? (
                   <>
-                    <h3 className="mb-4 text-lg font-medium">Account</h3>
-                    <div className="space-y-4">
+                    <h3 className="mb-2 text-lg font-medium">Account</h3>
+                    <div className="space-y-2">
                       {/* Current Wallet Info */}
                       {unlockedWallet && (
                         <div className="bg-primary-bg border-primary-border rounded-2xl border p-4">
@@ -435,7 +458,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       {/* Change Wallet Name */}
                       <button
                         onClick={initializeNameChange}
-                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                       >
                         <Edit3 className="h-5 w-5" />
                         <div className="text-left">
@@ -450,11 +473,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       {/* Import/Export Messages */}
                       {messageStore.isLoaded && (
                         <button
-                          onClick={() => {
-                            openModal("backup");
-                            onClose();
-                          }}
-                          className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                          onClick={initializeImportExport}
+                          className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                         >
                           <Download className="h-5 w-5" />
                           <div className="text-left">
@@ -474,7 +494,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onClearHistory();
                           onClose();
                         }}
-                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                       >
                         <Trash2 className="h-5 w-5 text-red-400/50" />
                         <div className="text-left">
@@ -488,12 +508,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </button>
                     </div>
                   </>
-                ) : (
+                ) : showNameChange ? (
                   <>
-                    <div className="mb-4 flex items-center gap-3">
+                    <div className="mb-2 flex items-center gap-3">
                       <button
                         onClick={resetNameChangeForm}
-                        className="hover:text-primary text-muted-foreground p-1 transition-colors"
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
                       >
                         <ArrowLeft className="h-5 w-5" />
                       </button>
@@ -569,94 +589,118 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       )}
                     </div>
                   </>
-                )}
+                ) : showImportExport ? (
+                  <>
+                    <div className="mb-2 flex items-center gap-3">
+                      <button
+                        onClick={() => setShowImportExport(false)}
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                      <h3 className="text-lg font-medium">
+                        Import / Export Messages
+                      </h3>
+                    </div>
+                    <MessageBackup />
+                  </>
+                ) : null}
               </div>
             )}
             {activeTab === "theme" && (
               <div className="mt-4 space-y-6 sm:mt-0">
-                <h3 className="mb-4 text-lg font-medium">Theme</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <button
-                    onClick={() => setTheme("light")}
-                    className={clsx(
-                      "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-colors",
-                      theme === "light"
-                        ? "bg-kas-secondary/10 border-kas-secondary"
-                        : "bg-primary-bg border-primary-border hover:bg-secondary-bg"
-                    )}
-                  >
-                    <Sun className="h-5 w-5 text-[var(--text-primary)]" />
-                    <span className="text-sm font-medium">Light</span>
-                  </button>
-                  <button
-                    onClick={() => setTheme("dark")}
-                    className={clsx(
-                      "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-colors",
-                      theme === "dark"
-                        ? "bg-kas-secondary/10 border-kas-secondary"
-                        : "bg-primary-bg border-primary-border hover:bg-secondary-bg"
-                    )}
-                  >
-                    <Moon className="h-5 w-5 text-[var(--text-primary)]" />
-                    <span className="text-sm font-medium">Dark</span>
-                  </button>
-                  <button
-                    onClick={() => setTheme("system")}
-                    className={clsx(
-                      "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-colors",
-                      theme === "system"
-                        ? "bg-kas-secondary/10 border-kas-secondary"
-                        : "bg-primary-bg border-primary-border hover:bg-secondary-bg"
-                    )}
-                  >
-                    <Monitor className="h-5 w-5 text-[var(--text-primary)]" />
-                    <span className="text-sm font-medium">System</span>
-                  </button>
-                  <button
-                    onClick={() => setTheme("custom")}
-                    className={clsx(
-                      "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-colors",
-                      theme === "custom"
-                        ? "bg-kas-secondary/10 border-kas-secondary"
-                        : "bg-primary-bg border-primary-border hover:bg-secondary-bg"
-                    )}
-                  >
-                    <Palette className="h-5 w-5 text-[var(--text-primary)]" />
-                    <span className="text-sm font-medium">Custom</span>
-                  </button>
-                </div>
-
-                {/* Custom Color Configuration - only show when custom theme is selected */}
-                {theme === "custom" && (
-                  <div className="mt-6 space-y-4">
-                    <h4 className="text-md font-medium">
-                      Custom Color Palette
-                    </h4>
-                    <div className="flex flex-wrap gap-4">
-                      {colorPickers.map((picker) => (
-                        <ColorPicker
-                          key={picker.key}
-                          color={tempCustomColors[picker.key]}
-                          onChange={(color) =>
-                            handleCustomColorChange(picker.key, color)
-                          }
-                          label={picker.label}
-                        />
-                      ))}
-                    </div>
-
-                    <div className="flex gap-2 pt-4">
-                      <Button onClick={applyCustomColors} variant="primary">
-                        Apply Colors
-                      </Button>
-                      <Button
-                        onClick={handleResetCustomColors}
-                        variant="secondary"
+                {!showCustomTheme ? (
+                  <>
+                    <h3 className="mb-2 text-lg font-medium">Theme</h3>
+                    <div className="grid grid-cols-1 space-y-2">
+                      <button
+                        onClick={() => setTheme("light")}
+                        className={clsx(
+                          "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
+                          theme === "light"
+                            ? "bg-kas-secondary/10 border-kas-secondary"
+                            : "bg-primary-bg border-primary-border"
+                        )}
                       >
-                        Reset to Default
-                      </Button>
+                        <Sun className="h-5 w-5 text-[var(--text-primary)]" />
+                        <span className="text-sm font-medium">Light</span>
+                      </button>
+                      <button
+                        onClick={() => setTheme("dark")}
+                        className={clsx(
+                          "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
+                          theme === "dark"
+                            ? "bg-kas-secondary/10 border-kas-secondary"
+                            : "bg-primary-bg border-primary-border"
+                        )}
+                      >
+                        <Moon className="h-5 w-5 text-[var(--text-primary)]" />
+                        <span className="text-sm font-medium">Dark</span>
+                      </button>
+                      <button
+                        onClick={() => setTheme("system")}
+                        className={clsx(
+                          "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
+                          theme === "system"
+                            ? "bg-kas-secondary/10 border-kas-secondary"
+                            : "bg-primary-bg border-primary-border"
+                        )}
+                      >
+                        <Monitor className="h-5 w-5 text-[var(--text-primary)]" />
+                        <span className="text-sm font-medium">System</span>
+                      </button>
+                      <button
+                        onClick={initializeCustomTheme}
+                        className={clsx(
+                          "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border p-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
+                          theme === "custom"
+                            ? "bg-kas-secondary/10 border-kas-secondary"
+                            : "bg-primary-bg border-primary-border"
+                        )}
+                      >
+                        <Palette className="h-5 w-5 text-[var(--text-primary)]" />
+                        <span className="text-sm font-medium">Custom</span>
+                      </button>
                     </div>
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-2 flex items-center gap-3">
+                      <button
+                        onClick={() => setShowCustomTheme(false)}
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                      <h3 className="text-lg font-medium">Custom Theme</h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-4">
+                        {colorPickers.map((picker) => (
+                          <ColorPicker
+                            key={picker.key}
+                            color={tempCustomColors[picker.key]}
+                            onChange={(color) =>
+                              handleCustomColorChange(picker.key, color)
+                            }
+                            label={picker.label}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <Button onClick={applyCustomColors} variant="primary">
+                          Apply Colors
+                        </Button>
+                        <Button
+                          onClick={handleResetCustomColors}
+                          variant="secondary"
+                        >
+                          Reset to Default
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -665,22 +709,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="mt-4 space-y-6 sm:mt-0">
                 <h3 className="mb-4 text-lg font-medium">Network</h3>
                 <div className="space-y-4">
-                  {/* Network Selector */}
-                  <div className="border-primary-border bg-primary-bg rounded-2xl border p-4">
-                    <div className="mb-4 text-sm font-medium">
-                      Select Network
-                    </div>
-                    <div className="flex justify-center">
-                      <NetworkSelector
-                        selectedNetwork={networkStore.network}
-                        onNetworkChange={(network) =>
-                          networkStore.setNetwork(network)
-                        }
-                        isConnected={networkStore.isConnected}
-                      />
-                    </div>
-                  </div>
-
                   {/* Current Network Info */}
                   <div className="border-primary-border bg-primary-bg rounded-2xl border p-4">
                     <div className="mb-2 text-sm font-medium">
@@ -715,12 +743,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="mt-4 space-y-6 sm:mt-0">
                 {!showPasswordChange ? (
                   <>
-                    <h3 className="mb-4 text-lg font-medium">Security</h3>
-                    <div className="space-y-4">
+                    <h3 className="mb-2 text-lg font-medium">Security</h3>
+                    <div className="space-y-2">
+                      {/* Wallet Security */}
+                      <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
+                        <div className="text-text-warning mb-2 text-sm font-medium">
+                          Wallet Security
+                        </div>
+                        <div className="text-text-warning/80 text-xs">
+                          Your wallet is protected by your password. Keep your
+                          password and seed phrase secure.
+                        </div>
+                      </div>
+
                       {/* Change Password */}
                       <button
                         onClick={() => setShowPasswordChange(true)}
-                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                       >
                         <Key className="h-5 w-5" />
                         <div className="text-left">
@@ -739,7 +778,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onClose();
                           openModal("seed");
                         }}
-                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors"
+                        className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                       >
                         <Key className="h-5 w-5" />
                         <div className="text-left">
@@ -749,17 +788,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
                         </div>
                       </button>
-
-                      {/* Wallet Security */}
-                      <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
-                        <div className="text-text-warning mb-2 text-sm font-medium">
-                          Wallet Security
-                        </div>
-                        <div className="text-text-warning/80 text-xs">
-                          Your wallet is protected by your password. Keep your
-                          password and seed phrase secure.
-                        </div>
-                      </div>
                     </div>
                   </>
                 ) : (
@@ -767,7 +795,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="mb-4 flex items-center gap-3">
                       <button
                         onClick={resetPasswordChangeForm}
-                        className="hover:text-primary text-muted-foreground p-1 transition-colors"
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
                       >
                         <ArrowLeft className="h-5 w-5" />
                       </button>
@@ -888,7 +916,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === "extras" && (
               <>
                 <div className="mt-4 space-y-6 sm:mt-0"></div>
-                <h3 className="mb-4 text-lg font-medium">Extras</h3>
+                <h3 className="mb-2 text-lg font-medium">Extra</h3>
                 {/* Warning */}
                 <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
                   <div className="text-text-warning mb-2 text-sm font-medium">
@@ -902,7 +930,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {Object.entries(flips).map(([flagKey, item]) => (
                   <div
                     key={flagKey}
-                    className="border-primary-border bg-primary-bg my-2 rounded-2xl border p-4"
+                    onClick={() =>
+                      setFlag(
+                        flagKey as FeatureFlags,
+                        !flags[flagKey as FeatureFlags]
+                      )
+                    }
+                    className="border-primary-border bg-primary-bg hover:bg-primary-bg/50 my-2 cursor-pointer rounded-2xl border p-4 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">

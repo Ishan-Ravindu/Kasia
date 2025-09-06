@@ -13,6 +13,7 @@ type HomeProps = {
   selectedNetwork: NetworkType;
   onNetworkChange: (network: NetworkType) => void;
   isConnected: boolean;
+  isConnecting: boolean;
   onSelectWallet: (wallet: Wallet) => void;
   onDeleteWallet: (walletId: string) => void;
   onStepChange: (
@@ -36,6 +37,7 @@ export const Home = ({
   selectedNetwork,
   onNetworkChange,
   isConnected,
+  isConnecting,
   onSelectWallet,
   onDeleteWallet,
   onStepChange,
@@ -60,18 +62,19 @@ export const Home = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
         />
       </div>
       <TrustMessage />
       <h2 className="text-text-primary mt-2 mb-2 text-center text-xl font-semibold select-none sm:mt-2 sm:mb-3 sm:text-2xl">
         {wallets.length <= 0 ? "No Wallets Found" : "Select Wallet"}
       </h2>
-      <div className="mb-3 flex flex-col gap-2 overflow-y-auto sm:gap-4">
+      <div className="mb-3 flex flex-col gap-2 overflow-y-auto sm:gap-3">
         {wallets.map((w) => (
           <div
             key={w.id}
             onClick={() => onSelectWallet(w)}
-            className="hover:border-kas-secondary border-primary-border group relative flex cursor-pointer flex-col items-start gap-2 rounded-xl border bg-[var(--primary-bg)] p-4 transition-all hover:bg-[var(--primary-bg)]/50 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between"
+            className="hover:border-kas-secondary border-primary-border group relative flex cursor-pointer flex-col items-start gap-2 rounded-xl border bg-[var(--primary-bg)] p-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between"
           >
             {/* delete icon positioned on the right */}
             <HoldToDelete

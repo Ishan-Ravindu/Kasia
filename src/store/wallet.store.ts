@@ -79,7 +79,8 @@ type WalletState = {
     name: string,
     mnemonic: Mnemonic,
     password: string,
-    derivationType?: WalletDerivationType
+    derivationType?: WalletDerivationType,
+    passphrase?: string
   ) => Promise<string>;
   deleteWallet: (walletId: string) => void;
   unlock: (walletId: string, password: string) => Promise<UnlockedWallet>;
@@ -174,13 +175,15 @@ export const useWalletStore = create<WalletState>((set, get) => {
       name: string,
       mnemonic: Mnemonic,
       password: string,
-      derivationType?: WalletDerivationType
+      derivationType?: WalletDerivationType,
+      passphrase?: string
     ) => {
       const walletId = _walletStorage.create(
         name,
         mnemonic,
         password,
-        derivationType
+        derivationType,
+        passphrase
       );
       get().loadWallets();
       return walletId;
@@ -269,12 +272,17 @@ export const useWalletStore = create<WalletState>((set, get) => {
         ),
       });
 
+      if (_accountService) {
+        await _accountService.clear();
+      }
+
       _accountService = new AccountService(currentRpc, wallet);
       _accountService.setPassword(password);
       // Set up event listeners
       _accountService.on("balance", (balance) => {
         set({ balance });
       });
+      console.log("OKOK?");
       await _accountService.start();
 
       const initialBalance = _accountService.context.balance;
@@ -313,7 +321,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
 
     lock: () => {
       if (_accountService) {
-        _accountService.stop();
+        _accountService.clear();
         _accountService = null;
       }
       set({
@@ -326,7 +334,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
     },
     stop: () => {
       if (_accountService) {
-        _accountService.stop();
+        _accountService.clear();
         _accountService = null;
       }
 
@@ -480,7 +488,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
       if (!client) {
         // If clearing the client, stop the service first
         if (_accountService) {
-          _accountService.stop();
+          _accountService.clear();
           _accountService = null;
         }
         set({ rpc: null, isAccountServiceRunning: false });

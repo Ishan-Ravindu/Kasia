@@ -11,6 +11,9 @@ interface LiveState {
   saars: SenderAndAcceptanceResolutionService | undefined;
   blockProcessorService: BlockProcessorService | undefined;
 
+  rpc: RpcClient | undefined;
+  walletReceiveAddressString: string | undefined;
+
   start: (rpc: RpcClient, walletReceiveAddressString: string) => void;
   stop: () => void;
 }
@@ -29,9 +32,27 @@ export const useLiveStore = create<LiveState>((set, get) => {
     }
   }
 
+  const boundOnRawKasiaTransactionReceived =
+    onRawKasiaTransactionReceived.bind(this);
+
+  const onStart = () => {
+    const { rpc, walletReceiveAddressString } = get();
+    if (rpc && walletReceiveAddressString) {
+      get().start(rpc, walletReceiveAddressString);
+    }
+  };
+  const boundOnStart = onStart.bind(this);
+
+  const onStop = () => {
+    get().stop();
+  };
+  const boundOnStop = onStop.bind(this);
+
   return {
     saars: undefined,
     blockProcessorService: undefined,
+    rpc: undefined,
+    walletReceiveAddressString: undefined,
     start(rpc, walletReceiveAddressString) {
       const saars = new SenderAndAcceptanceResolutionService(rpc);
       const blockProcessorService = new BlockProcessorService(
@@ -43,21 +64,25 @@ export const useLiveStore = create<LiveState>((set, get) => {
       set({
         saars,
         blockProcessorService,
+        rpc,
+        walletReceiveAddressString,
       });
 
-      rpc.addEventListener("disconnect", () => {
-        get().stop();
-      });
+      rpc.addEventListener("disconnect", boundOnStop);
+      rpc.removeEventListener("connect", boundOnStart);
 
       blockProcessorService.addListener(
         "newTransaction",
-        onRawKasiaTransactionReceived.bind(this)
+        boundOnRawKasiaTransactionReceived
       );
     },
     stop() {
+      get().rpc?.removeEventListener("disconnect", boundOnStop);
+      get().rpc?.addEventListener("connect", boundOnStart);
+
       get().blockProcessorService?.removeListener(
         "newTransaction",
-        onRawKasiaTransactionReceived.bind(this)
+        boundOnRawKasiaTransactionReceived
       );
 
       get().blockProcessorService?.stop();

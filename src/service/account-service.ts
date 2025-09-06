@@ -17,8 +17,6 @@ import { PriorityFeeConfig } from "../types/all";
 import { UnlockedWallet } from "../types/wallet.type";
 import { TransactionId } from "../types/transactions";
 import { useMessagingStore } from "../store/messaging.store";
-import { useBroadcastStore } from "../store/broadcast.store";
-import { useDBStore } from "../store/db.store";
 import { PROTOCOL } from "../config/protocol";
 import { PLACEHOLDER_ALIAS } from "../config/constants";
 import { hexToBytes, getEncoder } from "../utils/payload-encoding";
@@ -107,6 +105,10 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
   // Add password field
   private password: string | null = null;
 
+  private boundStart = this.start.bind(this);
+  private boundStop = this.stop.bind(this);
+  private boundHandleBalanceUpdate = this.handleBalanceUpdate.bind(this);
+
   constructor(
     private readonly rpc: RpcClient,
     private readonly unlockedWallet: UnlockedWallet
@@ -144,10 +146,10 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     return this.password;
   }
 
-  private handleBalanceUpdate = async () => {
+  private handleBalanceUpdate() {
     console.log("Balance event received");
     this._emitBalanceUpdate();
-  };
+  }
 
   private assertReady(): asserts this is AccountService & {
     receiveAddress: Address;
@@ -221,6 +223,9 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
   async start() {
     try {
+      console.log("starting account service");
+      this.processor.setNetworkId(this.rpc.networkId?.toString() || "mainnet");
+
       // Get the receive address from the wallet
       const initialReceiveAddress =
         this.unlockedWallet.receivePublicKey.toAddress(this.networkId);
@@ -237,14 +242,11 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
       // Set up event listeners
       console.log("Setting up event listeners...");
-      this.processor.addEventListener(
-        "balance",
-        this.handleBalanceUpdate.bind(this)
-      );
+      this.processor.addEventListener("balance", this.boundHandleBalanceUpdate);
 
       // Add RPC connection event listeners
-      this.rpc.removeEventListener("connect", this.start.bind(this));
-      this.rpc.addEventListener("disconnect", this.stop.bind(this));
+      this.rpc.removeEventListener("connect", this.boundStart);
+      this.rpc.addEventListener("disconnect", this.boundStop);
 
       // start the processor
       console.log("Starting UTXO processor...");
@@ -267,10 +269,10 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       // Remove event listeners
       this.processor.removeEventListener(
         "balance",
-        this.handleBalanceUpdate.bind(this)
+        this.boundHandleBalanceUpdate
       );
-      this.rpc.addEventListener("connect", this.start.bind(this));
-      this.rpc.removeEventListener("disconnect", this.stop.bind(this));
+      this.rpc.addEventListener("connect", this.boundStart);
+      this.rpc.removeEventListener("disconnect", this.boundStop);
 
       await this.context.clear();
       // Stop the UTXO processor
@@ -287,6 +289,12 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
         error
       );
     }
+  }
+
+  async clear() {
+    await this.stop();
+    this.removeAllListeners();
+    this.rpc.removeEventListener("connect", this.boundStart);
   }
 
   private validateTransactionFee(feeAmount: bigint): void {
