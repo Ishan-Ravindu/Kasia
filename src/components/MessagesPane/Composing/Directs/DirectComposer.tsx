@@ -19,6 +19,7 @@ import { useMessagingStore } from "../../../../store/messaging.store";
 import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate";
 import { toast } from "../../../../utils/toast-helper";
 import { MAX_CHAT_INPUT_CHAR } from "../../../../config/constants";
+import { cameraPermissionService } from "../../../../service/camera-permission-service";
 
 export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const attachment = useComposerSlice((s) => s.attachment);
@@ -69,19 +70,9 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const [hasCamera, setHasCamera] = useState(false);
 
   useEffect(() => {
-    async function checkCamera() {
-      if (navigator.mediaDevices?.enumerateDevices) {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          setHasCamera(devices.some((d) => d.kind === "videoinput"));
-        } catch {
-          setHasCamera(false);
-        }
-      } else {
-        setHasCamera(false);
-      }
-    }
-    checkCamera();
+    cameraPermissionService.checkCameraStatus().then((status) => {
+      setHasCamera(status.hasCamera);
+    });
   }, []);
 
   // check message length and trim if over limit
@@ -100,9 +91,25 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
     if (!guardReady()) return;
     fileInputRef.current?.click();
   };
-  const openCameraDialog = () => {
+  const openCameraDialog = async () => {
     if (!guardReady()) return;
-    cameraInputRef.current?.click();
+
+    const result = await cameraPermissionService.requestCameraPermission({
+      userGesture: true,
+    });
+    if (result.ok) {
+      cameraInputRef.current?.click();
+    } else {
+      if (result.reason === "blocked") {
+        toast.error(
+          "Camera blocked. Enable in browser settings and try again."
+        );
+      } else if (result.reason === "dismissed") {
+        toast.error("Camera permission dismissed. Try again to enable camera.");
+      } else {
+        toast.error("Camera not available or permission denied.");
+      }
+    }
   };
 
   const handleFileUpload = async (
