@@ -32,6 +32,7 @@ export const BroadcastMessagesList: FC<BroadcastMessagesListProps> = memo(
     return (
       <>
         {messages.map((message, idx) => {
+          const isFirst = idx === 0;
           const isOutgoing = message.senderAddress === walletAddress;
           const showTimestamp =
             idx === (lastMessageIndices.get(message.senderAddress) || -1);
@@ -79,7 +80,10 @@ export const BroadcastMessagesList: FC<BroadcastMessagesListProps> = memo(
           const isBottomOfGroup = isPrevSameSender && !isNextSameSender;
 
           return (
-            <div key={message.transactionId || message.id}>
+            <div
+              key={message.transactionId || message.id}
+              className={isFirst ? "mt-auto" : ""}
+            >
               {showSeparator &&
                 (isFirstToday ? (
                   <div className="my-4 text-center text-xs text-gray-400">

@@ -35,6 +35,7 @@ export const DirectsList: FC<DirectsListProps> = memo(
       <>
         {oneOnOneConversation.events.map(
           (event: KasiaConversationEvent, idx: number) => {
+            const isFirst = idx === 0;
             const isOutgoing = event.fromMe;
             const showTimestamp = isOutgoing
               ? idx === lastOutgoing
@@ -84,7 +85,10 @@ export const DirectsList: FC<DirectsListProps> = memo(
             const isTopOfGroup = !isPrevSameSender && isNextSameSender;
             const isBottomOfGroup = isPrevSameSender && !isNextSameSender;
             return (
-              <div key={event.transactionId}>
+              <div
+                key={event.transactionId}
+                className={isFirst ? "mt-auto" : ""}
+              >
                 {showSeparator &&
                   (isFirstToday ? (
                     <div className="my-4 text-center text-xs text-gray-400">
