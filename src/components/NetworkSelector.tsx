@@ -7,22 +7,29 @@ type NetworkSelectorProps = {
   onNetworkChange: (network: NetworkType) => void;
   selectedNetwork: NetworkType | null;
   isConnected?: boolean;
+  isConnecting?: boolean;
 };
 
 export const NetworkSelector: FC<NetworkSelectorProps> = ({
   onNetworkChange,
   selectedNetwork,
   isConnected,
+  isConnecting,
 }) => {
   const networkDisplay = useMemo(() => {
-    if (!isConnected) {
+    console.log({ isConnected, isConnecting });
+    if (isConnecting) {
       return "Connecting...";
+    }
+
+    if (!isConnected) {
+      return "Disconnected";
     }
 
     return getDisplayableNetworkFromNetworkString(
       selectedNetwork as NetworkType
     );
-  }, [selectedNetwork, isConnected]);
+  }, [selectedNetwork, isConnected, isConnecting]);
 
   const allowedNetworks = useMemo<
     { id: NetworkType; displayableString: string }[]

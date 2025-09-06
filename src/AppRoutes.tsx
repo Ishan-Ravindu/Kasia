@@ -26,12 +26,14 @@ const walletFlowRoutes: WalletFlowRouteConfig[] = [
 export type AppRoutesProps = {
   network: NetworkType;
   isConnected: boolean;
+  isConnecting: boolean;
   onNetworkChange: (n: NetworkType) => void;
 };
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({
   network,
   isConnected,
+  isConnecting,
   onNetworkChange,
 }) => {
   const { unlockedWallet, selectedWalletId } = useWalletStore();
@@ -48,6 +50,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               selectedNetwork={network}
               onNetworkChange={onNetworkChange}
               isConnected={isConnected}
+              isConnecting={isConnecting}
             />
           }
         />

@@ -677,6 +677,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           networkStore.setNetwork(network)
                         }
                         isConnected={networkStore.isConnected}
+                        isConnecting={networkStore.isConnecting}
                       />
                     </div>
                   </div>

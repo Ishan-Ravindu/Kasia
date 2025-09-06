@@ -13,6 +13,7 @@ type HomeProps = {
   selectedNetwork: NetworkType;
   onNetworkChange: (network: NetworkType) => void;
   isConnected: boolean;
+  isConnecting: boolean;
   onSelectWallet: (wallet: Wallet) => void;
   onDeleteWallet: (walletId: string) => void;
   onStepChange: (
@@ -36,6 +37,7 @@ export const Home = ({
   selectedNetwork,
   onNetworkChange,
   isConnected,
+  isConnecting,
   onSelectWallet,
   onDeleteWallet,
   onStepChange,
@@ -60,6 +62,7 @@ export const Home = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
         />
       </div>
       <TrustMessage />

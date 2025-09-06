@@ -17,11 +17,6 @@ const App: React.FC = () => {
   const { connect } = useOrchestrator();
   const isMobile = useIsMobile();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: this cause re-render issue
-  useEffect(() => {
-    connect();
-  }, []);
-
   const onNetworkChange = useCallback(
     (n: NetworkType) => {
       networkStore.setNetwork(n);
@@ -79,6 +74,7 @@ const App: React.FC = () => {
     <AppRoutes
       network={networkStore.network}
       isConnected={networkStore.isConnected}
+      isConnecting={networkStore.isConnecting}
       onNetworkChange={onNetworkChange}
     />
   );
