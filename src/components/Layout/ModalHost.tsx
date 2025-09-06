@@ -13,6 +13,7 @@ import { NewChatForm } from "../Modals/NewChatForm";
 import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
 import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
+import { QrScannerModal } from "../Modals/QrScannerModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
@@ -137,6 +138,9 @@ export const ModalHost = () => {
           />
         </Modal>
       )}
+
+      {/* QR Scanner Modal */}
+      {modals["qr-scanner"] && <QrScannerModal />}
     </>
   );
 };

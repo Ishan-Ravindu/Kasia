@@ -1,12 +1,15 @@
-import { ChangeEvent, FC, useCallback, useState } from "react";
+import { ChangeEvent, FC, useCallback, useEffect, useState } from "react";
 import { kaspaToSompi, sompiToKaspaString } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
-import { QrScanner } from "../QrScanner";
-import { Clipboard } from "lucide-react";
+import { Clipboard, QrCode } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { Address, FeeSource } from "kaspa-wasm";
+import {
+  cameraPermissionService,
+  type CameraStatus,
+} from "../../service/camera-permission-service";
 
 const maxDustAmount = kaspaToSompi("0.19")!;
 
@@ -14,14 +17,23 @@ export const WalletWithdrawal: FC = () => {
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null);
 
   const [amountInputError, setAmountInputError] = useState<string | null>(null);
 
   const closeModal = useUiStore((s) => s.closeModal);
   const openModal = useUiStore((s) => s.openModal);
+  const setQrScannerCallback = useUiStore((s) => s.setQrScannerCallback);
 
   const accountService = useWalletStore((store) => store.accountService);
   const balance = useWalletStore((store) => store.balance);
+
+  // check for camera devices on mount
+  useEffect(() => {
+    cameraPermissionService.checkCameraStatus().then((status: CameraStatus) => {
+      setCameraStatus(status);
+    });
+  }, []);
 
   const inputAmountUpdated = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -66,24 +78,36 @@ export const WalletWithdrawal: FC = () => {
     [balance]
   );
 
-  const handleMaxClick = useCallback(() => {
+  const handleMaxClick = () => {
     const matureBalance = balance?.mature ?? BigInt(0);
     const maxAmount = sompiToKaspaString(matureBalance);
     setWithdrawAmount(maxAmount);
     // Clear any existing errors since max amount is always valid
     setAmountInputError(null);
-  }, [balance]);
+  };
 
-  const handlePaste = useCallback(async () => {
+  const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setWithdrawAddress(text.toLowerCase());
     } catch {
       toast.error("Failed to paste from clipboard");
     }
-  }, []);
+  };
 
-  const handleWithdraw = useCallback(async () => {
+  const handleQrScan = () => {
+    if (!cameraStatus?.hasCamera) return;
+
+    // Set the callback to handle scanned data
+    setQrScannerCallback((data: string) => {
+      setWithdrawAddress(data.toLowerCase());
+    });
+
+    // Open the QR scanner modal
+    openModal("qr-scanner");
+  };
+
+  const handleWithdraw = async () => {
     if (amountInputError !== null) {
       return;
     }
@@ -140,7 +164,7 @@ export const WalletWithdrawal: FC = () => {
     } finally {
       setIsSending(false);
     }
-  }, [withdrawAddress, withdrawAmount, amountInputError, balance]);
+  };
 
   return (
     <>
@@ -162,11 +186,16 @@ export const WalletWithdrawal: FC = () => {
             >
               <Clipboard size={16} />
             </button>
-            <QrScanner
-              onScan={(data: string) => {
-                setWithdrawAddress(data.toLowerCase());
-              }}
-            />
+            {cameraStatus?.hasCamera && (
+              <button
+                type="button"
+                className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
+                onClick={handleQrScan}
+                title="Scan QR code"
+              >
+                <QrCode className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
         <div className="relative">
