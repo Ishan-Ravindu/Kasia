@@ -36,6 +36,7 @@ type WalletLockedFlowContainerProps = {
   selectedNetwork: NetworkType;
   onNetworkChange: (network: NetworkType) => void;
   isConnected: boolean;
+  isConnecting: boolean;
 };
 
 export const WalletLockedFlowContainer = ({
@@ -43,6 +44,7 @@ export const WalletLockedFlowContainer = ({
   selectedNetwork,
   onNetworkChange,
   isConnected,
+  isConnecting,
 }: WalletLockedFlowContainerProps) => {
   const navigate = useNavigate();
   const { wallet } = useParams<{ wallet: string }>();
@@ -153,6 +155,7 @@ export const WalletLockedFlowContainer = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
           onSelectWallet={onSelectWallet}
           onDeleteWallet={onDeleteWallet}
           onStepChange={onStepChange}
@@ -205,6 +208,7 @@ export const WalletLockedFlowContainer = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
           onSuccess={onUnlockSuccess}
           onBack={() => onStepChange("home")}
         />

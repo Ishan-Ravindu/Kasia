@@ -18,6 +18,7 @@ type UnlockWalletProps = {
   selectedNetwork: NetworkType;
   onNetworkChange: (network: NetworkType) => void;
   isConnected: boolean;
+  isConnecting: boolean;
   onSuccess: (walletId: string) => void;
   onBack: () => void;
 };
@@ -28,6 +29,7 @@ export const Unlock = ({
   selectedNetwork,
   onNetworkChange,
   isConnected,
+  isConnecting,
   onSuccess,
   onBack,
 }: UnlockWalletProps) => {
@@ -82,6 +84,7 @@ export const Unlock = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
         />
       </div>
 

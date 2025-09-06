@@ -10,16 +10,30 @@ import {
   resetCustomColors,
 } from "./config/custom-theme-applier";
 import { useOrchestrator } from "./hooks/useOrchestrator";
+import {
+  onPause as nOnPause,
+  onResume as nOnResume,
+} from "tauri-plugin-app-events-api";
 
 const App: React.FC = () => {
   const networkStore = useNetworkStore();
   const { theme, getEffectiveTheme, customColors } = useUiStore();
-  const { connect } = useOrchestrator();
+  const { connect, onPause, onResume } = useOrchestrator();
   const isMobile = useIsMobile();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: this cause re-render issue
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We don't want re-trigger, this is init trigger
   useEffect(() => {
-    connect();
+    const asyncDefer = async () => {
+      await connect();
+
+      if ("__TAURI_INTERNALS__" in window) {
+        // on pause and on resume registering
+        nOnResume(onResume);
+
+        nOnPause(onPause);
+      }
+    };
+    asyncDefer();
   }, []);
 
   const onNetworkChange = useCallback(
@@ -79,6 +93,7 @@ const App: React.FC = () => {
     <AppRoutes
       network={networkStore.network}
       isConnected={networkStore.isConnected}
+      isConnecting={networkStore.isConnecting}
       onNetworkChange={onNetworkChange}
     />
   );
