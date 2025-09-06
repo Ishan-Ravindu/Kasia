@@ -142,9 +142,14 @@ export const DirectsSection: FC<{
   // scroll to bottom when conversation is filtered or new messages are received
   useEffect(() => {
     if (boxState === "filtered" && messagesScrollRef.current) {
-      scrollToBottom();
+      // delay scroll to account for keyboard appearing after autofocus
+      if (isMobile) {
+        setTimeout(() => scrollToBottom(), 300);
+      } else {
+        scrollToBottom();
+      }
     }
-  }, [boxState, oneOnOneConversation?.events.length]);
+  }, [boxState, oneOnOneConversation?.events.length, isMobile]);
 
   // Helper to format old domain nickname
   function formatOldDomainNickname(domain: string) {
