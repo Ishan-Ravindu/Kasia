@@ -3,10 +3,14 @@ import { kaspaToSompi, sompiToKaspaString } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
-import { QrScanner } from "../QrScanner";
-import { Clipboard } from "lucide-react";
+import { Clipboard, QrCode } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { Address, FeeSource } from "kaspa-wasm";
+import { cameraPermissionService } from "../../service/camera-permission-service";
+import {
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../store/featureflag.store";
 
 const maxDustAmount = kaspaToSompi("0.19")!;
 
@@ -19,9 +23,14 @@ export const WalletWithdrawal: FC = () => {
 
   const closeModal = useUiStore((s) => s.closeModal);
   const openModal = useUiStore((s) => s.openModal);
+  const setQrScannerCallback = useUiStore((s) => s.setQrScannerCallback);
 
   const accountService = useWalletStore((store) => store.accountService);
   const balance = useWalletStore((store) => store.balance);
+
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
 
   const inputAmountUpdated = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -66,24 +75,38 @@ export const WalletWithdrawal: FC = () => {
     [balance]
   );
 
-  const handleMaxClick = useCallback(() => {
+  const handleMaxClick = () => {
     const matureBalance = balance?.mature ?? BigInt(0);
     const maxAmount = sompiToKaspaString(matureBalance);
     setWithdrawAmount(maxAmount);
     // Clear any existing errors since max amount is always valid
     setAmountInputError(null);
-  }, [balance]);
+  };
 
-  const handlePaste = useCallback(async () => {
+  const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setWithdrawAddress(text.toLowerCase());
     } catch {
       toast.error("Failed to paste from clipboard");
     }
-  }, []);
+  };
 
-  const handleWithdraw = useCallback(async () => {
+  const handleQrScan = async () => {
+    // Request camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (!hasAccess) return;
+
+    // Set the callback to handle scanned data
+    setQrScannerCallback((data: string) => {
+      setWithdrawAddress(data.toLowerCase());
+    });
+
+    // Open the QR scanner modal
+    openModal("qr-scanner");
+  };
+
+  const handleWithdraw = async () => {
     if (amountInputError !== null) {
       return;
     }
@@ -140,7 +163,7 @@ export const WalletWithdrawal: FC = () => {
     } finally {
       setIsSending(false);
     }
-  }, [withdrawAddress, withdrawAmount, amountInputError, balance]);
+  };
 
   return (
     <>
@@ -162,11 +185,16 @@ export const WalletWithdrawal: FC = () => {
             >
               <Clipboard size={16} />
             </button>
-            <QrScanner
-              onScan={(data: string) => {
-                setWithdrawAddress(data.toLowerCase());
-              }}
-            />
+            {cameraEnabled && (
+              <button
+                type="button"
+                className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
+                onClick={handleQrScan}
+                title="Scan QR code"
+              >
+                <QrCode className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
         <div className="relative">

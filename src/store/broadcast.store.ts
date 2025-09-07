@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { useDBStore } from "./db.store";
 import { BroadcastChannel } from "./repository/broadcast-channel.repository";
+import { useFeatureFlagsStore, FeatureFlags } from "./featureflag.store"; // DELETE AFTER TESTING
+import { v4 } from "uuid";
 
 export type BroadcastMessage = {
   id: string;
@@ -15,6 +17,35 @@ export type BroadcastMessage = {
 // Add normalization utility at the top level
 const normalizeChannel = (s: string | null) =>
   s ? s.trim().toLowerCase() : null;
+
+// TEST PHASE AUTOADD - DELETE AFTER TESTING
+const _autoAddAndroidTestersChannel = async (channels: BroadcastChannel[]) => {
+  const isBroadcastEnabled =
+    useFeatureFlagsStore.getState().flags[FeatureFlags.BROADCAST];
+  if (!isBroadcastEnabled) return channels;
+
+  const androidTestersChannel = channels.find(
+    (channel) => channel.channelName === "android-test-crew"
+  );
+
+  if (!androidTestersChannel) {
+    const repositories = useDBStore.getState().repositories;
+    const newChannel: Omit<BroadcastChannel, "tenantId"> = {
+      id: v4(),
+      channelName: "android-test-crew",
+      channelValue: "Unencrypted Test Channel",
+      timestamp: new Date(),
+    };
+
+    await repositories.broadcastChannelRepository.saveBroadcastChannel(
+      newChannel
+    );
+
+    return await repositories.broadcastChannelRepository.getBroadcastChannels();
+  }
+
+  return channels;
+};
 
 interface BroadcastState {
   channels: BroadcastChannel[];
@@ -36,7 +67,6 @@ interface BroadcastState {
     status: "confirmed" | "failed",
     transactionId?: string
   ) => void;
-  // Renamed method: now works for any status, not just pending
   findMessageByTxId: (transactionId: string) => BroadcastMessage | undefined;
 
   clearAllMessages: () => void;
@@ -70,7 +100,10 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       const repositories = useDBStore.getState().repositories;
       const channels =
         await repositories.broadcastChannelRepository.getBroadcastChannels();
-      set({ channels });
+
+      // TEST PHASE AUTOADD - DELETE AFTER TESTING
+      const finalChannels = await _autoAddAndroidTestersChannel(channels);
+      set({ channels: finalChannels });
     } catch (error) {
       console.error("Failed to load broadcast channels:", error);
       set({ channels: [] });
@@ -94,7 +127,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       }
 
       const newChannel: Omit<BroadcastChannel, "tenantId"> = {
-        id: crypto.randomUUID(),
+        id: v4(),
         channelName: normalizedName,
         channelValue,
         timestamp: new Date(),
@@ -141,7 +174,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
       ? { ...message, channelName: normalizeChannel(message.channelName)! }
       : {
           ...message,
-          id: crypto.randomUUID(),
+          id: v4(),
           status: "confirmed",
           channelName: normalizeChannel(message.channelName)!,
         };
@@ -183,7 +216,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   addPendingMessage: (
     message: Omit<BroadcastMessage, "id" | "status" | "transactionId">
   ) => {
-    const tempId = crypto.randomUUID();
+    const tempId = v4();
     const newMessage: BroadcastMessage = {
       ...message,
       id: tempId,

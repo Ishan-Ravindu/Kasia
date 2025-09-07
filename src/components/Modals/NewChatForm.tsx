@@ -7,16 +7,21 @@ import React, {
   useRef,
   useMemo,
 } from "react";
-import { Address, kaspaToSompi } from "kaspa-wasm";
+import { kaspaToSompi } from "kaspa-wasm";
 import clsx from "clsx";
 import { knsIntegrationService_getDomainResolution } from "../../service/integrations/kns-integration-service";
 import { unknownErrorToErrorLike } from "../../utils/errors";
 import { KaspaAddress } from "../KaspaAddress";
 import { Textarea } from "@headlessui/react";
 import { Button } from "../Common/Button";
-import { QrScanner } from "../QrScanner";
 import { StringCopy } from "../Common/StringCopy";
-import { Clipboard } from "lucide-react";
+import { Clipboard, QrCode } from "lucide-react";
+import { useUiStore } from "../../store/ui.store";
+import { cameraPermissionService } from "../../service/camera-permission-service";
+import {
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../store/featureflag.store";
 
 interface NewChatFormProps {
   onClose: () => void;
@@ -45,6 +50,27 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   const balance = useWalletStore((state) => state.balance);
   const rpc = useWalletStore((s) => s.rpc);
 
+  const openModal = useUiStore((s) => s.openModal);
+  const setQrScannerCallback = useUiStore((s) => s.setQrScannerCallback);
+
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
+
+  const handleQrScan = async () => {
+    // Check camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (!hasAccess) return;
+
+    // Set the callback to handle scanned data
+    setQrScannerCallback((data: string) => {
+      setRecipientInputValue(data.toLowerCase());
+    });
+
+    // Open the QR scanner modal
+    openModal("qr-scanner");
+  };
+
   const detectedRecipientInputValueFormat = useMemo<
     "address" | "kns" | "undetermined"
   >(() => {
@@ -60,14 +86,11 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
     }
   }, [recipientInputValue]);
 
-  const useRecipientInputRef = useCallback(
-    (node: HTMLTextAreaElement | null) => {
-      if (node) {
-        node.focus();
-      }
-    },
-    []
-  );
+  const useRecipientInputRef = (node: HTMLTextAreaElement | null) => {
+    if (node) {
+      node.focus();
+    }
+  };
 
   // Handle escape key to close
   useEffect(() => {
@@ -128,7 +151,11 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
 
     // clear timeout if the component unmounts or the input value changes
     return () => clearTimeout(timeoutId);
-  }, [detectedRecipientInputValueFormat, recipientInputValue]);
+  }, [
+    detectedRecipientInputValueFormat,
+    recipientInputValue,
+    walletStore.selectedNetwork,
+  ]);
 
   // Use the resolved address for all backend logic
   const knsRecipientAddress = resolvedRecipientAddress || recipientInputValue;
@@ -191,18 +218,18 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
     return () => clearTimeout(timeoutId);
   }, [knsRecipientAddress, checkRecipientBalance]);
 
-  const handleAmountChange = useCallback((value: string) => {
+  const handleAmountChange = (value: string) => {
     // Allow decimal numbers
     if (/^\d*\.?\d*$/.test(value)) {
       setHandshakeAmount(value);
     }
-  }, []);
+  };
 
-  const handleQuickAmount = useCallback((amount: string) => {
+  const handleQuickAmount = (amount: string) => {
     setHandshakeAmount(amount);
-  }, []);
+  };
 
-  const handlePaste = useCallback(async () => {
+  const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setRecipientInputValue(text.toLowerCase());
@@ -210,7 +237,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
       // Handle clipboard access error silently or show a toast
       console.warn("Failed to paste from clipboard");
     }
-  }, []);
+  };
 
   // Update validation to use knsRecipientAddress
   const validateAndPrepareHandshake = useCallback(() => {
@@ -422,11 +449,17 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
               >
                 <Clipboard size={16} />
               </button>
-              <QrScanner
-                onScan={(data: string) => {
-                  setRecipientInputValue(data.toLowerCase());
-                }}
-              />
+              {cameraEnabled && (
+                <button
+                  type="button"
+                  className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
+                  onClick={handleQrScan}
+                  title="Scan QR code"
+                  disabled={isLoading}
+                >
+                  <QrCode className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 

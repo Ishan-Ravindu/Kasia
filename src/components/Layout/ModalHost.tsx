@@ -2,7 +2,6 @@ import { useUiStore } from "../../store/ui.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { NewBroadcast } from "../Modals/NewBroadcast";
 import { Modal } from "../Common/modal";
-import { MessageBackup } from "../Modals/MessageBackup";
 import { WalletAddressSection } from "../Modals/WalletAddressSection";
 import { Wallet } from "../Modals/Wallet";
 import { WalletSeedRetreiveDisplay } from "../Modals/WalletSeedRetreiveDisplay";
@@ -13,6 +12,7 @@ import { NewChatForm } from "../Modals/NewChatForm";
 import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
 import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
+import { QrScannerModal } from "../Modals/QrScannerModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
@@ -56,13 +56,6 @@ export const ModalHost = () => {
       {modals.withdraw && (
         <Modal onClose={() => closeModal("withdraw")}>
           <WalletWithdrawal />
-        </Modal>
-      )}
-
-      {/* Backup Modal */}
-      {modals.backup && (
-        <Modal onClose={() => closeModal("backup")}>
-          <MessageBackup />
         </Modal>
       )}
 
@@ -137,6 +130,9 @@ export const ModalHost = () => {
           />
         </Modal>
       )}
+
+      {/* QR Scanner Modal */}
+      {modals["qr-scanner"] && <QrScannerModal />}
     </>
   );
 };

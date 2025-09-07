@@ -84,7 +84,7 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
       }
 
       const kasiaNodeUrl =
-        initialNetwork === "mainnet"
+        rpc.networkId?.toString() === "mainnet"
           ? import.meta.env.VITE_DEFAULT_MAINNET_KASPA_NODE_URL
           : import.meta.env.VITE_DEFAULT_TESTNET_KASPA_NODE_URL;
 

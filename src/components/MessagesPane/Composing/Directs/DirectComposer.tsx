@@ -19,6 +19,11 @@ import { useMessagingStore } from "../../../../store/messaging.store";
 import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate";
 import { toast } from "../../../../utils/toast-helper";
 import { MAX_CHAT_INPUT_CHAR } from "../../../../config/constants";
+import { cameraPermissionService } from "../../../../service/camera-permission-service";
+import {
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../../../store/featureflag.store";
 
 export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const attachment = useComposerSlice((s) => s.attachment);
@@ -57,6 +62,10 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
     (conversation.status === "active" ||
       (conversation.status === "pending" && conversation.initiatedByMe));
 
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
+
   const guardReady = () => {
     if (!canCompose) {
       toast.error("Accept or send handshake to chat");
@@ -66,23 +75,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   };
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [hasCamera, setHasCamera] = useState(false);
-
-  useEffect(() => {
-    async function checkCamera() {
-      if (navigator.mediaDevices?.enumerateDevices) {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          setHasCamera(devices.some((d) => d.kind === "videoinput"));
-        } catch {
-          setHasCamera(false);
-        }
-      } else {
-        setHasCamera(false);
-      }
-    }
-    checkCamera();
-  }, []);
 
   // check message length and trim if over limit
   useEffect(() => {
@@ -100,9 +92,14 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
     if (!guardReady()) return;
     fileInputRef.current?.click();
   };
-  const openCameraDialog = () => {
+  const openCameraDialog = async () => {
     if (!guardReady()) return;
-    cameraInputRef.current?.click();
+
+    // Check camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (hasAccess) {
+      cameraInputRef.current?.click();
+    }
   };
 
   const handleFileUpload = async (
@@ -249,7 +246,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
                 >
                   <SendHorizonal className="size-6" />
                 </button>
-                {hasCamera && (
+                {cameraEnabled && (
                   <button
                     onClick={openCameraDialog}
                     className={clsx(
@@ -276,6 +273,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
         onChange={handleFileUpload}
         className="hidden"
       />
+
       <input
         ref={cameraInputRef}
         type="file"

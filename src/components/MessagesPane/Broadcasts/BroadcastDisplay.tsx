@@ -81,12 +81,12 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
             address={message.senderAddress}
             size={36}
             className="rounded-full bg-[var(--secondary-bg)]"
-            customColor={customColor}
+            isGroup={true}
           />
           {/* overlay last 2 characters of address */}
-          <div className="absolute top-2.5 left-[10px] text-xs font-bold text-[var(--text-primary)]">
+          <span className="pointer-events-none absolute top-1/2 left-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center text-xs font-bold text-[var(--text-primary)] select-none">
             {message.senderAddress.slice(-2).toUpperCase()}
-          </div>
+          </span>
         </div>
       )}
 

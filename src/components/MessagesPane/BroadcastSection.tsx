@@ -15,6 +15,7 @@ export const BroadcastSection: FC<{
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   const selectedChannelName = useBroadcastStore((s) => s.selectedChannelName);
+
   const channels = useBroadcastStore((s) => s.channels);
   const messages = useBroadcastStore((s) => s.messages);
 
@@ -30,15 +31,24 @@ export const BroadcastSection: FC<{
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
     : [];
 
-  // scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (messagesScrollRef.current) {
-      messagesScrollRef.current.scrollTo({
-        top: messagesScrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+  const scrollToBottom = () => {
+    const el = messagesScrollRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
-  }, [messages.length]);
+  };
+
+  // scroll to bottom when channel is selected or new messages arrive
+  useEffect(() => {
+    if (messagesScrollRef.current && selectedChannelName) {
+      // delay scroll to account for keyboard appearing after autofocus
+      if (isMobile) {
+        setTimeout(() => scrollToBottom(), 300);
+      } else {
+        scrollToBottom();
+      }
+    }
+  }, [selectedChannelName, messages.length, isMobile]);
 
   if (!selectedChannelName || !selectedChannel) {
     return (
@@ -101,7 +111,7 @@ export const BroadcastSection: FC<{
 
       {/* Messages area */}
       <div
-        className="bg-primary-bg flex-1 overflow-x-hidden overflow-y-auto px-1 py-4 pb-8 sm:px-2"
+        className="bg-primary-bg flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-1 py-4 pb-8 sm:px-2"
         ref={messagesScrollRef}
       >
         <BroadcastMessagesList

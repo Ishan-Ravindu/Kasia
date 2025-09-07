@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { SendHorizonal } from "lucide-react";
 import clsx from "clsx";
 import {
@@ -10,6 +10,7 @@ import { useBroadcastComposer } from "../../../../hooks/MessageComposer/useBroad
 import { MessageInput } from "../Utilities/MessageInput";
 import { FeeDisplay } from "../Utilities/FeeDisplay";
 import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate";
+import { useIsMobile } from "../../../../hooks/useIsMobile";
 
 export const BroadcastComposer = ({ channelName }: { channelName: string }) => {
   const setDraft = useComposerStore((s: ComposerState) => s.setDraft);
@@ -23,9 +24,17 @@ export const BroadcastComposer = ({ channelName }: { channelName: string }) => {
 
   const { sendBroadcast } = useBroadcastComposer(channelName);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const isMobile = useIsMobile();
 
   // readines check
   const canBroadcast = !!channelName && !!sendBroadcast;
+
+  // auto-focus on mobile when channel is selected
+  React.useEffect(() => {
+    if (isMobile && canBroadcast && messageInputRef.current) {
+      messageInputRef.current.focus();
+    }
+  }, [isMobile, canBroadcast]);
 
   const feeState = useFeeEstimate({
     toSelf: true,

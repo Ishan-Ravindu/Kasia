@@ -1,3 +1,4 @@
+import { v4 } from "uuid";
 import { create } from "zustand";
 
 export type ToastType = "success" | "error" | "info" | "warning";
@@ -27,7 +28,7 @@ const timeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
 
 // generate unique IDs
 const generateId = () => {
-  return `toast-${crypto.randomUUID()}-${Date.now()}`;
+  return `toast-${v4()}-${Date.now()}`;
 };
 
 export const useToastStore = create<ToastStore>((set) => ({
