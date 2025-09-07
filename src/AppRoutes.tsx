@@ -73,6 +73,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
                     selectedNetwork={network}
                     onNetworkChange={onNetworkChange}
                     isConnected={isConnected}
+                    isConnecting={isConnecting}
                   />
                 )
               }
