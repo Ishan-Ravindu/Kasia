@@ -20,6 +20,10 @@ import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate
 import { toast } from "../../../../utils/toast-helper";
 import { MAX_CHAT_INPUT_CHAR } from "../../../../config/constants";
 import { cameraPermissionService } from "../../../../service/camera-permission-service";
+import {
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../../../store/featureflag.store";
 
 export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const attachment = useComposerSlice((s) => s.attachment);
@@ -58,6 +62,10 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
     (conversation.status === "active" ||
       (conversation.status === "pending" && conversation.initiatedByMe));
 
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
+
   const guardReady = () => {
     if (!canCompose) {
       toast.error("Accept or send handshake to chat");
@@ -67,13 +75,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   };
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [hasCamera, setHasCamera] = useState(false);
-
-  useEffect(() => {
-    cameraPermissionService.checkCameraStatus().then((status) => {
-      setHasCamera(status.hasCamera);
-    });
-  }, []);
 
   // check message length and trim if over limit
   useEffect(() => {
@@ -94,21 +95,10 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const openCameraDialog = async () => {
     if (!guardReady()) return;
 
-    const result = await cameraPermissionService.requestCameraPermission({
-      userGesture: true,
-    });
-    if (result.ok) {
+    // Check camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (hasAccess) {
       cameraInputRef.current?.click();
-    } else {
-      if (result.reason === "blocked") {
-        toast.error(
-          "Camera blocked. Enable in browser settings and try again."
-        );
-      } else if (result.reason === "dismissed") {
-        toast.error("Camera permission dismissed. Try again to enable camera.");
-      } else {
-        toast.error("Camera not available or permission denied.");
-      }
     }
   };
 
@@ -256,7 +246,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
                 >
                   <SendHorizonal className="size-6" />
                 </button>
-                {hasCamera && (
+                {cameraEnabled && (
                   <button
                     onClick={openCameraDialog}
                     className={clsx(
@@ -283,6 +273,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
         onChange={handleFileUpload}
         className="hidden"
       />
+
       <input
         ref={cameraInputRef}
         type="file"

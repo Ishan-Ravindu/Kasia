@@ -17,10 +17,11 @@ import { Button } from "../Common/Button";
 import { StringCopy } from "../Common/StringCopy";
 import { Clipboard, QrCode } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
+import { cameraPermissionService } from "../../service/camera-permission-service";
 import {
-  cameraPermissionService,
-  type CameraStatus,
-} from "../../service/camera-permission-service";
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../store/featureflag.store";
 
 interface NewChatFormProps {
   onClose: () => void;
@@ -37,7 +38,6 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isCheckingRecipient, setIsCheckingRecipient] = useState(false);
-  const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null);
 
   // kns related
   const [isResolvingKns, setIsResolvingKns] = useState(false);
@@ -53,15 +53,14 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   const openModal = useUiStore((s) => s.openModal);
   const setQrScannerCallback = useUiStore((s) => s.setQrScannerCallback);
 
-  // check for camera devices on mount
-  useEffect(() => {
-    cameraPermissionService.checkCameraStatus().then((status: CameraStatus) => {
-      setCameraStatus(status);
-    });
-  }, []);
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
 
-  const handleQrScan = () => {
-    if (!cameraStatus?.hasCamera) return;
+  const handleQrScan = async () => {
+    // Check camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (!hasAccess) return;
 
     // Set the callback to handle scanned data
     setQrScannerCallback((data: string) => {
@@ -450,7 +449,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
               >
                 <Clipboard size={16} />
               </button>
-              {cameraStatus?.hasCamera && (
+              {cameraEnabled && (
                 <button
                   type="button"
                   className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"

@@ -1,17 +1,11 @@
-export type CameraPermissionState = "granted" | "denied" | "prompt" | "unknown";
-
-export interface CameraStatus {
-  hasCamera: boolean;
-  permissionState: CameraPermissionState;
-}
-
-export type CameraRequestResult =
-  | { ok: true }
-  | { ok: false; reason: "blocked" | "dismissed" | "no-device" | "unknown" };
+import { FeatureFlags, useFeatureFlagsStore } from "../store/featureflag.store";
+import { toast } from "../utils/toast-helper";
 
 class CameraPermissionService {
   private static instance: CameraPermissionService;
-  private hardDenied = false;
+  private readonly STORAGE_KEY = "camera_permission_granted";
+  private lastFeatureState: boolean = false;
+  private constructor() {}
 
   static getInstance(): CameraPermissionService {
     if (!CameraPermissionService.instance) {
@@ -20,131 +14,88 @@ class CameraPermissionService {
     return CameraPermissionService.instance;
   }
 
-  async checkCameraStatus(): Promise<CameraStatus> {
-    return this._checkCameraStatusInternal();
+  // check if camera feature is enabled
+  isFeatureEnabled(): boolean {
+    try {
+      const { flags } = useFeatureFlagsStore.getState();
+      return flags[FeatureFlags.ENABLED_CAMERA] || false;
+    } catch {
+      return false;
+    }
   }
 
-  async requestCameraPermission(opts?: {
-    userGesture?: boolean;
-  }): Promise<CameraRequestResult> {
-    if (!navigator.mediaDevices) return { ok: false, reason: "unknown" };
-    const state = await this._getPermissionState();
-    if (state === "denied" || this.hardDenied)
-      return { ok: false, reason: "blocked" };
-    if (!opts?.userGesture) return { ok: false, reason: "unknown" };
+  // check if we already have permission
+  hasPermission(): boolean {
+    try {
+      return localStorage.getItem(this.STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  // clear permission when feature is disabled
+  clearPermission(): void {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch {
+      console.log("localStorage not available");
+    }
+  }
+
+  // main camera request method
+  async requestCamera(): Promise<boolean> {
+    // check if feature is enabled
+    if (!this.isFeatureEnabled()) {
+      toast.error("Enable Camera in Settings > Extras");
+      return false;
+    }
+
+    // check browser support
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
+      toast.error("Camera is not supported on this device");
+      return false;
+    }
+
+    // if we already have permission, proceed
+    if (this.hasPermission()) {
+      return true;
+    }
 
     try {
+      // request camera access
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { facingMode: { ideal: "environment" } },
       });
       stream.getTracks().forEach((t) => t.stop());
-      return { ok: true };
-    } catch (e) {
-      const name = (e as DOMException)?.name || "";
-      if (name === "NotAllowedError") {
-        const s = await this._getPermissionState().catch(() => undefined);
-        if (s === "denied") {
-          this.hardDenied = true;
-          return { ok: false, reason: "blocked" };
-        }
-        return { ok: false, reason: "dismissed" };
-      }
-      if (name === "NotFoundError" || name === "OverconstrainedError")
-        return { ok: false, reason: "no-device" };
-      if (name === "SecurityError") return { ok: false, reason: "unknown" };
-      return { ok: false, reason: "dismissed" };
-    }
-  }
 
-  private async _checkCameraStatusInternal(): Promise<CameraStatus> {
-    if (!navigator.mediaDevices) {
-      return { hasCamera: false, permissionState: "unknown" };
-    }
-
-    const mediaDevices = navigator.mediaDevices;
-
-    try {
-      // Check permission status using Permissions API (modern browsers)
-      if ("permissions" in navigator) {
-        const permissionStatus = await navigator.permissions.query({
-          name: "camera" as PermissionName,
-        });
-
-        if (permissionStatus.state === "granted") {
-          // Permissions granted, we can enumerate devices
-          const devices = await mediaDevices.enumerateDevices();
-          const hasCamera = devices.some((d) => d.kind === "videoinput");
-          return { hasCamera, permissionState: "granted" };
-        } else if (permissionStatus.state === "denied") {
-          // When permissions are denied, we can't enumerate devices,
-          // but there might still be camera hardware. Assume there is.
-          return { hasCamera: true, permissionState: "denied" };
-        } else {
-          // Permission not asked yet ('prompt' state)
-          const hasCamera = await this._hasVideoInputSafe(mediaDevices);
-          return { hasCamera, permissionState: "prompt" };
-        }
-      } else {
-        // Fallback for older browsers - try enumerateDevices
-        try {
-          const devices = await mediaDevices.enumerateDevices();
-          const hasCamera = devices.some((d) => d.kind === "videoinput");
-          return {
-            hasCamera,
-            permissionState: hasCamera ? "prompt" : "unknown",
-          };
-        } catch {
-          // enumerateDevices failed (likely no permissions)
-          return { hasCamera: true, permissionState: "prompt" };
-        }
-      }
-    } catch (error) {
-      console.warn("Camera permission check failed:", error);
-      return { hasCamera: true, permissionState: "unknown" };
-    }
-  }
-
-  private async _getPermissionState(): Promise<CameraPermissionState> {
-    if ("permissions" in navigator) {
+      // store permission granted
       try {
-        const ps = await navigator.permissions.query({
-          name: "camera" as PermissionName,
-        });
-        return ps.state as CameraPermissionState;
+        localStorage.setItem(this.STORAGE_KEY, "true");
       } catch {
-        /* noop */
+        console.log("localStorage not available");
       }
-    }
-    try {
-      const devices = await navigator.mediaDevices!.enumerateDevices();
-      const hasCam = devices.some((d) => d.kind === "videoinput");
-      return hasCam ? "prompt" : "unknown";
-    } catch {
-      return "unknown";
-    }
-  }
 
-  onPermissionChange(cb: (state: CameraPermissionState) => void) {
-    if ("permissions" in navigator) {
-      navigator.permissions
-        .query({ name: "camera" as PermissionName })
-        .then((ps) => {
-          ps.onchange = () => {
-            const s = ps.state as CameraPermissionState;
-            if (s !== "denied") this.hardDenied = false;
-            cb(s);
-          };
-        })
-        .catch(() => {});
-    }
-  }
-
-  private async _hasVideoInputSafe(md: MediaDevices): Promise<boolean> {
-    try {
-      const ds = await md.enumerateDevices();
-      return ds.some((d) => d.kind === "videoinput");
-    } catch {
       return true;
+    } catch (error) {
+      // handle different error types
+      const errorName = (error as DOMException)?.name;
+
+      if (errorName === "NotFoundError") {
+        toast.error("No camera available on this device");
+        return false;
+      }
+
+      if (errorName === "NotAllowedError") {
+        toast.error("Camera permission denied. Please allow camera access.");
+        return false;
+      }
+
+      // other errors
+      toast.error("Camera access failed. Please try again.");
+      return false;
     }
   }
 }

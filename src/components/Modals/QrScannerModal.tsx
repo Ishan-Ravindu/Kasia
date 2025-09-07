@@ -3,26 +3,15 @@ import jsQR from "jsqr";
 import { X } from "lucide-react";
 import { toast } from "../../utils/toast-helper";
 import { useUiStore } from "../../store/ui.store";
-import {
-  cameraPermissionService,
-  type CameraStatus,
-} from "../../service/camera-permission-service";
+import { cameraPermissionService } from "../../service/camera-permission-service";
 
 export const QrScannerModal: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [hasCamera, setHasCamera] = useState<boolean | null>(null);
 
   const closeModal = useUiStore((s) => s.closeModal);
   const qrScannerCallback = useUiStore((s) => s.qrScannerCallback);
   const setQrScannerCallback = useUiStore((s) => s.setQrScannerCallback);
-
-  // check for camera devices on mount
-  useEffect(() => {
-    cameraPermissionService.checkCameraStatus().then((status: CameraStatus) => {
-      setHasCamera(status.hasCamera);
-    });
-  }, []);
 
   // start camera when modal opens
   useEffect(() => {
@@ -44,8 +33,15 @@ export const QrScannerModal: React.FC = () => {
 
       currentVideoElement = videoRef.current;
 
+      // Use the simplified camera service
+      const hasAccess = await cameraPermissionService.requestCamera();
+      if (!hasAccess) {
+        closeModal("qr-scanner");
+        return;
+      }
+
       try {
-        // request once; this both prompts and yields the stream
+        // Get the camera stream (we already know permission is granted)
         localStream = await navigator.mediaDevices!.getUserMedia({
           video: { facingMode: { ideal: "environment" } },
           audio: false,
@@ -61,22 +57,10 @@ export const QrScannerModal: React.FC = () => {
           setStream(localStream);
         }
       } catch (e: unknown) {
-        const name = (e as DOMException)?.name || "";
-        if (name === "NotAllowedError") {
-          toast.error(
-            "Camera blocked. Enable in browser settings and try again."
-          );
-        } else if (
-          name === "NotFoundError" ||
-          name === "OverconstrainedError"
-        ) {
-          toast.error("Camera not available or permission denied.");
-        } else {
-          const msg =
-            "Could not access camera: " +
-            (e instanceof Error ? e.message : String(e));
-          toast.error(msg);
-        }
+        const msg =
+          "Could not access camera: " +
+          (e instanceof Error ? e.message : String(e));
+        toast.error(msg);
         closeModal("qr-scanner");
       }
     };
@@ -140,10 +124,6 @@ export const QrScannerModal: React.FC = () => {
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
   }, [stream, qrScannerCallback, closeModal, setQrScannerCallback]);
-
-  if (!hasCamera) {
-    return null;
-  }
 
   return (
     <div className="fixed inset-0 z-[9999] bg-[var(--primary-bg)]/20">

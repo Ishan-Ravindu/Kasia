@@ -1,4 +1,4 @@
-import { ChangeEvent, FC, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FC, useCallback, useState } from "react";
 import { kaspaToSompi, sompiToKaspaString } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
@@ -6,10 +6,11 @@ import { toast } from "../../utils/toast-helper";
 import { Clipboard, QrCode } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { Address, FeeSource } from "kaspa-wasm";
+import { cameraPermissionService } from "../../service/camera-permission-service";
 import {
-  cameraPermissionService,
-  type CameraStatus,
-} from "../../service/camera-permission-service";
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../store/featureflag.store";
 
 const maxDustAmount = kaspaToSompi("0.19")!;
 
@@ -17,7 +18,6 @@ export const WalletWithdrawal: FC = () => {
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null);
 
   const [amountInputError, setAmountInputError] = useState<string | null>(null);
 
@@ -28,12 +28,9 @@ export const WalletWithdrawal: FC = () => {
   const accountService = useWalletStore((store) => store.accountService);
   const balance = useWalletStore((store) => store.balance);
 
-  // check for camera devices on mount
-  useEffect(() => {
-    cameraPermissionService.checkCameraStatus().then((status: CameraStatus) => {
-      setCameraStatus(status);
-    });
-  }, []);
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
 
   const inputAmountUpdated = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -95,8 +92,10 @@ export const WalletWithdrawal: FC = () => {
     }
   };
 
-  const handleQrScan = () => {
-    if (!cameraStatus?.hasCamera) return;
+  const handleQrScan = async () => {
+    // Request camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (!hasAccess) return;
 
     // Set the callback to handle scanned data
     setQrScannerCallback((data: string) => {
@@ -186,7 +185,7 @@ export const WalletWithdrawal: FC = () => {
             >
               <Clipboard size={16} />
             </button>
-            {cameraStatus?.hasCamera && (
+            {cameraEnabled && (
               <button
                 type="button"
                 className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
