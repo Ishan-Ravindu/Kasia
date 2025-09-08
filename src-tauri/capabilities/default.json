@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "log:default"]
+  "permissions": [
+    "core:default",
+    "log:default",
+    "clipboard-manager:allow-read-text"
+  ]
 }

@@ -3,6 +3,11 @@
   "identifier": "mobile",
   "description": "enables the mobile permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "app-events:default", "log:default"],
+  "permissions": [
+    "core:default",
+    "app-events:default",
+    "log:default",
+    "clipboard-manager:allow-read-text"
+  ],
   "platforms": ["iOS", "android"]
 }
