@@ -1,7 +1,7 @@
 {
   "name": "kasia",
   "private": true,
-  "version": "0.5.0-beta1",
+  "version": "0.5.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

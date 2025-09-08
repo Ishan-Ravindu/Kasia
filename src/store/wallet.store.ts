@@ -274,6 +274,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
 
       if (_accountService) {
         await _accountService.clear();
+        _accountService.removeAllListeners();
       }
 
       _accountService = new AccountService(currentRpc, wallet);
@@ -282,7 +283,6 @@ export const useWalletStore = create<WalletState>((set, get) => {
       _accountService.on("balance", (balance) => {
         set({ balance });
       });
-      console.log("OKOK?");
       await _accountService.start();
 
       const initialBalance = _accountService.context.balance;
@@ -523,15 +523,31 @@ export const useWalletStore = create<WalletState>((set, get) => {
         newPassword
       );
 
+      const wallet = _walletStorage.getDecrypted(walletId, newPassword);
+
       // If this is the currently unlocked wallet, update its password
       const state = get();
       if (state.unlockedWallet && state.selectedWalletId === walletId) {
         set({
-          unlockedWallet: {
-            ...state.unlockedWallet,
-            password: newPassword,
-          },
+          unlockedWallet: wallet,
         });
+
+        const _rpc = get().rpc;
+        if (_accountService && _rpc) {
+          await _accountService.clear();
+          _accountService.removeAllListeners();
+          _accountService = new AccountService(_rpc, state.unlockedWallet);
+          _accountService.setPassword(state.unlockedWallet.password);
+          // Set up event listeners
+          _accountService.on("balance", (balance) => {
+            set({ balance });
+          });
+          await _accountService.start();
+
+          set({
+            accountService: _accountService,
+          });
+        }
       }
     },
 
