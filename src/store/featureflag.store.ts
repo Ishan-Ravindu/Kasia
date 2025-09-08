@@ -26,7 +26,7 @@ export type FeatureFlips = Record<FeatureFlags, FeatureDescription>;
 
 const featureFlips: FeatureFlips = {
   [FeatureFlags.ENABLED_CAMERA]: {
-    label: "Enable Camera and File Features",
+    label: "Enable Camera Features",
     desc:
       "Camera used for QR Scanning, sending photos." +
       "\nNote: Photos are encrypted but sent on chain.",
