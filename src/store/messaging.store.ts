@@ -101,6 +101,13 @@ interface MessagingState {
   // New function to manually respond to a handshake
   respondToHandshake: (handshakeId: string) => Promise<string>;
 
+  // Create offline handshake (both parties exchange info manually)
+  createOfflineHandshake: (
+    partnerAddress: string,
+    ourAliasForPartner: string,
+    theirAliasForUs: string
+  ) => Promise<{ conversationId: string; contactId: string }>;
+
   // Nickname management
   setContactNickname: (address: string, nickname?: string) => Promise<void>;
   removeContactNickname: (address: string) => Promise<void>;
@@ -1402,7 +1409,34 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const manager = g().conversationManager;
       return manager ? manager.getPendingConversationsWithContact() : [];
     },
-    // New function to manually respond to a handshake
+    // add an offline handshake
+    createOfflineHandshake: async (
+      partnerAddress: string,
+      ourAliasForPartner: string,
+      theirAliasForUs: string
+    ) => {
+      const manager = g().conversationManager;
+
+      if (!manager) {
+        throw new Error("Conversation manager not initialized");
+      }
+
+      // Call the service method
+      const result = await manager.createOfflineHandshake(
+        partnerAddress,
+        ourAliasForPartner,
+        theirAliasForUs
+      );
+
+      // Refresh conversation manager to pick up the new conversation
+      await manager.loadConversations();
+
+      // Refresh the UI state to trigger re-render with the new contact
+      await g().hydrateOneonOneConversations();
+
+      return result;
+    },
+
     respondToHandshake: async (handshakeId: string) => {
       try {
         const repositories = useDBStore.getState().repositories;

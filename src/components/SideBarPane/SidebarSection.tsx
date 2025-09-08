@@ -1,5 +1,5 @@
 import { FC, useState } from "react";
-import { Menu, Search, Plus, X, Radio, MessageCircle } from "lucide-react";
+import { Menu, Search, Plus, X } from "lucide-react";
 import clsx from "clsx";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useUiStore } from "../../store/ui.store";
@@ -42,16 +42,38 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
     (state) => state.flags.broadcast
   );
 
-  const onNewChatClicked = () => {
-    try {
-      if (isBroadcastMode) {
-        openModal("new-broadcast");
-      } else {
+  const handleButtonPress = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (isBroadcastMode) {
+      openModal("new-broadcast");
+      return;
+    }
+
+    let longPressed = false;
+
+    const timer = setTimeout(() => {
+      longPressed = true;
+      openModal("offline-handshake");
+    }, 2000);
+
+    const handleRelease = (releaseEvent: MouseEvent | TouchEvent) => {
+      releaseEvent.preventDefault();
+      releaseEvent.stopPropagation();
+
+      clearTimeout(timer);
+
+      if (!longPressed) {
         openModal("new-chat");
       }
-    } catch (error) {
-      console.error("Failed to start new chat:", error);
-    }
+
+      document.removeEventListener("mouseup", handleRelease);
+      document.removeEventListener("touchend", handleRelease);
+    };
+
+    document.addEventListener("mouseup", handleRelease);
+    document.addEventListener("touchend", handleRelease);
   };
 
   const containerCls = clsx(
@@ -126,7 +148,9 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
             <button
               aria-label={broadcastEnabled ? "new channel" : "new chat"}
               className="hover:bg-primary-bg/50 cursor-pointer rounded p-1 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
-              onClick={onNewChatClicked}
+              onMouseDown={handleButtonPress}
+              onTouchStart={handleButtonPress}
+              onClick={(e) => e.preventDefault()}
             >
               <Plus className="size-6" />
             </button>
@@ -136,8 +160,10 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
           <div className="flex flex-1 justify-center">
             <button
               aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
-              onClick={onNewChatClicked}
+              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
+              onMouseDown={handleButtonPress}
+              onTouchStart={handleButtonPress}
+              onClick={(e) => e.preventDefault()}
             >
               <Plus className="size-6" />
             </button>

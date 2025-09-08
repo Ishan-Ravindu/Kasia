@@ -44,7 +44,7 @@ export const Modal: FC<{
     >
       <div
         className={clsx(
-          "border-primary-border bg-secondary-bg relative mx-4 w-full max-w-2xl rounded-2xl border p-3 shadow-2xl shadow-(color:--button-primary)/30 transition-all duration-200 sm:p-6",
+          "border-primary-border bg-secondary-bg relative mx-2 max-h-[95vh] w-full max-w-2xl overflow-x-hidden overflow-y-auto rounded-2xl border p-3 shadow-2xl shadow-(color:--button-primary)/30 transition-all duration-200 sm:mx-4 sm:p-6",
           {
             "translate-y-0 opacity-100": mounted,
             "-translate-y-5 opacity-0": !mounted,
