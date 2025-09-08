@@ -143,14 +143,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     });
   };
 
-  const onClearHistory = () => {
-    if (!walletAddress) return;
+  const onClearHistory = async () => {
+    if (!unlockedWallet) return;
     if (
       confirm(
         "Are you sure you want to clear ALL message history? This will completely wipe all conversations, messages, nicknames, and handshakes. This cannot be undone."
       )
     ) {
-      messageStore.flushWalletHistory(walletAddress.toString());
+      await messageStore.flushWalletHistory(unlockedWallet.id);
+
+      onClose();
     }
   };
 
@@ -490,10 +492,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                       {/* Delete All Messages */}
                       <button
-                        onClick={() => {
-                          onClearHistory();
-                          onClose();
-                        }}
+                        onClick={onClearHistory}
+                        type="button"
                         className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                       >
                         <Trash2 className="h-5 w-5 text-red-400/50" />

@@ -22,6 +22,7 @@ import {
   useFeatureFlagsStore,
   FeatureFlags,
 } from "../../store/featureflag.store";
+import { readText } from "@tauri-apps/plugin-clipboard-manager";
 
 interface NewChatFormProps {
   onClose: () => void;
@@ -231,7 +232,13 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
 
   const handlePaste = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      let text = "";
+      if ("__TAURI_INTERNALS__" in window) {
+        text = await readText();
+      } else {
+        text = await navigator.clipboard.readText();
+      }
+
       setRecipientInputValue(text.toLowerCase());
     } catch {
       // Handle clipboard access error silently or show a toast
@@ -442,6 +449,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
             />
             <div className="absolute right-2 bottom-2 flex gap-1 pb-1">
               <button
+                type="button"
                 onClick={handlePaste}
                 className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border px-1.5 py-1 transition-colors"
                 title="Paste from clipboard"

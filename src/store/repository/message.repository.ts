@@ -174,6 +174,16 @@ export class MessageRepository {
     await tx.done;
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "messages",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("messages", k)));
+  }
+
   private _messageToDbMessage(message: Message): DbMessage {
     return {
       id: `${message.tenantId}_${message.transactionId}`,

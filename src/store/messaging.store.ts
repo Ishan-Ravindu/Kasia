@@ -51,6 +51,7 @@ import {
   exportData,
   importData,
 } from "../service/import-export-service";
+import { useNetworkStore } from "./network.store";
 
 interface MessagingState {
   isLoaded: boolean;
@@ -61,7 +62,7 @@ interface MessagingState {
     tx: RawResolvedKasiaTransaction
   ) => Promise<void>;
   storeKasiaTransactions: (transactions: KasiaTransaction[]) => Promise<void>;
-  flushWalletHistory: (address: string) => void;
+  flushWalletHistory: (walletTenant: string) => Promise<void>;
   exportMessages: (wallet: UnlockedWallet, password: string) => Promise<Blob>;
   importMessages: (
     file: File,
@@ -351,7 +352,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       // 4. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
       const handshakeReponses = await getHistoricalHandshakes();
 
-      console.log("Loading Strategy - Processing Handshake from upstream");
+      console.log("Loading Strategy - Processing Handshake from upstream", {
+        handshakeReponses,
+      });
 
       const unlockedWallet = useWalletStore.getState().unlockedWallet;
       if (!unlockedWallet) {
@@ -428,8 +431,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             }
           );
           break;
-        } catch {
-          // no-op
+        } catch (error) {
+          console.warn("Cannot process sent handshake", error);
         }
       }
 
@@ -497,7 +500,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const uniqueSenderAddresses = new Set([
         ...lastReceivedHSBySenderAddress.keys(),
-        ...lastReceivedHSBySenderAddress.keys(),
+        ...lastSentHSBySenderAddress.keys(),
       ]);
 
       const processOneSender = async (senderAddress: string) => {
@@ -1141,50 +1144,51 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         }
       }
     },
-    flushWalletHistory: (address: string) => {
+    flushWalletHistory: async (walletTenant: string) => {
       // 1. Clear wallet messages from localStorage using new per-address system
       const walletStore = useWalletStore.getState();
-      const password = walletStore.unlockedWallet?.password;
-      const walletId = walletStore.selectedWalletId;
+      const unlockedWallet = walletStore.unlockedWallet;
 
-      if (!password) {
-        console.error("Wallet password not available for flushing history.");
+      if (!unlockedWallet) {
+        console.error("Wallet is not unlocked for flushing history.");
         return;
       }
 
-      if (!walletId) {
-        console.error("No wallet selected for flushing history.");
-        return;
-      }
+      const network = useNetworkStore.getState().network;
 
-      // Remove the specific address storage key
-      const storageKey = `msg_${walletId.substring(0, 8)}_${address.replace(/^kaspa[test]?:/, "").slice(-10)}`;
-      localStorage.removeItem(storageKey);
+      const receiveAddress = unlockedWallet.publicKeyGenerator
+        .receiveAddress(network, 0)
+        .toString();
 
-      // 2. Clear nickname mappings for this wallet
-      const nicknameKey = `contact_nicknames_${address}`;
-      localStorage.removeItem(nicknameKey);
-
-      // 3. Clear conversation manager data for this wallet
-      const conversationKey = `encrypted_conversations_${address}`;
-      localStorage.removeItem(conversationKey);
-
-      // 4. Clear last opened recipient for this wallet
-      const lastOpenedRecipientKey = `kasia_last_opened_recipient_${address}`;
+      // 1. Clear last opened recipient for this wallet
+      const lastOpenedRecipientKey = `kasia_last_opened_recipient_${receiveAddress}`;
       localStorage.removeItem(lastOpenedRecipientKey);
 
-      // 5. Reset all UI state immediately
+      // 2. Remove all IndexDB related to this tenant
+      const repositories = useDBStore.getState().repositories;
+
+      await Promise.all([
+        repositories.paymentRepository.deleteTenant(walletTenant),
+        repositories.broadcastChannelRepository.deleteTenant(walletTenant),
+        repositories.contactRepository.deleteTenant(walletTenant),
+        repositories.decryptionTrialRepository.deleteTenant(walletTenant),
+        repositories.handshakeRepository.deleteTenant(walletTenant),
+        repositories.messageRepository.deleteTenant(walletTenant),
+        repositories.savedHandshakeRepository.deleteTenant(walletTenant),
+      ]);
+
+      // 3. Reset all UI state immediately
       set({
         oneOnOneConversations: [],
         openedRecipient: null,
         isCreatingNewChat: false,
       });
 
-      // 6. Clear and reinitialize conversation manager
+      // 4. Clear and reinitialize conversation manager
       const manager = g().conversationManager;
       if (manager) {
         // Reinitialize fresh conversation manager
-        _initializeConversationManager(address);
+        _initializeConversationManager(receiveAddress);
       }
 
       console.log("Complete history clear completed - all data wiped");

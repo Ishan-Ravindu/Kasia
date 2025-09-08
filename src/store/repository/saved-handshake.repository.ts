@@ -71,6 +71,16 @@ export class SavedHandhshakeRepository {
       .then((count) => count > 0);
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "savedHandshakes",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("savedHandshakes", k)));
+  }
+
   async saveBulk(
     savedHandshakes: Omit<SavedHandshake, "tenantId">[]
   ): Promise<void> {
