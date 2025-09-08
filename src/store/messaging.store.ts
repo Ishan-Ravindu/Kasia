@@ -352,7 +352,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       // 4. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
       const handshakeReponses = await getHistoricalHandshakes();
 
-      console.log("Loading Strategy - Processing Handshake from upstream");
+      console.log("Loading Strategy - Processing Handshake from upstream", {
+        handshakeReponses,
+      });
 
       const unlockedWallet = useWalletStore.getState().unlockedWallet;
       if (!unlockedWallet) {
@@ -429,8 +431,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             }
           );
           break;
-        } catch {
-          // no-op
+        } catch (error) {
+          console.warn("Cannot process sent handshake", error);
         }
       }
 
@@ -498,7 +500,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const uniqueSenderAddresses = new Set([
         ...lastReceivedHSBySenderAddress.keys(),
-        ...lastReceivedHSBySenderAddress.keys(),
+        ...lastSentHSBySenderAddress.keys(),
       ]);
 
       const processOneSender = async (senderAddress: string) => {
