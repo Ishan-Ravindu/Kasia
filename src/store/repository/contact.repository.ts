@@ -123,6 +123,16 @@ export class ContactRepository {
     } while (await cursor.continue());
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "contacts",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("contacts", k)));
+  }
+
   private _contactToDbContact(contact: Contact): DbContact {
     return {
       id: contact.id,

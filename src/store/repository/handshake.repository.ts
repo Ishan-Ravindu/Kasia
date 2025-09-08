@@ -163,6 +163,16 @@ export class HandshakeRepository {
     } while (await cursor.continue());
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "handshakes",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("handshakes", k)));
+  }
+
   private _handshakeToDbHandshake(handshake: Handshake): DbHandshake {
     return {
       id: `${handshake.tenantId}_${handshake.transactionId}`,

@@ -163,6 +163,16 @@ export class PaymentRepository {
     } while (await cursor.continue());
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "payments",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("payments", k)));
+  }
+
   private _paymentToDbPayment(payment: Payment): DbPayment {
     return {
       id: `${payment.tenantId}_${payment.transactionId}`,

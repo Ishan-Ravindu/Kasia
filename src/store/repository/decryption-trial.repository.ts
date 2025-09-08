@@ -58,6 +58,16 @@ export class DecryptionTrialRepository {
     return;
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "decryptionTrials",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("decryptionTrials", k)));
+  }
+
   async saveBulk(
     decryptionTrials: Omit<DecryptionTrial, "tenantId">[]
   ): Promise<void> {

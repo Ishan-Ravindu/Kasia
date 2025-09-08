@@ -123,6 +123,16 @@ export class BroadcastChannelRepository {
     } while (await cursor.continue());
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "broadcastChannels",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("broadcastChannels", k)));
+  }
+
   private _broadcastChannelToDbBroadcastChannel(
     channel: BroadcastChannel
   ): DbBroadcastChannel {

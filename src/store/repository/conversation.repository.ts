@@ -113,6 +113,16 @@ export class ConversationRepository {
     return;
   }
 
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "conversations",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("conversations", k)));
+  }
+
   async saveBulk(
     conversations: Omit<Conversation, "tenantId">[]
   ): Promise<void> {
