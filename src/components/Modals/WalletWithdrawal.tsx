@@ -34,7 +34,10 @@ export const WalletWithdrawal: FC = () => {
 
   const inputAmountUpdated = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      if (/^-?\d*\.?\d*$/.test(event.target.value) === false) {
+      if (
+        /^[+]?([0-9]+(?:[.][0-9]*)?|\.[0-9]+)$/.test(event.target.value) ===
+        false
+      ) {
         return;
       }
 
