@@ -32,15 +32,12 @@ export const useSessionState = create<SessionState>((set, get) => {
   return {
     async supportSecuredBiometry() {
       try {
-        console.log({ isTauri: core.isTauri() });
         if (!core.isTauri()) {
           return false;
         }
 
-        console.log("'ok'");
         const status = await checkStatus();
 
-        console.log({ status });
         return status.isAvailable;
       } catch (error) {
         console.error(error);

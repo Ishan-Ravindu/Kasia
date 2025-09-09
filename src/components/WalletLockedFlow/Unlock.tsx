@@ -81,7 +81,6 @@ export const Unlock = ({
 
   // session restore effect
   useEffect(() => {
-    console.log({ selectedWalletId });
     if (!selectedWalletId) {
       return;
     }
