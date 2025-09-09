@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWalletStore } from "../../store/wallet.store";
 import { NetworkSelector } from "../NetworkSelector";
 import { NetworkType } from "../../types/all";
@@ -11,6 +11,7 @@ import {
   StartSessionInvalidPasswordException,
   useOrchestrator,
 } from "../../hooks/useOrchestrator";
+import { useSessionState } from "../../store/session.store";
 
 type UnlockWalletProps = {
   selectedWalletId: string | null;
@@ -39,6 +40,7 @@ export const Unlock = ({
   const passwordRef = useRef<HTMLInputElement>(null);
 
   const { startSession } = useOrchestrator();
+  const { getSession, setSession, hasSession } = useSessionState();
 
   const usePasswordRef = (node: HTMLInputElement | null) => {
     passwordRef.current = node;
@@ -54,7 +56,12 @@ export const Unlock = ({
     setError(null);
     try {
       setUnlocking(true);
+
+      // do it lossely in the background to not lock the thread
+      setSession(selectedWalletId, pass);
+
       await startSession({ walletId: selectedWalletId, walletPassword: pass });
+
       onSuccess(selectedWalletId);
     } catch (err) {
       console.error("Unlock error:", err);
@@ -71,6 +78,27 @@ export const Unlock = ({
       setUnlocking(false);
     }
   };
+
+  // session restore effect
+  useEffect(() => {
+    console.log({ selectedWalletId });
+    if (!selectedWalletId) {
+      return;
+    }
+    const sessionEffect = async () => {
+      if (await hasSession(selectedWalletId)) {
+        const password = await getSession(selectedWalletId);
+
+        if (password && passwordRef?.current) {
+          passwordRef.current.value = password;
+
+          onUnlockWallet();
+        }
+      }
+    };
+
+    sessionEffect();
+  }, []);
 
   // Clear error when user starts typing
   const handleInputChange = () => {

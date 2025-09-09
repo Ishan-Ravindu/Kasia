@@ -14,6 +14,8 @@ pub fn run() {
             #[cfg(mobile)]
             app.handle().plugin(tauri_plugin_app_events::init())?;
 
+            app.handle().plugin(tauri_plugin_biometry::init())?;
+
             Ok(())
         })
         .run(tauri::generate_context!())

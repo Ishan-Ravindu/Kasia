@@ -28,7 +28,7 @@ Follow these steps to run Kasia locally on your machine.
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/K-Kluster/Kasia.git
+   git clone https://github.com/K-Kluster/Kasia.git --recurse-submodules
    cd Kasia
    ```
 
@@ -52,11 +52,17 @@ Follow these steps to run Kasia locally on your machine.
 
    - Extract the contents of `kaspa-wasm32-sdk/web/kaspa/*` into the `Kasia/wasm/` directory.
 
-5. **Install Node.js Dependencies**
+5. **Install Node.js Dependencies and vendors**
 
    ```bash
+   npm run submodule:init
    npm install
    ```
+
+### Refresh submodules
+```bash
+git submodule update --init --recursive
+```
 
 ### Running Kasia Locally
 

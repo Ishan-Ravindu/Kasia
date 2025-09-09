@@ -9,6 +9,7 @@ import {
 } from "../../config/password";
 import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
+import { useSessionState } from "../../store/session.store";
 
 type CreateWalletProps = {
   onSuccess: (walletId: string, mnemonic: Mnemonic) => void;
@@ -20,9 +21,12 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
   const [derivationType, setDerivationType] =
     useState<WalletDerivationType>("standard");
   const [error, setError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const passwordRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+
+  const { setSession } = useSessionState();
 
   const { createWallet } = useWalletStore();
 
@@ -31,7 +35,13 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
       setError("Please enter a name and password");
       return;
     }
+
+    if (isCreating) {
+      return;
+    }
+
     try {
+      setIsCreating(true);
       // Generate mnemonic with specified word count
       const mnemonic = Mnemonic.random(seedPhraseLength);
 
@@ -56,11 +66,15 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
         derivationType,
         undefined
       );
+
+      await setSession(id, pw);
+
       onSuccess(id, mnemonic);
     } catch (err) {
       console.error("Wallet creation error:", err);
       setError(err instanceof Error ? err.message : "Failed to create wallet");
     } finally {
+      setIsCreating(false);
       if (passwordRef.current?.value) passwordRef.current.value = "";
     }
   };
@@ -182,8 +196,12 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
       {error && <WalletFlowErrorMessage message={error} />}
 
       <div className="flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
-        <Button onClick={onCreateWallet} variant="primary">
-          Create
+        <Button
+          onClick={onCreateWallet}
+          disabled={isCreating}
+          variant="primary"
+        >
+          {isCreating ? "Creating..." : "Create"}
         </Button>
         <Button onClick={onBack} variant="secondary">
           Back

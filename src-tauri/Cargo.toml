@@ -24,6 +24,7 @@ log = "0.4"
 tauri = { version = "2.8.5", features = [] }
 tauri-plugin-log = "2.7.0"
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-biometry = {git= "https://github.com/IzioDev/tauri-plugin-biometry.git", branch="main"}
 
 # taken from default configuration at https://tauri.app/concept/size/
 [profile.dev]
