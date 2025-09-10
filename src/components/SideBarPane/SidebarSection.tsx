@@ -1,5 +1,5 @@
 import { FC, useState } from "react";
-import { Menu, Search, Plus, X } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import clsx from "clsx";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useUiStore } from "../../store/ui.store";
@@ -10,6 +10,7 @@ import { ContactList } from "./Directs/ContactList";
 import { BroadcastList } from "./Broadcasts/BroadcastList";
 import { useFeatureFlagsStore } from "../../store/featureflag.store";
 import { ModeSelector } from "../ModeSelector";
+import { HoldablePlusButton } from "./HoldablePlusButton";
 
 interface SidebarSectionProps {
   onContactClicked: (contact: Contact) => void;
@@ -42,38 +43,16 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
     (state) => state.flags.broadcast
   );
 
-  const handleButtonPress = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleNewChat = () => {
+    openModal("new-chat");
+  };
 
-    if (isBroadcastMode) {
-      openModal("new-broadcast");
-      return;
-    }
+  const handleOfflineHandshake = () => {
+    openModal("offline-handshake");
+  };
 
-    let longPressed = false;
-
-    const timer = setTimeout(() => {
-      longPressed = true;
-      openModal("offline-handshake");
-    }, 1200);
-
-    const handleRelease = (releaseEvent: MouseEvent | TouchEvent) => {
-      releaseEvent.preventDefault();
-      releaseEvent.stopPropagation();
-
-      clearTimeout(timer);
-
-      if (!longPressed) {
-        openModal("new-chat");
-      }
-
-      document.removeEventListener("mouseup", handleRelease);
-      document.removeEventListener("touchend", handleRelease);
-    };
-
-    document.addEventListener("mouseup", handleRelease);
-    document.addEventListener("touchend", handleRelease);
+  const handleNewBroadcast = () => {
+    openModal("new-broadcast");
   };
 
   const containerCls = clsx(
@@ -145,28 +124,25 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
                 shouldShow={broadcastEnabled && !showSearch}
               />
             )}
-            <button
-              aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-1 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
-              onMouseDown={handleButtonPress}
-              onTouchStart={handleButtonPress}
-              onClick={(e) => e.preventDefault()}
-            >
-              <Plus className="size-6" />
-            </button>
+            <HoldablePlusButton
+              broadcastEnabled={broadcastEnabled}
+              isBroadcastMode={isBroadcastMode}
+              onNewChat={handleNewChat}
+              onOfflineHandshake={handleOfflineHandshake}
+              onNewBroadcast={handleNewBroadcast}
+            />
           </div>
         ) : (
           /* Plus button when collapsed */
           <div className="flex flex-1 justify-center">
-            <button
-              aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-2 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
-              onMouseDown={handleButtonPress}
-              onTouchStart={handleButtonPress}
-              onClick={(e) => e.preventDefault()}
-            >
-              <Plus className="size-6" />
-            </button>
+            <HoldablePlusButton
+              broadcastEnabled={broadcastEnabled}
+              isBroadcastMode={isBroadcastMode}
+              onNewChat={handleNewChat}
+              onOfflineHandshake={handleOfflineHandshake}
+              onNewBroadcast={handleNewBroadcast}
+              collapsed={true}
+            />
           </div>
         )}
       </div>

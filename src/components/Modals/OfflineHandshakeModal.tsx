@@ -62,8 +62,16 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
   };
 
   // validate partner address (so we know the alias is right)
-  const validatePartnerAddress = (address: string): string | null => {
+  const validatePartnerAddress = (
+    address: string,
+    ownAddress: string
+  ): string | null => {
     if (!address) return null;
+
+    // Check if the partner address is the same as the user's own address
+    if (address.toLowerCase() === ownAddress.toLowerCase()) {
+      return "Participant address cannot be self";
+    }
 
     try {
       // Try to create an Address object - we use this for validation
@@ -106,7 +114,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     setPartnerAddress(v);
 
     // Validate the address
-    const validationError = validatePartnerAddress(v);
+    const validationError = validatePartnerAddress(v, kaspaAddress);
     setPartnerAddressError(validationError);
 
     if (v && !validationError) {
