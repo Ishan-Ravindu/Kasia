@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "../Common/modal";
 import { CopyableValueWithQR } from "../Modals/CopyableValueWithQR";
 import { Textarea } from "@headlessui/react";
@@ -6,6 +6,7 @@ import { Clipboard, QrCode, CheckCircle } from "lucide-react";
 import { useFeatureFlagsStore } from "../../store/featureflag.store";
 import { useMessagingStore } from "../../store/messaging.store";
 import { useUiStore } from "../../store/ui.store";
+import { useWalletStore } from "../../store/wallet.store";
 import { toast } from "../../utils/toast-helper";
 import { Button } from "../Common/Button";
 import clsx from "clsx";
@@ -28,6 +29,9 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
   const [theirAliasForUs, setTheirAliasForUs] = useState<string>("");
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
+  const [isCreatingSelfStash, setIsCreatingSelfStash] =
+    useState<boolean>(false);
+  const [selfStashCompleted, setSelfStashCompleted] = useState<boolean>(false);
   const [isQrOpen, setIsQrOpen] = useState<boolean>(false);
   const [activeQrSection, setActiveQrSection] = useState<string | null>(null);
   const [hideTitles, setHideTitles] = useState<boolean>(false);
@@ -37,11 +41,15 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
   const [aliasError, setAliasError] = useState<string | null>(null);
 
   const cameraEnabled = useFeatureFlagsStore((s) => s.flags.enabledcamera);
-  const createOfflineHandshake = useMessagingStore(
-    (s) => s.createOfflineHandshake
-  );
-  const { openModal, setQrScannerCallback } = useUiStore();
-  const modals = useUiStore((s) => s.modals);
+  const { createOfflineHandshake, createSelfStash, setOpenedRecipient } =
+    useMessagingStore();
+  const { openModal, setQrScannerCallback, modals } = useUiStore();
+  const balanceMature = useWalletStore((s) => s.balance?.mature);
+
+  // check if user has sufficient funds for self stash (0.2 KAS minimum)
+  const hasSufficientFundsForSelfStash = useMemo(() => {
+    return balanceMature ? balanceMature >= BigInt(20000000) : false;
+  }, [balanceMature]);
 
   // Generate a random alias for the partner (what we call them)
   // Uses the same method as conversation-manager-service
@@ -239,6 +247,42 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     }
   };
 
+  // create a self stash transaction using the store function
+  const handleCreateSelfStash = async () => {
+    setIsCreatingSelfStash(true);
+    try {
+      // Create single self-stash for offline handshake (contains both aliases)
+      await createSelfStash({
+        type: "initiation",
+        partnerAddress,
+        ourAlias: ourAliasForPartner,
+        theirAlias: theirAliasForUs,
+        recipientAddress: partnerAddress,
+      });
+
+      setSelfStashCompleted(true);
+
+      // Select the newly created conversation
+      setOpenedRecipient(partnerAddress);
+
+      toast.success("Handshake Saved");
+
+      // Close the modal after a brief delay to let user see the success message
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Failed to create self stash:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save offline handshake"
+      );
+    } finally {
+      setIsCreatingSelfStash(false);
+    }
+  };
+
   const titleRow = (opts: {
     hidden: boolean;
     section?: string;
@@ -283,18 +327,25 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
         {!isQrOpen && (
           <p className="mb-2 text-xs whitespace-pre-line text-[var(--text-secondary)] sm:text-sm">
             Connect with someone without internet by exchanging addresses and
-            aliases.{"\n"}No tx is sent between parties. You'll need funds to
-            reply.
+            aliases.{"\n"}No tx is sent between parties.
           </p>
         )}
 
-        <div className="space-y-2">
+        {/* Input sections - hide when completed */}
+        <div
+          className={clsx(
+            "space-y-2 transition-all duration-500 ease-in-out",
+            isCompleted
+              ? "max-h-0 overflow-hidden opacity-0"
+              : "max-h-screen opacity-100"
+          )}
+        >
           {/* Your Kaspa Address Section */}
           <div>
             {titleRow({
               hidden: hideTitles && activeQrSection !== "address",
               children: (
-                <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                   Your Address
                 </h3>
               ),
@@ -319,7 +370,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
             {titleRow({
               hidden: hideTitles,
               children: (
-                <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                   Partner's Address
                 </h3>
               ),
@@ -378,7 +429,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
                   {titleRow({
                     hidden: hideTitles && activeQrSection !== "alias",
                     children: (
-                      <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                         Your Alias for Partner
                       </h3>
                     ),
@@ -420,7 +471,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
                     hidden: hideTitles,
                     className: "mb-2",
                     children: (
-                      <h3 className="text-sm font-medium text-[var(--text-secondary)]">
+                      <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                         Partner's Alias for You
                       </h3>
                     ),
@@ -474,6 +525,10 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
               )}
             </div>
           )}
+        </div>
+
+        {/* Action sections - always visible */}
+        <div className="mt-2 space-y-2">
           {/* Complete Handshake Button */}
           {!isCompleted && canComplete && (
             <div className={blockVisible(isQrOpen)}>
@@ -501,6 +556,80 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
                   {partnerAddress}
                 </span>
               </p>
+            </div>
+          )}
+
+          {/* self stash section - shows after handshake completion */}
+          {isCompleted && (
+            <div className="space-y-2">
+              <div>
+                {titleRow({
+                  hidden: hideTitles,
+                  children: (
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                      Save Handshake for Multi-Device Use
+                    </h3>
+                  ),
+                })}
+                <div className={blockVisible(isQrOpen)}>
+                  <div className="rounded-lg border border-[var(--button-primary)]/20 bg-[var(--button-primary)]/5 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 flex-shrink-0 text-[var(--kas-secondary)]" />
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">
+                            Offline handshake completed successfully!
+                          </p>
+                        </div>
+                        <p className="mb-3 text-xs text-[var(--text-secondary)]">
+                          Send transaction to backup your offline handshake
+                          on-chain. This saves both the initiation and response,
+                          allowing kasia to auto-sync the full conversation if
+                          you switch device. Minimal tx fees apply.
+                        </p>
+
+                        {!selfStashCompleted ? (
+                          <Button
+                            onClick={handleCreateSelfStash}
+                            disabled={
+                              isCreatingSelfStash ||
+                              !hasSufficientFundsForSelfStash
+                            }
+                            className="w-full"
+                          >
+                            {isCreatingSelfStash ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent"></div>
+                                Creating save handshake...
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <CheckCircle className="size-5" />
+                                Save Handshake
+                              </div>
+                            )}
+                          </Button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 rounded-lg border border-[var(--kas-primary)]/20 bg-[var(--kas-primary)]/10 p-2">
+                            <CheckCircle className="h-4 w-4 text-[var(--kas-secondary)]" />
+                            <span className="text-sm font-semibold text-[var(--kas-secondary)]">
+                              Offline handshake saved successfully!
+                            </span>
+                          </div>
+                        )}
+
+                        {!hasSufficientFundsForSelfStash &&
+                          !selfStashCompleted && (
+                            <p className="mt-2 text-xs text-[var(--accent-red)]">
+                              Insufficient funds. You need at least 0.2 KAS to
+                              create a self stash.
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

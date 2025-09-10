@@ -509,9 +509,9 @@ export class ConversationManagerService {
           const _conversation: Conversation = {
             id: uuidv4(),
             myAlias: payload.alias,
-            theirAlias: null,
+            theirAlias: payload.theirAlias || null, // use theirAlias if present (for offline handshakes)
             lastActivityAt: new Date(payload.timestamp),
-            status: "pending",
+            status: payload.theirAlias ? "active" : "pending", // mark as active if we have both aliases (offline handshake)
             initiatedByMe: true,
             contactId: contact.id,
             tenantId: this.repositories.tenantId,
@@ -528,6 +528,16 @@ export class ConversationManagerService {
 
     conversation.myAlias = payload.alias;
     conversation.lastActivityAt = new Date(payload.timestamp);
+
+    // set theirAlias if present in payload (for offline handshakes)
+    if (payload.theirAlias) {
+      conversation.theirAlias = payload.theirAlias;
+    }
+
+    // mark as active if we now have both aliases (completed offline handshake)
+    if (payload.theirAlias && conversation.myAlias) {
+      conversation.status = "active";
+    }
 
     await this.repositories.conversationRepository.saveConversation(
       conversation

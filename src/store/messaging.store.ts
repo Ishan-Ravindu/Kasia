@@ -115,6 +115,16 @@ interface MessagingState {
   // Last opened recipient management
   restoreLastOpenedRecipient: (walletAddress: string) => void;
 
+  // self stash management
+  createSelfStash: (handshakeData: {
+    type: "initiation" | "response";
+    partnerAddress: string;
+    ourAlias: string;
+    theirAlias?: string;
+    recipientAddress?: string;
+    isResponse?: boolean;
+  }) => Promise<string>;
+
   // Hydration
   hydrateOneonOneConversations: () => Promise<void>;
 }
@@ -1337,50 +1347,15 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           oneOnOneConversations,
         });
 
-        // my payload
-        const address = WalletStorageService.getPrivateKeyGenerator(
-          walletStore.unlockedWallet,
-          walletStore.unlockedWallet.password
-        )
-          .receiveKey(0)
-          .toAddress(useWalletStore.getState().selectedNetwork)
-          .toString();
-
-        const encryptedMessageForMe = encrypt_message(
-          address,
-          JSON.stringify({
-            ...handshakePayload,
-            version: 1,
-            recipientAddress: recipientAddress,
-          } satisfies SavedHandshakePayload)
-        );
-
-        const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
-
-        console.log("Saving handshake...");
-
-        // wait for mature UTXOs ready
-        const accountService = useWalletStore.getState().accountService;
-
-        if (!accountService) {
-          throw new Error(
-            "Messaging Store - Unexpected Error: Account Service is not ready"
-          );
-        }
-
-        await accountService.waitForMatureUTXO();
-
-        const myTxId = await walletStore.sendTransaction({
-          payload: myPayload,
-          toAddress: new Address(address),
-          password: walletStore.unlockedWallet.password,
-          customAmount: BigInt(0),
+        // create self-stash for handshake initiation
+        const selfStashTxId = await g().createSelfStash({
+          type: "initiation",
+          partnerAddress: recipientAddress,
+          ourAlias: conversation.myAlias,
+          recipientAddress: recipientAddress,
         });
 
-        await repositories.savedHandshakeRepository.saveSavedHandshake({
-          id: `${walletStore.unlockedWallet.id}_${myTxId}`,
-          createdAt: new Date(),
-        });
+        console.log("Handshake initiation self-stash created:", selfStashTxId);
       } catch (error) {
         console.error("Error sending handshake message:", error);
         throw error;
@@ -1522,50 +1497,17 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
           await repositories.handshakeRepository.saveHandshake(eventToAdd);
 
-          // my payload
-          const address = WalletStorageService.getPrivateKeyGenerator(
-            walletStore.unlockedWallet,
-            walletStore.unlockedWallet.password
-          )
-            .receiveKey(0)
-            .toAddress(useWalletStore.getState().selectedNetwork)
-            .toString();
-
-          const encryptedMessageForMe = encrypt_message(
-            address,
-            JSON.stringify({
-              ...handshakeResponsePayload,
-              version: 1,
-              recipientAddress: recipientAddress,
-            } satisfies SavedHandshakePayload)
-          );
-
-          const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessageForMe.to_hex()}`;
-
-          console.log("Saving handshake...");
-
-          // wait for mature UTXOs ready
-          const accountService = useWalletStore.getState().accountService;
-
-          if (!accountService) {
-            throw new Error(
-              "Messaging Store - Unexpected Error: Account Service is not ready"
-            );
-          }
-
-          await accountService.waitForMatureUTXO();
-
-          const myTxId = await walletStore.sendTransaction({
-            payload: myPayload,
-            toAddress: new Address(address),
-            password: walletStore.unlockedWallet.password,
-            customAmount: BigInt(0),
+          // create self-stash for handshake response
+          const selfStashTxId = await g().createSelfStash({
+            type: "response",
+            partnerAddress: recipientAddress,
+            ourAlias: conversation.myAlias,
+            theirAlias: conversation.theirAlias!,
+            recipientAddress: recipientAddress,
+            isResponse: true,
           });
 
-          await repositories.savedHandshakeRepository.saveSavedHandshake({
-            id: `${walletStore.unlockedWallet.id}_${myTxId}`,
-            createdAt: new Date(),
-          });
+          console.log("Handshake response self-stash created:", selfStashTxId);
 
           const updatedOneOnOneConversations = g().oneOnOneConversations.map(
             (oooc): OneOnOneConversation => {
@@ -1748,6 +1690,93 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       };
 
       await g().storeKasiaTransactions([kasiaTransaction]);
+    },
+
+    // create a self stash transaction to backup handshake data on-chain
+    async createSelfStash(handshakeData: {
+      type: "initiation" | "response";
+      partnerAddress: string;
+      ourAlias: string;
+      theirAlias?: string; // only needed for responses
+      recipientAddress?: string; // optional, defaults to our own address
+      isResponse?: boolean; // marks if this is a response
+    }): Promise<string> {
+      const walletStore = useWalletStore.getState();
+      const repositories = useDBStore.getState().repositories;
+
+      if (!walletStore.unlockedWallet) {
+        throw new Error("Wallet not unlocked");
+      }
+
+      if (!walletStore.accountService) {
+        throw new Error("Account service not available");
+      }
+
+      // check if user has sufficient funds (0.2 KAS minimum)
+      const minAmount = BigInt(20000000); // 0.2 KAS in sompi
+      const currentBalance = walletStore.balance;
+      if (!currentBalance || currentBalance.mature < minAmount) {
+        throw new Error(
+          "insufficient funds. you need at least 0.2 KAS for self stash."
+        );
+      }
+
+      // get our own address for encryption and transaction
+      const address = WalletStorageService.getPrivateKeyGenerator(
+        walletStore.unlockedWallet,
+        walletStore.unlockedWallet.password
+      )
+        .receiveKey(0)
+        .toAddress(walletStore.selectedNetwork)
+        .toString();
+
+      // create the payload for self stash (extend the standard handshake payload)
+      const basePayload: HandshakePayload = {
+        type: "handshake",
+        alias: handshakeData.ourAlias,
+        timestamp: Date.now(),
+        version: 1,
+        ...(handshakeData.theirAlias && {
+          theirAlias: handshakeData.theirAlias,
+        }),
+        ...(handshakeData.isResponse && { isResponse: true }),
+      };
+
+      // Create extended payload for self-stash storage
+      const payload = {
+        ...basePayload,
+        partnerAddress: handshakeData.partnerAddress,
+        recipientAddress: handshakeData.recipientAddress || address,
+      };
+
+      const encryptedMessage = encrypt_message(
+        address,
+        JSON.stringify(payload)
+      );
+
+      const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessage.to_hex()}`;
+
+      console.log("creating self stash...");
+
+      // wait for mature UTXOs
+      await walletStore.accountService.waitForMatureUTXO();
+
+      // send the self stash transaction
+      const txId = await walletStore.sendTransaction({
+        payload: myPayload,
+        toAddress: new Address(address),
+        password: walletStore.unlockedWallet.password,
+        customAmount: BigInt(0),
+      });
+
+      // save the self stash record
+      await repositories?.savedHandshakeRepository?.saveSavedHandshake({
+        id: `${walletStore.unlockedWallet.id}_${txId}`,
+        createdAt: new Date(),
+      });
+
+      console.log("self stash created successfully:", txId);
+      return txId;
     },
   };
 });

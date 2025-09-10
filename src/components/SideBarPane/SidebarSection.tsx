@@ -56,7 +56,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
     const timer = setTimeout(() => {
       longPressed = true;
       openModal("offline-handshake");
-    }, 2000);
+    }, 1200);
 
     const handleRelease = (releaseEvent: MouseEvent | TouchEvent) => {
       releaseEvent.preventDefault();
