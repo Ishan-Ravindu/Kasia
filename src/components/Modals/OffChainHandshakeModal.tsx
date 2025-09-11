@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "../Common/modal";
-import { CopyableValueWithQR } from "../Modals/CopyableValueWithQR";
+import { CopyableValueWithQR } from "./CopyableValueWithQR";
 import { Textarea } from "@headlessui/react";
 import { Clipboard, QrCode, CheckCircle } from "lucide-react";
 import { useFeatureFlagsStore } from "../../store/featureflag.store";
@@ -8,18 +8,19 @@ import { useMessagingStore } from "../../store/messaging.store";
 import { useUiStore } from "../../store/ui.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { toast } from "../../utils/toast-helper";
+import { pasteFromClipboard } from "../../utils/clipboard";
 import { Button } from "../Common/Button";
 import clsx from "clsx";
 import { Address } from "kaspa-wasm";
 import { ALIAS_LENGTH } from "../../config/constants";
 
-interface OfflineHandshakeModalProps {
+interface OffChainHandshakeModalProps {
   isOpen: boolean;
   onClose: () => void;
   kaspaAddress: string;
 }
 
-export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
+export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
   isOpen,
   onClose,
   kaspaAddress,
@@ -41,8 +42,11 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
   const [aliasError, setAliasError] = useState<string | null>(null);
 
   const cameraEnabled = useFeatureFlagsStore((s) => s.flags.enabledcamera);
-  const { createOfflineHandshake, createSelfStash, setOpenedRecipient } =
-    useMessagingStore();
+  const {
+    createOffChainHandshake: createOffChainHandshake,
+    createSelfStash,
+    setOpenedRecipient,
+  } = useMessagingStore();
   const { openModal, setQrScannerCallback, modals } = useUiStore();
   const balanceMature = useWalletStore((s) => s.balance?.mature);
 
@@ -51,8 +55,8 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     return balanceMature ? balanceMature >= BigInt(20000000) : false;
   }, [balanceMature]);
 
-  // Generate a random alias for the partner (what we call them)
-  // Uses the same method as conversation-manager-service
+  // generate a random alias for the partner (what we call them)
+  // uses the same method as conversation-manager-service
   const generateAliasForPartner = (): string => {
     const bytes = new Uint8Array(6); // 6 bytes = 12 hex characters
     crypto.getRandomValues(bytes);
@@ -68,17 +72,17 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
   ): string | null => {
     if (!address) return null;
 
-    // Check if the partner address is the same as the user's own address
+    // check if the partner address is the same as the user's own address
     if (address.toLowerCase() === ownAddress.toLowerCase()) {
       return "Participant address cannot be self";
     }
 
     try {
-      // Try to create an Address object - we use this for validation
+      // try to create an Address object - we use this for validation
       new Address(address);
-      return null; // Valid address
+      return null;
     } catch {
-      // Check if it starts with proper Kaspa prefixes
+      // check if it starts with proper Kaspa prefixes
       if (
         !address.startsWith("kaspa:") &&
         !address.startsWith("kaspatest:") &&
@@ -87,7 +91,6 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
         return "Invalid Kaspa address format. Must start with 'kaspa:', 'kaspatest:', or 'kaspadev:'";
       }
 
-      // Address has correct prefix but invalid format
       return "Invalid Kaspa address format";
     }
   };
@@ -97,7 +100,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     if (!alias) return null;
 
     if (alias.length !== ALIAS_LENGTH * 2) {
-      return `Alias must be exactly ${ALIAS_LENGTH * 2} characters long (${ALIAS_LENGTH} bytes in hex)`;
+      return `Alias must be exactly ${ALIAS_LENGTH * 2} characters long.`;
     }
 
     // Check if it's valid hex
@@ -108,12 +111,12 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     return null;
   };
 
-  // Update partner address and generate our alias for them
+  // update partner address and generate our alias for them
   const updatePartnerAddress = (address: string) => {
     const v = address.trim().toLowerCase();
     setPartnerAddress(v);
 
-    // Validate the address
+    // validate the address
     const validationError = validatePartnerAddress(v, kaspaAddress);
     setPartnerAddressError(validationError);
 
@@ -121,78 +124,44 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
       const generatedAlias = generateAliasForPartner();
       setOurAliasForPartner(generatedAlias);
     } else {
-      // Clear alias if address is cleared or invalid
+      // clear alias if address is cleared or invalid
       setOurAliasForPartner("");
     }
   };
 
-  // Handle paste from clipboard
+  // handle paste from clipboard
   const handlePaste = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        const text = await navigator.clipboard.readText();
-        updatePartnerAddress(text);
-        toast.info("Pasted from clipboard");
-      } else {
-        const textarea = document.createElement("textarea");
-        document.body.appendChild(textarea);
-        textarea.focus();
-        document.execCommand("paste");
-        const text = textarea.value;
-        document.body.removeChild(textarea);
-        updatePartnerAddress(text);
-        toast.info("Pasted from clipboard");
-      }
-    } catch (error) {
-      toast.error("Failed to paste from clipboard");
-      console.error("Paste failed:", error);
-    }
+    const text = await pasteFromClipboard();
+    updatePartnerAddress(text);
   };
 
-  // Handle paste for alias field
+  // handle paste for alias field
   const handleAliasPaste = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        const text = await navigator.clipboard.readText();
-        updateTheirAlias(text);
-        toast.info("Alias pasted from clipboard");
-      } else {
-        const textarea = document.createElement("textarea");
-        document.body.appendChild(textarea);
-        textarea.focus();
-        document.execCommand("paste");
-        const text = textarea.value;
-        document.body.removeChild(textarea);
-        updateTheirAlias(text);
-        toast.info("Alias pasted from clipboard");
-      }
-    } catch (error) {
-      toast.error("Failed to paste alias from clipboard");
-      console.error("Alias paste failed:", error);
-    }
+    const text = await pasteFromClipboard("Alias pasted from clipboard");
+    updateTheirAlias(text);
   };
 
-  // Handle QR scan - uses the same pattern as NewChatForm
+  // handle QR scan - uses the same pattern as NewChatForm
   const handleQrScan = () => {
-    // Set the callback to handle scanned data (same as NewChatForm)
+    // set the callback to handle scanned data (same as NewChatForm)
     setQrScannerCallback((data: string) => {
       updatePartnerAddress(data);
     });
-    // Open the QR scanner modal (same as NewChatForm)
+    // open the QR scanner modal (same as NewChatForm)
     openModal("qr-scanner");
   };
 
-  // Update partner's alias and validate it
+  // update partner's alias and validate it
   const updateTheirAlias = (alias: string) => {
     const trimmedAlias = alias.trim().toLowerCase();
     setTheirAliasForUs(trimmedAlias);
 
-    // Validate the alias
+    // validate the alias
     const validationError = validateAlias(trimmedAlias);
     setAliasError(validationError);
   };
 
-  // Handle QR scan for partner's alias
+  // handle QR scan for partner's alias
   const handleAliasQrScan = () => {
     setQrScannerCallback((data: string) => {
       updateTheirAlias(data);
@@ -201,14 +170,14 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     openModal("qr-scanner");
   };
 
-  // Handle QR toggle from CopyableValueWithQR components
+  // handle QR toggle from CopyableValueWithQR components
   const handleQrToggle = (open: boolean, section?: string) => {
     setIsQrOpen(open);
     setActiveQrSection(open ? section || null : null);
     setHideTitles(open);
   };
 
-  // Reset QR state when scanner modal closes
+  // reset QR state when scanner modal closes
   useEffect(() => {
     const isQrScannerOpen = modals["qr-scanner"];
     if (!isQrScannerOpen) {
@@ -218,7 +187,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     }
   }, [modals]);
 
-  // Complete the offline handshake
+  // complete the off-chain handshake
   const handleCompleteHandshake = async () => {
     if (!partnerAddress || !ourAliasForPartner || !theirAliasForUs) {
       toast.error("Please fill in all required information");
@@ -236,19 +205,19 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     }
     setIsCreating(true);
     try {
-      await createOfflineHandshake(
+      await createOffChainHandshake(
         partnerAddress,
         ourAliasForPartner,
         theirAliasForUs
       );
       setIsCompleted(true);
-      toast.success("Offline handshake completed successfully!");
+      toast.success("Off-chain handshake completed successfully!");
     } catch (error) {
-      console.error("Failed to create offline handshake:", error);
+      console.error("Failed to create off-chain handshake:", error);
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create offline handshake"
+          : "Failed to create off-chain handshake"
       );
     } finally {
       setIsCreating(false);
@@ -259,7 +228,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
   const handleCreateSelfStash = async () => {
     setIsCreatingSelfStash(true);
     try {
-      // Create single self-stash for offline handshake (contains both aliases)
+      // create single self-stash for off-chain handshake (contains both aliases)
       await createSelfStash({
         type: "initiation",
         partnerAddress,
@@ -270,12 +239,12 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
 
       setSelfStashCompleted(true);
 
-      // Select the newly created conversation
+      // select the newly created conversation
       setOpenedRecipient(partnerAddress);
 
       toast.success("Handshake Saved");
 
-      // Close the modal after a brief delay to let user see the success message
+      // close the modal after a brief delay to let user see the success message
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -284,7 +253,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to save offline handshake"
+          : "Failed to save off-chain handshake"
       );
     } finally {
       setIsCreatingSelfStash(false);
@@ -330,12 +299,12 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
     <Modal onClose={onClose}>
       <div className="w-full">
         <h2 className="mb-1 text-xl font-semibold text-[var(--text-primary)]">
-          Offline Handshake
+          Off-Chain Handshake
         </h2>
         {!isQrOpen && (
           <p className="mb-2 text-xs whitespace-pre-line text-[var(--text-secondary)] sm:text-sm">
-            Connect with someone without internet by exchanging addresses and
-            aliases.{"\n"}No tx is sent between parties.
+            Connect with someone without on-chain interaction by exchanging
+            addresses and aliases.{"\n"}No tx is sent between parties.
           </p>
         )}
 
@@ -537,7 +506,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
 
         {/* Action sections - always visible */}
         <div className="mt-2 space-y-2">
-          {/* Complete Handshake Button */}
+          {/* complete handshake button */}
           {!isCompleted && canComplete && (
             <div className={blockVisible(isQrOpen)}>
               <Button
@@ -553,7 +522,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
                 ) : (
                   <div className="flex items-center justify-center gap-2">
                     <CheckCircle className="h-5 w-5" />
-                    Complete Offline Handshake
+                    Complete Off-Chain Handshake
                   </div>
                 )}
               </Button>
@@ -586,11 +555,11 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
                         <div className="mb-1 flex items-center gap-2">
                           <CheckCircle className="h-5 w-5 flex-shrink-0 text-[var(--kas-secondary)]" />
                           <p className="text-sm font-semibold text-[var(--text-primary)]">
-                            Offline handshake completed successfully!
+                            Off-chain handshake completed successfully!
                           </p>
                         </div>
                         <p className="mb-3 text-xs text-[var(--text-secondary)]">
-                          Send transaction to backup your offline handshake
+                          Send transaction to backup your private handshake
                           on-chain. This saves both the initiation and response,
                           allowing kasia to auto-sync the full conversation if
                           you switch device. Minimal tx fees apply.
@@ -621,7 +590,7 @@ export const OfflineHandshakeModal: React.FC<OfflineHandshakeModalProps> = ({
                           <div className="flex items-center justify-center gap-2 rounded-lg border border-[var(--kas-primary)]/20 bg-[var(--kas-primary)]/10 p-2">
                             <CheckCircle className="h-4 w-4 text-[var(--kas-secondary)]" />
                             <span className="text-sm font-semibold text-[var(--kas-secondary)]">
-                              Offline handshake saved successfully!
+                              Off-chain handshake saved successfully!
                             </span>
                           </div>
                         )}

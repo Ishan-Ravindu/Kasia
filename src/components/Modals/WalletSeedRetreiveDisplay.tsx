@@ -87,10 +87,13 @@ export const WalletSeedRetreiveDisplay: FC = () => {
   return (
     <div className="mt-2">
       <h4 className="text-center text-lg font-semibold">Security</h4>
-      <p className="text-text-warning my-2 text-center text-sm font-semibold">
-        Warning: Never share your seed phrase with anyone. Anyone with access to
-        your seed phrase can access your funds.
-      </p>
+      <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
+        <div className="text-text-warning mb-2 text-sm font-bold">Warning</div>
+        <div className="text-text-warning/80 text-xs font-semibold">
+          Never share your seed phrase with anyone. Anyone with access to your
+          seed phrase can access your funds.
+        </div>
+      </div>
       {!showSeedPhrase ? (
         <div>
           <p className="mb-2 p-2 text-center font-semibold">

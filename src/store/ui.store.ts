@@ -21,7 +21,7 @@ export type ModalType =
   | "new-broadcast"
   | "broadcast-participant-info"
   | "qr-scanner"
-  | "offline-handshake";
+  | "offchain-handshake";
 type Theme = "light" | "dark" | "system" | "custom";
 
 type UiState = {

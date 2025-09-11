@@ -7,7 +7,7 @@ interface HoldablePlusButtonProps {
   broadcastEnabled: boolean;
   isBroadcastMode: boolean;
   onNewChat: () => void;
-  onOfflineHandshake: () => void;
+  onOffChainHandshake: () => void;
   onNewBroadcast: () => void;
   collapsed?: boolean;
 }
@@ -16,7 +16,7 @@ export const HoldablePlusButton: FC<HoldablePlusButtonProps> = ({
   broadcastEnabled,
   isBroadcastMode,
   onNewChat,
-  onOfflineHandshake,
+  onOffChainHandshake,
   onNewBroadcast,
   collapsed = false,
 }) => {
@@ -25,7 +25,7 @@ export const HoldablePlusButton: FC<HoldablePlusButtonProps> = ({
   };
 
   const handleLongPress = () => {
-    onOfflineHandshake();
+    onOffChainHandshake();
   };
 
   // Use onClick for broadcast mode to bypass hold behavior

@@ -3,6 +3,7 @@ import { kaspaToSompi, sompiToKaspaString } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
+import { pasteFromClipboard } from "../../utils/clipboard";
 import { Clipboard, QrCode } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { Address, FeeSource } from "kaspa-wasm";
@@ -87,12 +88,8 @@ export const WalletWithdrawal: FC = () => {
   };
 
   const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setWithdrawAddress(text.toLowerCase());
-    } catch {
-      toast.error("Failed to paste from clipboard");
-    }
+    const text = await pasteFromClipboard();
+    setWithdrawAddress(text.toLowerCase());
   };
 
   const handleQrScan = async () => {

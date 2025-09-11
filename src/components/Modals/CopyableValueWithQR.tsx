@@ -4,6 +4,7 @@ import { toDataURL } from "qrcode";
 import { Copy, QrCode } from "lucide-react";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
+import { copyToClipboard } from "../../utils/clipboard";
 
 type CopyableValueWithQRProps = {
   value?: string;
@@ -39,34 +40,9 @@ export const CopyableValueWithQR: FC<CopyableValueWithQRProps> = ({
       console.log("No value to copy");
       return;
     }
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        console.log("Using modern clipboard API");
-        await navigator.clipboard.writeText(value);
-        console.log("Value copied using modern clipboard API");
-        toast.info("Copied to clipboard");
-        return;
-      } catch (error) {
-        console.log("Modern clipboard API failed:", error);
-      }
-    }
-    console.log("Using fallback copy method");
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = value;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "absolute";
-      textarea.style.left = "-9999px";
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      toast.info("Copied to clipboard");
-      console.log("Fallback copy successful");
-    } catch {
-      toast.error("Copy failed");
-      console.log("Fallback copy failed");
-    }
+    console.log("Copying value to clipboard");
+    await copyToClipboard(value, "Copied to clipboard");
+    console.log("Value copied successfully");
   }, [value]);
 
   const toggleQRCode = useCallback(() => {

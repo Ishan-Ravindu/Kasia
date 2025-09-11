@@ -102,7 +102,7 @@ interface MessagingState {
   respondToHandshake: (handshakeId: string) => Promise<string>;
 
   // Create offline handshake (both parties exchange info manually)
-  createOfflineHandshake: (
+  createOffChainHandshake: (
     partnerAddress: string,
     ourAliasForPartner: string,
     theirAliasForUs: string
@@ -1385,7 +1385,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       return manager ? manager.getPendingConversationsWithContact() : [];
     },
     // add an offline handshake
-    createOfflineHandshake: async (
+    createOffChainHandshake: async (
       partnerAddress: string,
       ourAliasForPartner: string,
       theirAliasForUs: string
@@ -1397,7 +1397,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       }
 
       // Call the service method
-      const result = await manager.createOfflineHandshake(
+      const result = await manager.createOffChainHandshake(
         partnerAddress,
         ourAliasForPartner,
         theirAliasForUs
@@ -1697,9 +1697,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       type: "initiation" | "response";
       partnerAddress: string;
       ourAlias: string;
-      theirAlias?: string; // only needed for responses
-      recipientAddress?: string; // optional, defaults to our own address
-      isResponse?: boolean; // marks if this is a response
+      theirAlias?: string;
+      recipientAddress?: string;
+      isResponse?: boolean;
     }): Promise<string> {
       const walletStore = useWalletStore.getState();
       const repositories = useDBStore.getState().repositories;
@@ -1713,11 +1713,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       }
 
       // check if user has sufficient funds (0.2 KAS minimum)
-      const minAmount = BigInt(20000000); // 0.2 KAS in sompi
+      const minAmount = BigInt(20000000);
       const currentBalance = walletStore.balance;
       if (!currentBalance || currentBalance.mature < minAmount) {
         throw new Error(
-          "insufficient funds. you need at least 0.2 KAS for self stash."
+          "Insufficient funds. you need at least 0.2 KAS for self stash."
         );
       }
 
@@ -1742,7 +1742,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         ...(handshakeData.isResponse && { isResponse: true }),
       };
 
-      // Create extended payload for self-stash storage
+      // create extended payload for self-stash storage
       const payload = {
         ...basePayload,
         partnerAddress: handshakeData.partnerAddress,

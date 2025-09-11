@@ -13,7 +13,7 @@ import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
 import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
 import { QrScannerModal } from "../Modals/QrScannerModal";
-import { OfflineHandshakeModal } from "../Modals/OfflineHandshakeModal";
+import { OffChainHandshakeModal } from "../Modals/OffChainHandshakeModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
@@ -140,10 +140,10 @@ export const ModalHost = () => {
       {modals["qr-scanner"] && <QrScannerModal />}
 
       {/* Offline Handshake Modal */}
-      {modals["offline-handshake"] && (
-        <OfflineHandshakeModal
-          isOpen={modals["offline-handshake"] || false}
-          onClose={() => closeModal("offline-handshake")}
+      {modals["offchain-handshake"] && (
+        <OffChainHandshakeModal
+          isOpen={modals["offchain-handshake"] || false}
+          onClose={() => closeModal("offchain-handshake")}
           kaspaAddress={walletStore.address?.toString() || ""}
         />
       )}

@@ -773,7 +773,7 @@ export class ConversationManagerService {
    * @param theirAliasForUs Their alias for us
    * @returns Object containing conversationId and contactId
    */
-  public async createOfflineHandshake(
+  public async createOffChainHandshake(
     partnerAddress: string,
     ourAliasForPartner: string,
     theirAliasForUs: string
