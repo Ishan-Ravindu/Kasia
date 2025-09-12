@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "../Common/modal";
 import { CopyableValueWithQR } from "./CopyableValueWithQR";
 import { Textarea } from "@headlessui/react";
@@ -51,9 +51,9 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
   const balanceMature = useWalletStore((s) => s.balance?.mature);
 
   // check if user has sufficient funds for self stash (0.2 KAS minimum)
-  const hasSufficientFundsForSelfStash = useMemo(() => {
-    return balanceMature ? balanceMature >= BigInt(20000000) : false;
-  }, [balanceMature]);
+  const hasSufficientFundsForSelfStash = balanceMature
+    ? balanceMature >= BigInt(20000000)
+    : false;
 
   // generate a random alias for the partner (what we call them)
   // uses the same method as conversation-manager-service
@@ -171,9 +171,15 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
   };
 
   // handle QR toggle from CopyableValueWithQR components
-  const handleQrToggle = (open: boolean, section?: string) => {
+  const handleAddressQrToggle = (open: boolean) => {
     setIsQrOpen(open);
-    setActiveQrSection(open ? section || null : null);
+    setActiveQrSection(open ? "address" : null);
+    setHideTitles(open);
+  };
+
+  const handleAliasQrToggle = (open: boolean) => {
+    setIsQrOpen(open);
+    setActiveQrSection(open ? "alias" : null);
     setHideTitles(open);
   };
 
@@ -336,8 +342,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
                 value={kaspaAddress}
                 label=""
                 qrTitle="QR Code for Address"
-                sectionId="address"
-                onQrToggle={handleQrToggle}
+                onQrToggle={handleAddressQrToggle}
               />
             </div>
           </div>
@@ -421,8 +426,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
                         value={ourAliasForPartner}
                         label=""
                         qrTitle="QR Code for Alias"
-                        sectionId="alias"
-                        onQrToggle={handleQrToggle}
+                        onQrToggle={handleAliasQrToggle}
                       />
                     </div>
                     <div

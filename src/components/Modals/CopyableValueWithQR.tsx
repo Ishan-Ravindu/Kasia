@@ -1,5 +1,5 @@
 // src/components/CopyableValueWithQR.tsx
-import { FC, useState, useEffect, useCallback } from "react";
+import { FC, useState, useEffect } from "react";
 import { toDataURL } from "qrcode";
 import { Copy, QrCode } from "lucide-react";
 import { Button } from "../Common/Button";
@@ -10,15 +10,13 @@ type CopyableValueWithQRProps = {
   value?: string;
   label?: string;
   qrTitle?: string;
-  sectionId?: string; // NOTE lets not pass this in, lets just do it in the parent.
-  onQrToggle?: (isOpen: boolean, section?: string) => void;
+  onQrToggle?: (isOpen: boolean) => void;
 };
 
 export const CopyableValueWithQR: FC<CopyableValueWithQRProps> = ({
   value = "",
   label = "",
   qrTitle = "",
-  sectionId,
   onQrToggle,
 }) => {
   const [showQRCode, setShowQRCode] = useState(false);
@@ -34,7 +32,7 @@ export const CopyableValueWithQR: FC<CopyableValueWithQRProps> = ({
     });
   }, [value]);
 
-  const handleCopyValue = useCallback(async () => {
+  const handleCopyValue = async () => {
     if (!value) {
       toast.error("No value available");
       console.log("No value to copy");
@@ -43,16 +41,16 @@ export const CopyableValueWithQR: FC<CopyableValueWithQRProps> = ({
     console.log("Copying value to clipboard");
     await copyToClipboard(value, "Copied to clipboard");
     console.log("Value copied successfully");
-  }, [value]);
+  };
 
-  const toggleQRCode = useCallback(() => {
+  const toggleQRCode = () => {
     setShowQRCode((prev) => {
       const newState = !prev;
-      onQrToggle?.(newState, sectionId);
+      onQrToggle?.(newState);
       console.log("QR code visibility toggled");
       return newState;
     });
-  }, [onQrToggle, sectionId]);
+  };
 
   if (!value) return null;
   return (
