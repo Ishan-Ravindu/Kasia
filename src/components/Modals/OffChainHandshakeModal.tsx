@@ -46,6 +46,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
     createOffChainHandshake: createOffChainHandshake,
     createSelfStash,
     setOpenedRecipient,
+    generateUniqueAlias,
   } = useMessagingStore();
   const { openModal, setQrScannerCallback, modals } = useUiStore();
   const balanceMature = useWalletStore((s) => s.balance?.mature);
@@ -56,16 +57,6 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
   const hasSufficientFundsForSelfStash = balanceMature
     ? balanceMature >= BigInt(maxDustAmount)
     : false;
-
-  // generate a random alias for the partner (what we call them)
-  // uses the same method as conversation-manager-service
-  const generateAliasForPartner = (): string => {
-    const bytes = new Uint8Array(6); // 6 bytes = 12 hex characters
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  };
 
   // validate partner address (so we know the alias is right)
   const validatePartnerAddress = (
@@ -123,7 +114,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
     setPartnerAddressError(validationError);
 
     if (v && !validationError) {
-      const generatedAlias = generateAliasForPartner();
+      const generatedAlias = generateUniqueAlias();
       setOurAliasForPartner(generatedAlias);
     } else {
       // clear alias if address is cleared or invalid

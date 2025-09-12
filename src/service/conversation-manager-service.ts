@@ -556,7 +556,7 @@ export class ConversationManagerService {
     };
   }
 
-  private generateUniqueAlias(): string {
+  public generateUniqueAlias(): string {
     let attempts = 0;
     const maxAttempts = 100; // Increased for better collision resistance
 

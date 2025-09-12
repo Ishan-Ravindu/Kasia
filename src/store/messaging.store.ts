@@ -108,6 +108,9 @@ interface MessagingState {
     theirAliasForUs: string
   ) => Promise<{ conversationId: string; contactId: string }>;
 
+  // Generate unique alias for conversations
+  generateUniqueAlias: () => string;
+
   // Nickname management
   setContactNickname: (address: string, nickname?: string) => Promise<void>;
   removeContactNickname: (address: string) => Promise<void>;
@@ -1408,6 +1411,16 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       await g().hydrateOneonOneConversations();
 
       return result;
+    },
+
+    generateUniqueAlias: () => {
+      const manager = g().conversationManager;
+
+      if (!manager) {
+        throw new Error("Conversation manager not initialized");
+      }
+
+      return manager.generateUniqueAlias();
     },
 
     respondToHandshake: async (handshakeId: string) => {
