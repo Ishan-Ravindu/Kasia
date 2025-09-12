@@ -11,7 +11,7 @@ import { toast } from "../../utils/toast-helper";
 import { pasteFromClipboard } from "../../utils/clipboard";
 import { Button } from "../Common/Button";
 import clsx from "clsx";
-import { Address } from "kaspa-wasm";
+import { Address, kaspaToSompi } from "kaspa-wasm";
 import { ALIAS_LENGTH } from "../../config/constants";
 
 interface OffChainHandshakeModalProps {
@@ -50,9 +50,11 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
   const { openModal, setQrScannerCallback, modals } = useUiStore();
   const balanceMature = useWalletStore((s) => s.balance?.mature);
 
+  const maxDustAmount = kaspaToSompi("0.19")!;
+
   // check if user has sufficient funds for self stash (0.2 KAS minimum)
   const hasSufficientFundsForSelfStash = balanceMature
-    ? balanceMature >= BigInt(20000000)
+    ? balanceMature >= BigInt(maxDustAmount)
     : false;
 
   // generate a random alias for the partner (what we call them)
@@ -602,7 +604,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
                         {!hasSufficientFundsForSelfStash &&
                           !selfStashCompleted && (
                             <p className="mt-2 text-xs text-[var(--accent-red)]">
-                              Insufficient funds. You need at least 0.2 KAS to
+                              Insufficient funds. You need at least 0.19 KAS to
                               create a self stash.
                             </p>
                           )}
