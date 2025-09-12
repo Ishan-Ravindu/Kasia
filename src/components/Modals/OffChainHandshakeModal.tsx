@@ -242,7 +242,6 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
         partnerAddress,
         ourAlias: ourAliasForPartner,
         theirAlias: theirAliasForUs,
-        recipientAddress: partnerAddress,
       });
 
       setSelfStashCompleted(true);

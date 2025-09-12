@@ -121,7 +121,6 @@ interface MessagingState {
     partnerAddress: string;
     ourAlias: string;
     theirAlias?: string;
-    recipientAddress?: string;
     isResponse?: boolean;
   }) => Promise<string>;
 
@@ -1352,7 +1351,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           type: "initiation",
           partnerAddress: recipientAddress,
           ourAlias: conversation.myAlias,
-          recipientAddress: recipientAddress,
         });
 
         console.log("Handshake initiation self-stash created:", selfStashTxId);
@@ -1503,7 +1501,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             partnerAddress: recipientAddress,
             ourAlias: conversation.myAlias,
             theirAlias: conversation.theirAlias!,
-            recipientAddress: recipientAddress,
             isResponse: true,
           });
 
@@ -1698,7 +1695,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       partnerAddress: string;
       ourAlias: string;
       theirAlias?: string;
-      recipientAddress?: string;
       isResponse?: boolean;
     }): Promise<string> {
       const walletStore = useWalletStore.getState();
@@ -1746,7 +1742,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const payload = {
         ...basePayload,
         partnerAddress: handshakeData.partnerAddress,
-        recipientAddress: handshakeData.recipientAddress || address,
+        recipientAddress: handshakeData.partnerAddress,
       };
 
       const encryptedMessage = encrypt_message(
