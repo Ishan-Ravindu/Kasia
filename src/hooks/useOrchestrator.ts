@@ -7,6 +7,7 @@ import { useMessagingStore } from "../store/messaging.store";
 import { useDBStore } from "../store/db.store";
 import { UnlockedWallet } from "../types/wallet.type";
 import { useLiveStore } from "../store/live.store";
+import { useBroadcastStore } from "../store/broadcast.store";
 
 export type ConnectOpts = {
   networkType?: NetworkType;
@@ -33,6 +34,7 @@ export const useOrchestrator = () => {
   const messagingStore = useMessagingStore();
   const dbStore = useDBStore();
   const liveStore = useLiveStore();
+  const broadcastStore = useBroadcastStore();
 
   const toastStore = useToastStore();
 
@@ -96,6 +98,16 @@ export const useOrchestrator = () => {
       throw new StartSessionInvalidPasswordException();
     }
 
+    // check the previously opened wallet (in the same session)
+    // if different, then clear memory so we dont visually leak anything.
+    const lastOpenedWallet = sessionStorage.getItem("last_opened_tenant_id");
+    if (lastOpenedWallet && lastOpenedWallet !== opts.walletId) {
+      await cleanUpPreviousSession();
+    }
+
+    // store the opened tenant as latest
+    sessionStorage.setItem("last_opened_tenant_id", opts.walletId);
+
     dbStore.initRepositories(unlockedWallet);
 
     const receivedAddressString = unlockedWallet.receivePublicKey
@@ -141,6 +153,21 @@ export const useOrchestrator = () => {
       await networkStore.connect();
       console.log("onResume - connect successful");
     }
+  };
+
+  const cleanUpPreviousSession = async () => {
+    console.log("Cleaning up previous session data");
+
+    // clear messaging store state to prevent
+    useMessagingStore.setState({
+      oneOnOneConversations: [],
+      openedRecipient: null,
+      isLoaded: false,
+      conversationManager: null,
+    });
+
+    // clear broadcast store to prevent channel/message bleed
+    broadcastStore.reset();
   };
 
   return { connect, startSession, onPause, onResume };
