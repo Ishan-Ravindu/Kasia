@@ -1,4 +1,6 @@
+import { core } from "@tauri-apps/api";
 import { toast } from "./toast-helper";
+import { readText } from "@tauri-apps/plugin-clipboard-manager";
 
 export async function copyToClipboard(text: string, alertText = "Text copied") {
   try {
@@ -25,6 +27,11 @@ export async function copyToClipboard(text: string, alertText = "Text copied") {
 
 export async function pasteFromClipboard(alertText = "Pasted from clipboard") {
   try {
+    if (core.isTauri()) {
+      toast.info(alertText);
+      return await readText();
+    }
+
     if (navigator.clipboard && window.isSecureContext) {
       const text = await navigator.clipboard.readText();
       toast.info(alertText);
