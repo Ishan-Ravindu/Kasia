@@ -10,11 +10,10 @@ import {
   resetCustomColors,
 } from "./config/custom-theme-applier";
 import { useOrchestrator } from "./hooks/useOrchestrator";
-import {
-  onPause as nOnPause,
-  onResume as nOnResume,
-} from "tauri-plugin-app-events-api";
 import { core } from "@tauri-apps/api";
+import { listen } from "@tauri-apps/api/event";
+
+const knownNonce: Set<number> = new Set();
 
 const App: React.FC = () => {
   const networkStore = useNetworkStore();
@@ -29,9 +28,37 @@ const App: React.FC = () => {
 
       if (core.isTauri()) {
         // on pause and on resume registering
-        nOnResume(onResume);
+        // addPluginListener("app-events", "pause", onPause);
+        // addPluginListener("app-events", "resume", onResume);
 
-        nOnPause(onPause);
+        listen<number>("paused", (event) => {
+          const nonce = event.payload;
+
+          console.log(`nonce ${nonce}, known? ${knownNonce.has(nonce)}`);
+
+          if (knownNonce.has(nonce)) {
+            return;
+          }
+
+          knownNonce.add(nonce);
+          onPause();
+        });
+
+        listen<number>("resumed", (event) => {
+          const nonce = event.payload;
+
+          console.log(`nonce ${nonce}, known? ${knownNonce.has(nonce)}`);
+
+          if (knownNonce.has(nonce)) {
+            return;
+          }
+
+          knownNonce.add(nonce);
+          onResume();
+        });
+
+        // nOnResume(onResume);
+        // nOnPause(onPause);
       }
     };
     asyncDefer();
@@ -51,8 +78,8 @@ const App: React.FC = () => {
     );
     if (!meta) return;
     meta.content = isMobile
-      ? "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-      : "width=device-width, initial-scale=1.0";
+      ? "width=device-width, initial-scale=1.0, viewport-fit=cover"
+      : "width=device-width, initial-scale=1.0, viewport-fit=cover";
   }, [isMobile]);
 
   // Initialize theme and listen for system changes

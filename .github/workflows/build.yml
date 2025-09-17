@@ -100,7 +100,7 @@ jobs:
       - name: Install dependencies & Build Kasia
         env:
           MODE: ${{ env.SUFFIX }}
-        run: npm run submodule::init && npm install && npm run build:$MODE
+        run: npm run submodule:init && npm install && npm run build:$MODE
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

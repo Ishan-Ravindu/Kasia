@@ -17,6 +17,7 @@ export type PendingTransactionResolutionContext = {
     value: ResolvedKasiaTransaction | PromiseLike<ResolvedKasiaTransaction>
   ) => void;
   reject: (reason?: Error) => void;
+  isBeingResolved: boolean;
 };
 
 export interface LiveServiceEvents {
@@ -47,6 +48,9 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
   // it's safe in our case because we only use it as a garbage collection marker
   private acceptingBlocksByFirstSeen: Record<number, Set<string>> = {};
 
+  private boundedProcessWaitingQueue = this.processWaitingQueue.bind(this);
+  private boundedOnVirtualChainChanged = this.onVirtualChainChanged.bind(this);
+
   constructor(private readonly rpcClient: RpcClient) {
     super();
 
@@ -54,11 +58,11 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
   }
 
   async init() {
-    this.addListener("vccMutated", this.processWaitingQueue.bind(this));
+    this.addListener("vccMutated", this.boundedProcessWaitingQueue);
 
     this.rpcClient.addEventListener(
       "virtual-chain-changed",
-      this.onVirtualChainChanged.bind(this)
+      this.boundedOnVirtualChainChanged
     );
     await this.rpcClient.subscribeVirtualChainChanged(true);
 
@@ -79,9 +83,9 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
   async stop() {
     this.rpcClient.removeEventListener(
       "virtual-chain-changed",
-      this.onVirtualChainChanged.bind(this)
+      this.boundedOnVirtualChainChanged
     );
-    this.removeListener("vccMutated", this.processWaitingQueue.bind(this));
+    this.removeListener("vccMutated", this.boundedProcessWaitingQueue);
 
     this.waitingQueue.clear();
     this.acceptingBlockByTransactionId = {};
@@ -95,6 +99,7 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
         this.waitingQueue.set(txId, {
           reject: rej,
           resolve: res,
+          isBeingResolved: false,
         });
       }
     );
@@ -120,50 +125,80 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
   private async processWaitingQueue() {
     if (this.waitingQueue.size > 0) {
       for (const [txId, waitingContext] of this.waitingQueue) {
+        if (waitingContext.isBeingResolved) {
+          // skip this iteration
+          continue;
+        }
+
         const acceptingBlock = this.acceptingBlockByTransactionId[txId];
         console.log(
           `resolving ${txId}, with accepting block ${acceptingBlock}`
         );
         if (acceptingBlock) {
-          const blockResponse = await this.rpcClient.getBlock({
-            hash: acceptingBlock,
-            includeTransactions: false,
+          // mark as being processed
+          this.waitingQueue.set(txId, {
+            ...waitingContext,
+            isBeingResolved: true,
           });
 
-          if (!blockResponse?.block?.header?.daaScore) {
-            console.log(`resolving ${txId}, ${acceptingBlock} not found`);
-            continue;
-          }
-
-          // if the vcc changed between last known acceptance, it has to be redone
-          // ignore error and continue processing the queue
-          const returnAddressResponse = await this.rpcClient
-            .getUtxoReturnAddress({
-              txid: txId,
-              acceptingBlockDaaScore: blockResponse.block.header.daaScore,
-            })
-            .catch((err) => {
-              console.log(
-                `resolving ${txId}, ${acceptingBlock} resolution failed with error`,
-                err
-              );
-              return null;
+          try {
+            const blockResponse = await this.rpcClient.getBlock({
+              hash: acceptingBlock,
+              includeTransactions: false,
             });
 
-          if (returnAddressResponse === null && devMode) {
-            console.log(`resolving ${txId}, Try Failed for ${txId}`, {
-              blockResponse,
-              acceptingBlock,
-            });
-            continue;
-          }
+            if (!blockResponse?.block?.header?.daaScore) {
+              console.log(`resolving ${txId}, ${acceptingBlock} not found`);
+              continue;
+            }
 
-          if (returnAddressResponse?.returnAddress) {
-            waitingContext.resolve({
-              acceptingBlock: acceptingBlock,
-              txId,
-              sender: returnAddressResponse.returnAddress,
-            });
+            // if the vcc changed between last known acceptance, it has to be redone
+            // ignore error and continue processing the queue
+            const returnAddressResponse = await this.rpcClient
+              .getUtxoReturnAddress({
+                txid: txId,
+                acceptingBlockDaaScore: blockResponse.block.header.daaScore,
+              })
+              .catch((err) => {
+                console.log(
+                  `resolving ${txId}, ${acceptingBlock} resolution failed with error`,
+                  err
+                );
+                return null;
+              });
+
+            if (returnAddressResponse === null && devMode) {
+              console.log(`resolving ${txId}, Try Failed for ${txId}`, {
+                blockResponse,
+                acceptingBlock,
+              });
+              continue;
+            }
+
+            // release if still existing
+            if (this.waitingQueue.has(txId)) {
+              this.waitingQueue.set(txId, {
+                ...waitingContext,
+                isBeingResolved: false,
+              });
+            }
+
+            if (returnAddressResponse?.returnAddress) {
+              waitingContext.resolve({
+                acceptingBlock: acceptingBlock,
+                txId,
+                sender: returnAddressResponse.returnAddress,
+              });
+            }
+          } catch (error) {
+            console.error("vcc waiting queue process error:", error);
+            // release if still existing
+            if (this.waitingQueue.has(txId)) {
+              this.waitingQueue.set(txId, {
+                ...waitingContext,
+                isBeingResolved: false,
+              });
+            }
           }
         }
       }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { NetworkType } from "../types/all";
 import { ConnectStrategy, Encoding, Resolver, RpcClient } from "kaspa-wasm";
+import { unknownErrorToErrorLike } from "../utils/errors";
 
 interface NetworkState {
   isConnected: boolean;
@@ -45,7 +46,16 @@ export const useNetworkStore = create<NetworkState>((set, g) => {
       await connect();
       console.log("Reconnected successfully.");
     } catch (error) {
-      console.error("Failed to reconnect:", error);
+      const errorAsError = unknownErrorToErrorLike(error);
+
+      if (errorAsError.message.includes("Already connected")) {
+        // ignore if already re-connected
+        return;
+      }
+      console.error("Failed to reconnect:", errorAsError);
+
+      // re-plan in 2 seconds
+      setTimeout(onConnectionLost, 2_000);
     }
   };
 

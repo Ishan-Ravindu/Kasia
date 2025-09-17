@@ -48,6 +48,23 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Adds a CSS var '--kb' with the keyboard height (best-effort)
+      (function () {
+        const setKb = () => {
+          const kb = Math.max(
+            0,
+            window.innerHeight -
+              (window.visualViewport?.height ?? window.innerHeight)
+          );
+          document.documentElement.style.setProperty("--kb", kb + "px");
+        };
+        window.visualViewport?.addEventListener("resize", setKb);
+        window.visualViewport?.addEventListener("scroll", setKb);
+        window.addEventListener("orientationchange", setKb);
+        setKb();
+      })();
+    </script>
     <script type="module" src="/src/init.ts"></script>
   </body>
 </html>
