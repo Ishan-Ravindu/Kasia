@@ -37,6 +37,7 @@ import {
 import { toHex, PROTOCOL } from "../../config/protocol";
 import { devMode } from "../../config/dev-mode";
 import { useDBStore } from "../../store/db.store";
+import { useSessionState } from "../../store/session.store";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -79,6 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const networkStore = useNetworkStore();
   const repositories = useDBStore((s) => s.repositories);
   const initRepositories = useDBStore((s) => s.initRepositories);
+  const setSession = useSessionState((s) => s.setSession);
   const { flags, flips, setFlag } = useFeatureFlagsStore();
 
   const tabs = [
@@ -202,6 +204,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }
 
       initRepositories(updatedWallet);
+
+      await setSession(selectedWalletId, newPassword);
 
       setPasswordChangeSuccess(true);
       setCurrentPassword("");

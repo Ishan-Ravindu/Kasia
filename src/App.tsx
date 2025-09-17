@@ -14,6 +14,7 @@ import {
   onPause as nOnPause,
   onResume as nOnResume,
 } from "tauri-plugin-app-events-api";
+import { core } from "@tauri-apps/api";
 
 const App: React.FC = () => {
   const networkStore = useNetworkStore();
@@ -26,7 +27,7 @@ const App: React.FC = () => {
     const asyncDefer = async () => {
       await connect();
 
-      if ("__TAURI_INTERNALS__" in window) {
+      if (core.isTauri()) {
         // on pause and on resume registering
         nOnResume(onResume);
 

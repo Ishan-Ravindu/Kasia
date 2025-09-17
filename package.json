@@ -17,6 +17,7 @@
     "tauri": "tauri",
     "tauri:android:debug": "tauri android build --debug",
     "wasm:build": "cd cipher && wasm-pack build --target web --release -d ../cipher-wasm && cd ..",
+    "submodule:init": "npm install --prefix vendors/tauri-plugin-biometry && npm run build --prefix vendors/tauri-plugin-biometry",
     "prepare": "node .husky/install.mjs && npm run generate:openapi",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "test": "vitest"
@@ -40,7 +41,8 @@
     "react-router-dom": "7.7.1",
     "tauri-plugin-app-events-api": "^0.2.0",
     "uuid": "11.1.0",
-    "zustand": "5.0.5"
+    "zustand": "5.0.5",
+    "@tauri-apps/plugin-biometry": "./vendors/tauri-plugin-biometry"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

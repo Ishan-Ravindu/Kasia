@@ -23,6 +23,7 @@ import {
   FeatureFlags,
 } from "../../store/featureflag.store";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { core } from "@tauri-apps/api";
 
 interface NewChatFormProps {
   onClose: () => void;
@@ -233,7 +234,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   const handlePaste = async () => {
     try {
       let text = "";
-      if ("__TAURI_INTERNALS__" in window) {
+      if (core.isTauri()) {
         text = await readText();
       } else {
         text = await navigator.clipboard.readText();
