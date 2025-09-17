@@ -24,6 +24,7 @@ import {
 } from "../../store/featureflag.store";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { pasteFromClipboard } from "../../utils/clipboard";
+import { core } from "@tauri-apps/api";
 
 interface NewChatFormProps {
   onClose: () => void;
@@ -245,15 +246,18 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   };
 
   const handlePaste = async () => {
-    let text = "";
-    if ("__TAURI_INTERNALS__" in window) {
-      // Use Tauri's clipboard API for desktop app
-      text = await readText();
-    } else {
-      // Use web clipboard utility for web version
-      text = await pasteFromClipboard();
+    try {
+      let text = "";
+      if (core.isTauri()) {
+        text = await readText();
+      } else {
+        text = await pasteFromClipboard();
+      }
+      setRecipientInputValue(text.toLowerCase());
+    } catch {
+      // Handle clipboard access error silently or show a toast
+      console.warn("Failed to paste from clipboard");
     }
-    setRecipientInputValue(text.toLowerCase());
   };
 
   // Update validation to use knsRecipientAddress

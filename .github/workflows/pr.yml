@@ -14,8 +14,9 @@ jobs:
   lint-type-check-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -25,7 +26,7 @@ jobs:
           cache-dependency-path: "package-lock.json"
 
       - name: Install dependencies
-        run: npm install
+        run: npm run submodule::init && npm install
 
       - name: Run ESLint
         run: npm run lint

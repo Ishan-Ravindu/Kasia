@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "log:default",
-    "clipboard-manager:allow-read-text"
+    "clipboard-manager:allow-read-text",
+    "biometry:default"
   ]
 }
