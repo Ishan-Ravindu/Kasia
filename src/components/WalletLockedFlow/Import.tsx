@@ -40,7 +40,7 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
     }
     const pw = passwordRef.current!.value;
     if (!disablePasswordRequirements && pw.length < PASSWORD_MIN_LENGTH) {
-      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      setError(`Password must have at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
     try {

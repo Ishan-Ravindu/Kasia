@@ -181,7 +181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
 
     if (newPassword.length < 4) {
-      setPasswordChangeError("Password must be at least 4 characters long");
+      setPasswordChangeError("Password must have at least 4 characters");
       return;
     }
 
