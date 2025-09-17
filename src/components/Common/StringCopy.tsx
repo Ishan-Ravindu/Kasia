@@ -1,7 +1,7 @@
 import { FC, useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { clsx } from "clsx";
-import { copyToClipboard } from "../../utils/copy-to-clipboard";
+import { copyToClipboard } from "../../utils/clipboard";
 
 type StringCopyProps = {
   text?: string | null;

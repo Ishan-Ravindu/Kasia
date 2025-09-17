@@ -15,7 +15,7 @@ import { KaspaAddress } from "../KaspaAddress";
 import { Textarea } from "@headlessui/react";
 import { Button } from "../Common/Button";
 import { StringCopy } from "../Common/StringCopy";
-import { Clipboard, QrCode } from "lucide-react";
+import { Clipboard, QrCode, AlertTriangle } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { cameraPermissionService } from "../../service/camera-permission-service";
 import {
@@ -23,6 +23,7 @@ import {
   FeatureFlags,
 } from "../../store/featureflag.store";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { pasteFromClipboard } from "../../utils/clipboard";
 import { core } from "@tauri-apps/api";
 
 interface NewChatFormProps {
@@ -36,7 +37,8 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
   >(null);
   const [handshakeAmount, setHandshakeAmount] = useState("0.2");
   const [error, setError] = useState<string | null>(null);
-  const [recipientWarning, setRecipientWarning] = useState<string | null>(null);
+  const [recipientWarning, setRecipientWarning] =
+    useState<React.ReactNode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isCheckingRecipient, setIsCheckingRecipient] = useState(false);
@@ -184,7 +186,11 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
 
         if (!participantAddressBalance) {
           setRecipientWarning(
-            "Could not verify recipient balance. They may not be able to respond if they have no KAS."
+            <>
+              <AlertTriangle className="mr-1 inline h-4 w-4" />
+              Could not verify recipient balance. They may not be able to
+              respond if they have no KAS.
+            </>
           );
           return;
         }
@@ -193,7 +199,11 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
 
         if (balance === BigInt(0)) {
           setRecipientWarning(
-            "⚠️ Warning: Recipient has zero KAS balance and will not be able to respond to your handshake. Consider sending a higher amount."
+            <>
+              <AlertTriangle className="mr-1 inline h-4 w-4" />
+              Warning: Recipient has zero KAS balance and will not be able to
+              respond to your handshake. Consider sending a higher amount.
+            </>
           );
         } else {
           setRecipientWarning(null);
@@ -201,7 +211,11 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
       } catch (error) {
         console.warn("Could not check recipient balance:", error);
         setRecipientWarning(
-          "Could not verify recipient balance. They may not be able to respond if they have no KAS."
+          <>
+            <AlertTriangle className="mr-1 inline h-4 w-4" />
+            Could not verify recipient balance. They may not be able to respond
+            if they have no KAS.
+          </>
         );
       } finally {
         setIsCheckingRecipient(false);
@@ -237,9 +251,8 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
       if (core.isTauri()) {
         text = await readText();
       } else {
-        text = await navigator.clipboard.readText();
+        text = await pasteFromClipboard();
       }
-
       setRecipientInputValue(text.toLowerCase());
     } catch {
       // Handle clipboard access error silently or show a toast
@@ -392,7 +405,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
           )}
           {/* Only show warning if user is NOT sending extra amount */}
           {recipientWarning && parseFloat(handshakeAmount) <= 0.2 && (
-            <p className="my-1.5 text-sm leading-[1.4] text-[#ffc107]">
+            <p className="my-2 text-sm leading-[1.4] text-[#ffc107]">
               {recipientWarning}
             </p>
           )}
@@ -494,7 +507,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
           {knsError &&
             detectedRecipientInputValueFormat === "kns" &&
             !isResolvingKns && (
-              <div className="mt-2 mb-4 rounded-lg border border-[rgba(255,68,68,0.3)] bg-[rgba(255,68,68,0.1)] p-2.5 text-sm text-[#ff4444]">
+              <div className="mt-2 mb-4 rounded-lg border border-[rgba(255,68,68,0.3)] bg-[rgba(255,68,68,0.1)] p-2.5 text-sm text-[var(--accent-red)]">
                 {knsError}
               </div>
             )}
@@ -504,7 +517,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
             </div>
           )}
           {recipientWarning && (
-            <div className="mt-1 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-2 text-[13px] leading-[1.4] text-yellow-400">
+            <div className="text-accent-yellow mt-2 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-2 text-[13px] leading-[1.4]">
               {recipientWarning}
             </div>
           )}

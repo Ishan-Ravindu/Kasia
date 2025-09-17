@@ -20,7 +20,8 @@ export type ModalType =
   | "new-chat"
   | "new-broadcast"
   | "broadcast-participant-info"
-  | "qr-scanner";
+  | "qr-scanner"
+  | "offchain-handshake";
 type Theme = "light" | "dark" | "system" | "custom";
 
 type UiState = {

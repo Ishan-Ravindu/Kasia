@@ -13,6 +13,7 @@ import {
   PendingConversation,
 } from "../store/repository/conversation.repository";
 import { Contact } from "../store/repository/contact.repository";
+import { Handshake } from "../store/repository/handshake.repository";
 
 export class ConversationManagerService {
   private static readonly STORAGE_KEY_PREFIX = "encrypted_conversations";
@@ -508,9 +509,9 @@ export class ConversationManagerService {
           const _conversation: Conversation = {
             id: uuidv4(),
             myAlias: payload.alias,
-            theirAlias: null,
+            theirAlias: payload.theirAlias || null, // use theirAlias if present (for offline handshakes)
             lastActivityAt: new Date(payload.timestamp),
-            status: "pending",
+            status: payload.theirAlias ? "active" : "pending", // mark as active if we have both aliases (offline handshake)
             initiatedByMe: true,
             contactId: contact.id,
             tenantId: this.repositories.tenantId,
@@ -527,6 +528,16 @@ export class ConversationManagerService {
 
     conversation.myAlias = payload.alias;
     conversation.lastActivityAt = new Date(payload.timestamp);
+
+    // set theirAlias if present in payload (for offline handshakes)
+    if (payload.theirAlias) {
+      conversation.theirAlias = payload.theirAlias;
+    }
+
+    // mark as active if we now have both aliases (completed offline handshake)
+    if (payload.theirAlias && conversation.myAlias) {
+      conversation.status = "active";
+    }
 
     await this.repositories.conversationRepository.saveConversation(
       conversation
@@ -545,7 +556,7 @@ export class ConversationManagerService {
     };
   }
 
-  private generateUniqueAlias(): string {
+  public generateUniqueAlias(): string {
     let attempts = 0;
     const maxAttempts = 100; // Increased for better collision resistance
 
@@ -753,5 +764,103 @@ export class ConversationManagerService {
       typeof conv.lastActivityAt === "object" &&
       typeof conv.initiatedByMe === "boolean"
     );
+  }
+
+  /**
+   * Create an offline handshake between two parties
+   * @param partnerAddress The partner's Kaspa address
+   * @param ourAliasForPartner Our alias for the partner
+   * @param theirAliasForUs Their alias for us
+   * @returns Object containing conversationId and contactId
+   */
+  public async createOffChainHandshake(
+    partnerAddress: string,
+    ourAliasForPartner: string,
+    theirAliasForUs: string
+  ): Promise<{ conversationId: string; contactId: string }> {
+    // Check if contact already exists - for offline handshakes, we should only create new contacts
+    let contact: Contact;
+    try {
+      await this.repositories.contactRepository.getContactByKaspaAddress(
+        partnerAddress
+      );
+      throw new Error(`Cannot create handshake. Contact already exists.`);
+    } catch (error) {
+      if (error instanceof DBNotFoundException) {
+        // Contact doesn't exist, create a new one
+        const newContact = {
+          id: uuidv4(),
+          kaspaAddress: partnerAddress,
+          timestamp: new Date(),
+          name: undefined,
+          tenantId: this.repositories.tenantId,
+        };
+        await this.repositories.contactRepository.saveContact(newContact);
+        contact = newContact;
+      } else {
+        // throw it if its not our expected error
+        throw error;
+      }
+    }
+
+    // Create conversation
+    const conversation: Conversation = {
+      id: uuidv4(),
+      myAlias: ourAliasForPartner,
+      theirAlias: theirAliasForUs,
+      lastActivityAt: new Date(),
+      status: "active",
+      initiatedByMe: true,
+      contactId: contact.id,
+      tenantId: this.repositories.tenantId,
+    };
+
+    await this.repositories.conversationRepository.saveConversation(
+      conversation
+    );
+
+    // Create handshake records (both outgoing and incoming)
+    const now = new Date();
+
+    // Outgoing handshake (from us to partner)
+    const outgoingHandshake: Omit<Handshake, "tenantId"> = {
+      id: uuidv4(),
+      conversationId: conversation.id,
+      createdAt: now,
+      transactionId: `offline_${Date.now()}_outgoing`,
+      contactId: contact.id,
+      amount: 0.2,
+      fee: 0,
+      content: `Offline handshake initiated with ${partnerAddress}`,
+      fromMe: true,
+      __type: "handshake",
+    };
+
+    // Incoming handshake (from partner to us)
+    const incomingHandshake: Omit<Handshake, "tenantId"> = {
+      id: uuidv4(),
+      conversationId: conversation.id,
+      createdAt: new Date(now.getTime() + 1000),
+      transactionId: `offline_${Date.now()}_incoming`,
+      contactId: contact.id,
+      amount: 0.2,
+      fee: 0,
+      content: `Offline handshake response from ${partnerAddress}`,
+      fromMe: false,
+      __type: "handshake",
+    };
+
+    await Promise.all([
+      this.repositories.handshakeRepository.saveHandshake(outgoingHandshake),
+      this.repositories.handshakeRepository.saveHandshake(incomingHandshake),
+    ]);
+
+    // Update in-memory state
+    this.inMemorySyncronization(conversation, contact);
+
+    return {
+      conversationId: conversation.id,
+      contactId: contact.id,
+    };
   }
 }

@@ -2,7 +2,7 @@ import { useUiStore } from "../../store/ui.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { NewBroadcast } from "../Modals/NewBroadcast";
 import { Modal } from "../Common/modal";
-import { WalletAddressSection } from "../Modals/WalletAddressSection";
+import { CopyableValueWithQR } from "../Modals/CopyableValueWithQR";
 import { Wallet } from "../Modals/Wallet";
 import { WalletSeedRetreiveDisplay } from "../Modals/WalletSeedRetreiveDisplay";
 import { WalletWithdrawal } from "../Modals/WalletWithdrawal";
@@ -13,6 +13,7 @@ import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
 import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
 import { QrScannerModal } from "../Modals/QrScannerModal";
+import { OffChainHandshakeModal } from "../Modals/OffChainHandshakeModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
@@ -37,7 +38,11 @@ export const ModalHost = () => {
       {modals.address && (
         <Modal onClose={() => closeModal("address")}>
           {walletStore.address ? (
-            <WalletAddressSection address={walletStore.address.toString()} />
+            <CopyableValueWithQR
+              value={walletStore.address.toString()}
+              label={"Address:"}
+              qrTitle="QR Code for Address"
+            />
           ) : (
             <div className="flex justify-center py-6">
               <LoaderCircle className="h-6 w-6 animate-spin text-gray-500" />
@@ -133,6 +138,15 @@ export const ModalHost = () => {
 
       {/* QR Scanner Modal */}
       {modals["qr-scanner"] && <QrScannerModal />}
+
+      {/* Offline Handshake Modal */}
+      {modals["offchain-handshake"] && (
+        <OffChainHandshakeModal
+          isOpen={modals["offchain-handshake"] || false}
+          onClose={() => closeModal("offchain-handshake")}
+          kaspaAddress={walletStore.address?.toString() || ""}
+        />
+      )}
     </>
   );
 };

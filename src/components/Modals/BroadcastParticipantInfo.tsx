@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { AvatarHash } from "../icons/AvatarHash";
-import { WalletAddressSection } from "./WalletAddressSection";
+import { CopyableValueWithQR } from "./CopyableValueWithQR";
 import clsx from "clsx";
 
 type BroadcastParticipantInfoProps = {
@@ -52,7 +52,7 @@ export const BroadcastParticipantInfo: FC<BroadcastParticipantInfoProps> = ({
         </div>
 
         {/* Address section */}
-        <WalletAddressSection address={address} />
+        <CopyableValueWithQR value={address} />
       </div>
     </div>
   );

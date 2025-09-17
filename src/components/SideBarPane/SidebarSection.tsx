@@ -1,5 +1,5 @@
 import { FC, useState } from "react";
-import { Menu, Search, Plus, X, Radio, MessageCircle } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import clsx from "clsx";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useUiStore } from "../../store/ui.store";
@@ -10,6 +10,7 @@ import { ContactList } from "./Directs/ContactList";
 import { BroadcastList } from "./Broadcasts/BroadcastList";
 import { useFeatureFlagsStore } from "../../store/featureflag.store";
 import { ModeSelector } from "../ModeSelector";
+import { HoldablePlusButton } from "./HoldablePlusButton";
 
 interface SidebarSectionProps {
   onContactClicked: (contact: Contact) => void;
@@ -42,16 +43,16 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
     (state) => state.flags.broadcast
   );
 
-  const onNewChatClicked = () => {
-    try {
-      if (isBroadcastMode) {
-        openModal("new-broadcast");
-      } else {
-        openModal("new-chat");
-      }
-    } catch (error) {
-      console.error("Failed to start new chat:", error);
-    }
+  const handleNewChat = () => {
+    openModal("new-chat");
+  };
+
+  const handleOffChainHandshake = () => {
+    openModal("offchain-handshake");
+  };
+
+  const handleNewBroadcast = () => {
+    openModal("new-broadcast");
   };
 
   const containerCls = clsx(
@@ -123,24 +124,25 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
                 shouldShow={broadcastEnabled && !showSearch}
               />
             )}
-            <button
-              aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded p-1 hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
-              onClick={onNewChatClicked}
-            >
-              <Plus className="size-6" />
-            </button>
+            <HoldablePlusButton
+              broadcastEnabled={broadcastEnabled}
+              isBroadcastMode={isBroadcastMode}
+              onNewChat={handleNewChat}
+              onOffChainHandshake={handleOffChainHandshake}
+              onNewBroadcast={handleNewBroadcast}
+            />
           </div>
         ) : (
           /* Plus button when collapsed */
           <div className="flex flex-1 justify-center">
-            <button
-              aria-label={broadcastEnabled ? "new channel" : "new chat"}
-              className="hover:bg-primary-bg/50 cursor-pointer rounded hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80"
-              onClick={onNewChatClicked}
-            >
-              <Plus className="size-6" />
-            </button>
+            <HoldablePlusButton
+              broadcastEnabled={broadcastEnabled}
+              isBroadcastMode={isBroadcastMode}
+              onNewChat={handleNewChat}
+              onOffChainHandshake={handleOffChainHandshake}
+              onNewBroadcast={handleNewBroadcast}
+              collapsed={true}
+            />
           </div>
         )}
       </div>

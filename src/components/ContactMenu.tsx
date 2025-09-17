@@ -3,7 +3,7 @@ import { Pencil, Info, Copy, Check, UserCog } from "lucide-react";
 import clsx from "clsx";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { EditNicknamePopover } from "./EditNicknamePopover";
-import { copyToClipboard } from "../utils/copy-to-clipboard";
+import { copyToClipboard } from "../utils/clipboard";
 import { OneOnOneConversation } from "../types/all";
 import { ModalType } from "../store/ui.store";
 
