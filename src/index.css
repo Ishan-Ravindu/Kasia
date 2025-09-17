@@ -74,14 +74,12 @@ html,
 body {
   background-color: var(--primary-bg);
   height: 100%;
+  box-sizing: border-box;
 }
 
 body {
-  padding-top: var(--sat);
-  padding-bottom: var(--sab);
-  padding-left: var(--sal);
-  padding-right: var(--sar);
-  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 @keyframes fade-in {

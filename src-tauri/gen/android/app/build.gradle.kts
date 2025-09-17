@@ -18,7 +18,7 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "kas.kluster.kasia"
+  namespace = "kas.kluster.kasia"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
         applicationId = "kas.kluster.kasia"

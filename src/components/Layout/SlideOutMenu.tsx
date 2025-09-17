@@ -58,7 +58,7 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
       {/* Draw type thing */}
       <aside
         className={clsx(
-          "bg-secondary-bg fixed inset-y-0 left-0 z-45 flex w-full max-w-3/4 flex-col shadow-xl transition-transform duration-300 ease-out",
+          "bg-secondary-bg fixed top-[var(--sat)] bottom-[var(--sab)] left-0 z-45 flex w-full max-w-3/4 flex-col shadow-xl transition-transform duration-300 ease-out",
           {
             "-translate-x-full": !mounted,
             "translate-x-0": mounted,

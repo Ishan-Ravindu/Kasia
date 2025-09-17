@@ -134,7 +134,7 @@ export const WalletLockedFlowContainer = ({
     "w-full bg-secondary-bg overflow-x-hidden",
     isMobile
       ? [
-          "fixed inset-0 w-full max-h-screen overflow-y-auto flex flex-col p-4",
+          "fixed top-[var(--sat)] bottom-[var(--sab)] w-full max-h-screen overflow-y-auto flex flex-col p-4",
           (step.type === "home" && wallets.length <= 2) ||
           step.type === "success" ||
           step.type === "create"
