@@ -32,7 +32,6 @@ class MainActivity : TauriActivity() {
       // Push everything down/right/left + keep the bigger of nav bar or IME at bottom
       v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
 
-      // DEBUG: remove after you verify
       android.util.Log.d("Insets",
         "applied -> top=${bars.top} left=${bars.left} right=${bars.right} " +
           "bottomBars=${bars.bottom} bottomIme=${ime.bottom}"
@@ -42,7 +41,6 @@ class MainActivity : TauriActivity() {
       insets                         // do NOT consume; let WebView still see them
     }
 
-    // Kick the first pass
     ViewCompat.requestApplyInsets(content)
   }
 }
