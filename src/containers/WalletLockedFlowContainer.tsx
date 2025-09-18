@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { Mnemonic } from "kaspa-wasm";
 import { useWalletStore } from "../store/wallet.store";
 import { useUiStore } from "../store/ui.store";

@@ -1,5 +1,5 @@
 import { FC, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { BroadcastCard } from "./BroadcastCard";
 import { useBroadcastStore } from "../../../store/broadcast.store";
 import { BroadcastChannel } from "../../../store/repository/broadcast-channel.repository";

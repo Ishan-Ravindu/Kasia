@@ -1,5 +1,5 @@
 import { FC, useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router";
 import { useWalletStore } from "../../store/wallet.store";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { Header } from "../Layout/Header";
