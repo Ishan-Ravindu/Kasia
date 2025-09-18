@@ -1,14 +1,14 @@
 import { FC, useState, useEffect, useRef } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
 import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useMessengerRouting } from "../hooks/useMessengerRouting";
 import { SidebarSection } from "../components/SideBarPane/SidebarSection";
 import { DirectsSection } from "../components/MessagesPane/DirectsSection";
 import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
-import { Contact } from "../store/repository/contact.repository";
 import { useBroadcastStore } from "../store/broadcast.store";
 import { useComposerStore } from "../store/message-composer.store";
 import { LoadingMessages } from "../components/LoadingMessages";
@@ -18,11 +18,15 @@ export const MessengerContainer: FC = () => {
   const [isWalletReady, setIsWalletReady] = useState(false);
   const uiStore = useUiStore();
 
-  // url routing
-  const params = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { walletId, contactId, channelId } = params;
+  // use routing hook for all url-related logic
+  const {
+    walletId,
+    contactId,
+    channelId,
+    isCurrentlyInBroadcastMode,
+    onContactClicked,
+    onModeChange,
+  } = useMessengerRouting();
 
   const [contactsCollapsed, setContactsCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState<"contacts" | "messages">(
@@ -30,132 +34,12 @@ export const MessengerContainer: FC = () => {
   );
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
-  const {
-    isBroadcastMode,
-    selectedChannelName,
-    setSelectedChannel,
-    setIsBroadcastMode,
-  } = useBroadcastStore();
+  const { isBroadcastMode } = useBroadcastStore();
   const setAttachment = useComposerStore((s) => s.setAttachment);
 
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { closeAllModals } = useUiStore();
-
-  // determine if we're in broadcast mode based on url
-  const isCurrentlyInBroadcastMode = location.pathname.includes("/bcast");
-
-  // helper function to find contact address from contactid
-  const getContactAddressFromId = (contactId: string): string | null => {
-    const contact = messageStore.oneOnOneConversations.find(
-      (oooc) => oooc.contact.id === contactId
-    );
-    return contact?.contact.kaspaAddress || null;
-  };
-
-  // helper function to find channel name from channelid
-  const getChannelNameFromId = (channelId: string): string | null => {
-    const { channels } = useBroadcastStore.getState();
-    const channel = channels.find((ch) => ch.id === channelId);
-    return channel?.channelName || null;
-  };
-
-  // get the actual contact address from the url parameter
-  const contactAddress = contactId ? getContactAddressFromId(contactId) : null;
-
-  // get the actual channel name from the url parameter
-  const channelName = channelId ? getChannelNameFromId(channelId) : null;
-
-  // effect to sync broadcast mode with url
-  useEffect(() => {
-    if (isCurrentlyInBroadcastMode !== isBroadcastMode) {
-      setIsBroadcastMode(isCurrentlyInBroadcastMode);
-    }
-  }, [isCurrentlyInBroadcastMode, isBroadcastMode, setIsBroadcastMode]);
-
-  // effect to sync selected contact with url and save to localstorage
-  useEffect(() => {
-    if (contactAddress && contactAddress !== messageStore.openedRecipient) {
-      messageStore.setOpenedRecipient(contactAddress);
-
-      // save to localstorage for persistence (store contactid, not address)
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress && contactId) {
-        localStorage.setItem(
-          `kasia_last_opened_contact_id_${walletAddress}`,
-          contactId
-        );
-      }
-    } else if (!contactAddress && messageStore.openedRecipient) {
-      messageStore.setOpenedRecipient(null);
-    }
-  }, [
-    contactAddress,
-    contactId,
-    messageStore.openedRecipient,
-    messageStore,
-    walletStore.address,
-  ]);
-
-  // effect to sync selected channel with url
-  useEffect(() => {
-    if (channelName && channelName !== selectedChannelName) {
-      setSelectedChannel(channelName);
-    } else if (
-      !channelName &&
-      selectedChannelName &&
-      isCurrentlyInBroadcastMode
-    ) {
-      setSelectedChannel(null);
-    }
-  }, [
-    channelName,
-    selectedChannelName,
-    setSelectedChannel,
-    isCurrentlyInBroadcastMode,
-  ]);
-
-  // effect to handle invalid contact/channel urls (redirect to fallback)
-  useEffect(() => {
-    if (!messageStore.isLoaded || !walletStore.isAccountServiceRunning) return;
-
-    // check if contactid exists in conversations
-    if (contactId && !isCurrentlyInBroadcastMode) {
-      const contactExists = messageStore.oneOnOneConversations.some(
-        (oooc) => oooc.contact.id === contactId
-      );
-
-      if (!contactExists) {
-        console.warn(
-          `Contact with ID ${contactId} not found, redirecting to directs`
-        );
-        navigate(`/${walletId}/directs`, { replace: true });
-      }
-    }
-
-    // check if channelid exists in broadcast channels (for broadcast mode)
-    if (channelId && isCurrentlyInBroadcastMode) {
-      const { channels } = useBroadcastStore.getState();
-      const channelExists = channels.some(
-        (channel) => channel.id === channelId
-      );
-
-      if (!channelExists) {
-        console.warn(
-          `Broadcast channel with ID ${channelId} not found, redirecting to broadcasts`
-        );
-        navigate(`/${walletId}/bcast`, { replace: true });
-      }
-    }
-  }, [
-    contactId,
-    channelId,
-    isCurrentlyInBroadcastMode,
-    messageStore.isLoaded,
-    messageStore.oneOnOneConversations,
-    walletStore.isAccountServiceRunning,
-    navigate,
-    walletId,
-  ]);
 
   useEffect(() => {
     if (walletStore.unlockedWallet) setIsWalletReady(true);
@@ -332,39 +216,6 @@ export const MessengerContainer: FC = () => {
     isCurrentlyInBroadcastMode,
   ]);
 
-  const onContactClicked = (contact: Contact) => {
-    if (!walletStore.address) {
-      console.error("No wallet address");
-      return;
-    }
-
-    // navigate to the contact's URL using contact ID instead of address
-    navigate(`/${walletId}/directs/${contact.id}`);
-  };
-
-  const onModeChange = (isBroadcastMode: boolean) => {
-    if (isBroadcastMode) {
-      // avigate to broadcast mode
-      navigate(`/${walletId}/bcast`);
-    } else {
-      // navigate to direct messages mode
-      navigate(`/${walletId}/directs`);
-    }
-  };
-
-  // effect to save selected channel ID to localStorage for persistence
-  useEffect(() => {
-    if (channelId && selectedChannelName) {
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
-        localStorage.setItem(
-          `kasia_last_opened_channel_id_${walletAddress}`,
-          channelId
-        );
-      }
-    }
-  }, [channelId, selectedChannelName, walletStore.address]);
-
   return (
     <>
       {/* Main Message Section*/}
@@ -432,7 +283,7 @@ export const MessengerContainer: FC = () => {
           )}
         </div>
       </div>
-      {/* global error Section*/}
+      {/* global error section */}
       <ErrorCard error={errorMessage} onDismiss={() => setErrorMessage(null)} />
     </>
   );
