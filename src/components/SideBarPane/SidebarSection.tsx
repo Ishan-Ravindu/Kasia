@@ -14,6 +14,7 @@ import { HoldablePlusButton } from "./HoldablePlusButton";
 
 interface SidebarSectionProps {
   onContactClicked: (contact: Contact) => void;
+  onModeChange: (isBroadcastMode: boolean) => void;
   openedRecipient: string | null;
   walletAddress: string | undefined;
   mobileView: "contacts" | "messages";
@@ -24,6 +25,7 @@ interface SidebarSectionProps {
 
 export const SidebarSection: FC<SidebarSectionProps> = ({
   onContactClicked,
+  onModeChange,
   openedRecipient,
   walletAddress,
   mobileView,
@@ -35,7 +37,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
   const isMobile = useIsMobile();
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const { openModal } = useUiStore();
-  const { isBroadcastMode, setIsBroadcastMode } = useBroadcastStore();
+  const { isBroadcastMode } = useBroadcastStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
@@ -119,7 +121,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
             </div>
             {broadcastEnabled && !showSearch && (
               <ModeSelector
-                onModeChange={setIsBroadcastMode}
+                onModeChange={onModeChange}
                 isBroadcastMode={isBroadcastMode}
                 shouldShow={broadcastEnabled && !showSearch}
               />

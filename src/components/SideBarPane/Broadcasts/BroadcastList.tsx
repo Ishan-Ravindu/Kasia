@@ -1,4 +1,5 @@
 import { FC, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { BroadcastCard } from "./BroadcastCard";
 import { useBroadcastStore } from "../../../store/broadcast.store";
 import { BroadcastChannel } from "../../../store/repository/broadcast-channel.repository";
@@ -14,12 +15,11 @@ export const BroadcastList: FC<BroadcastListProps> = ({
   contactsCollapsed,
   setMobileView,
 }) => {
+  const navigate = useNavigate();
+  const { walletId } = useParams();
   const broadcastChannels = useBroadcastStore((state) => state.channels);
   const deleteChannel = useBroadcastStore((state) => state.deleteChannel);
   const loadChannels = useBroadcastStore((state) => state.loadChannels);
-  const setSelectedChannel = useBroadcastStore(
-    (state) => state.setSelectedChannel
-  );
   const selectedChannelName = useBroadcastStore(
     (state) => state.selectedChannelName
   );
@@ -37,8 +37,9 @@ export const BroadcastList: FC<BroadcastListProps> = ({
     : broadcastChannels;
 
   const handleChannelClick = (channel: BroadcastChannel) => {
-    setSelectedChannel(channel.channelName);
-    // Switch to messages view on mobile when channel is clicked
+    // navigate to channel via url
+    navigate(`/${walletId}/bcast/${channel.id}`);
+    // switch to messages view on mobile when channel is clicked
     setMobileView("messages");
   };
 
