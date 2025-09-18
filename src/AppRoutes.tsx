@@ -83,7 +83,13 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
 
         {/* Main Messenging container once you are unlocked */}
         <Route element={<RequireUnlockedWallet />}>
-          <Route path=":walletId" element={<MessengerContainer />} />
+          <Route path=":walletId" element={<MessengerContainer />}>
+            <Route index element={<Navigate to="directs" replace />} />
+            <Route path="directs" element={<MessengerContainer />} />
+            <Route path="directs/:contactId" element={<MessengerContainer />} />
+            <Route path="bcast" element={<MessengerContainer />} />
+            <Route path="bcast/:channelId" element={<MessengerContainer />} />
+          </Route>
         </Route>
       </Route>
     </Routes>
