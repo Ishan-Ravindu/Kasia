@@ -38,7 +38,7 @@ export const BroadcastList: FC<BroadcastListProps> = ({
 
   const handleChannelClick = (channel: BroadcastChannel) => {
     // navigate to channel via url
-    navigate(`/${walletId}/bcast/${channel.id}`);
+    navigate(`/${walletId}/broadcasts/${channel.id}`);
     // switch to messages view on mobile when channel is clicked
     setMobileView("messages");
   };

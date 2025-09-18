@@ -87,8 +87,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
             <Route index element={<Navigate to="directs" replace />} />
             <Route path="directs" element={<MessengerContainer />} />
             <Route path="directs/:contactId" element={<MessengerContainer />} />
-            <Route path="bcast" element={<MessengerContainer />} />
-            <Route path="bcast/:channelId" element={<MessengerContainer />} />
+            <Route path="broadcasts" element={<MessengerContainer />} />
+            <Route
+              path="broadcasts/:channelId"
+              element={<MessengerContainer />}
+            />
           </Route>
         </Route>
       </Route>

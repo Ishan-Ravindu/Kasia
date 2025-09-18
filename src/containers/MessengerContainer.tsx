@@ -238,7 +238,7 @@ export const MessengerContainer: FC = () => {
                   // when switching to contacts view on mobile, navigate back to the appropriate base route
                   if (isMobile && view === "contacts") {
                     if (isCurrentlyInBroadcastMode) {
-                      navigate(`/${walletId}/bcast`);
+                      navigate(`/${walletId}/broadcasts`);
                     } else {
                       navigate(`/${walletId}/directs`);
                     }
@@ -252,7 +252,7 @@ export const MessengerContainer: FC = () => {
                     setMobileView(view);
                     // when switching to contacts view on mobile, navigate back to broadcast base route
                     if (isMobile && view === "contacts") {
-                      navigate(`/${walletId}/bcast`);
+                      navigate(`/${walletId}/broadcasts`);
                     }
                   }}
                 />

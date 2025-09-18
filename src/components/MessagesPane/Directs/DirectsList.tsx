@@ -27,10 +27,6 @@ export const DirectsList: FC<DirectsListProps> = memo(
       (event: KasiaConversationEvent) => isToday(event.createdAt)
     );
 
-    console.log("message list - oooc", {
-      oneOnOneConversation,
-    });
-
     return (
       <>
         {oneOnOneConversation.events.map(

@@ -23,7 +23,7 @@ export const useMessengerRouting = () => {
   } = useBroadcastStore();
 
   // determine if we're in broadcast mode based on url
-  const isCurrentlyInBroadcastMode = location.pathname.includes("/bcast");
+  const isCurrentlyInBroadcastMode = location.pathname.includes("/broadcasts");
 
   // helper function to find contact address from contactid
   const getContactAddressFromId = (contactId: string): string | null => {
@@ -124,7 +124,7 @@ export const useMessengerRouting = () => {
         console.warn(
           `Broadcast channel with ID ${channelId} not found, redirecting to broadcasts`
         );
-        navigate(`/${walletId}/bcast`, { replace: true });
+        navigate(`/${walletId}/broadcasts`, { replace: true });
       }
     }
   }, [
@@ -164,7 +164,7 @@ export const useMessengerRouting = () => {
   const onModeChange = (isBroadcastMode: boolean) => {
     if (isBroadcastMode) {
       // navigate to broadcast mode
-      navigate(`/${walletId}/bcast`);
+      navigate(`/${walletId}/broadcasts`);
     } else {
       // navigate to direct messages mode
       navigate(`/${walletId}/directs`);
