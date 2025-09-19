@@ -61,7 +61,6 @@ export const MessengerProvider: FC = () => {
       messageStore.oneOnOneConversations.length > 0 &&
       !isCurrentlyInBroadcastMode // only for direct messages
     ) {
-      console.error("adsadasdsdadsdsad");
       const walletAddress = walletStore.address?.toString();
       if (walletAddress) {
         // helper function to find contact id from address
@@ -155,7 +154,6 @@ export const MessengerProvider: FC = () => {
       useBroadcastStore.getState().reset();
       useLiveStore.getState().stop();
       composerStore.setAttachment(null);
-      console.error("CLOSEDOWN");
     };
   }, []);
 
