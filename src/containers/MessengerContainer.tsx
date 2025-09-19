@@ -4,8 +4,8 @@ import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
 import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
-import { useIsMobile } from "../hooks/useIsMobile";
 import { useMessengerRouting } from "../hooks/useMessengerRouting";
+import { useMobileViewManager } from "../hooks/useMobileViewManager";
 import { SidebarSection } from "../components/SideBarPane/SidebarSection";
 import { DirectsSection } from "../components/MessagesPane/DirectsSection";
 import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
@@ -30,44 +30,32 @@ export const MessengerContainer: FC = () => {
   } = useMessengerRouting();
 
   const [contactsCollapsed, setContactsCollapsed] = useState(false);
-  const [mobileView, setMobileView] = useState<"contacts" | "messages">(
-    "contacts"
-  );
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
   const { isBroadcastMode } = useBroadcastStore();
   const setAttachment = useComposerStore((s) => s.setAttachment);
 
-  const isMobile = useIsMobile();
+  // Use mobile view manager hook
+  const { mobileView, setMobileView, isMobile } = useMobileViewManager(
+    contactId,
+    channelId,
+    isCurrentlyInBroadcastMode,
+    messageStore.isLoaded
+  );
+
+  // Ensure contacts are not collapsed on mobile
+  useEffect(() => {
+    if (isMobile && contactsCollapsed) {
+      setContactsCollapsed(false);
+    }
+  }, [isMobile, contactsCollapsed]);
+
   const navigate = useNavigate();
   const { closeAllModals } = useUiStore();
 
   useEffect(() => {
     if (walletStore.unlockedWallet) setIsWalletReady(true);
   }, [walletStore.unlockedWallet]);
-
-  // effect to handle if you drag from desktop to mobile, we need the mobile view to be aware!
-  useEffect(() => {
-    const syncToWidth = () => {
-      if (isMobile) {
-        // on mobile, show messages if there's an opened conversation or broadcast channel (based on url)
-        const hasOpenedConversation = contactId;
-        const hasOpenedBroadcast = isCurrentlyInBroadcastMode && channelId;
-
-        if (hasOpenedConversation || hasOpenedBroadcast) {
-          setMobileView("messages");
-        } else {
-          setMobileView("contacts");
-        }
-      } else {
-        setMobileView("contacts");
-      }
-    };
-
-    syncToWidth(); // run once on mount
-    window.addEventListener("resize", syncToWidth);
-    return () => window.removeEventListener("resize", syncToWidth);
-  }, [contactId, channelId, isMobile, isCurrentlyInBroadcastMode]);
 
   // clean up useeffect
   useEffect(() => {
@@ -171,27 +159,6 @@ export const MessengerContainer: FC = () => {
     isCurrentlyInBroadcastMode,
     navigate,
     walletId,
-  ]);
-
-  // effect to update mobile view when URL changes (contact/channel selection)
-  useEffect(() => {
-    if (isMobile && messageStore.isLoaded) {
-      const hasOpenedConversation = contactId;
-      const hasOpenedBroadcast = isCurrentlyInBroadcastMode && channelId;
-
-      if (hasOpenedConversation || hasOpenedBroadcast) {
-        setMobileView("messages");
-      } else {
-        setMobileView("contacts");
-      }
-    }
-  }, [
-    isMobile,
-    contactId,
-    channelId,
-    messageStore.isLoaded,
-    messageStore.oneOnOneConversations,
-    isCurrentlyInBroadcastMode,
   ]);
 
   return (
