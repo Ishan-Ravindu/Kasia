@@ -1,4 +1,4 @@
-import { FC, useState, useEffect, useRef } from "react";
+import { FC, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
@@ -12,6 +12,7 @@ import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
 import { useBroadcastStore } from "../store/broadcast.store";
 import { useComposerStore } from "../store/message-composer.store";
 import { LoadingMessages } from "../components/LoadingMessages";
+import { useLiveStore } from "../store/live.store";
 
 export const MessengerContainer: FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,44 +69,21 @@ export const MessengerContainer: FC = () => {
     return () => window.removeEventListener("resize", syncToWidth);
   }, [contactId, channelId, isMobile, isCurrentlyInBroadcastMode]);
 
-  // store cleanup functions in refs to avoid re-renders
-  const cleanupFnsRef = useRef({
-    messageStore,
-    walletStore,
-    uiStore,
-    closeAllModals,
-    setAttachment,
-  });
-
-  // update refs when dependencies change
-  useEffect(() => {
-    cleanupFnsRef.current = {
-      messageStore,
-      walletStore,
-      uiStore,
-      closeAllModals,
-      setAttachment,
-    };
-  });
-
   // clean up useeffect
   useEffect(() => {
     return () => {
-      const fns = cleanupFnsRef.current;
-      fns.messageStore.stop();
+      messageStore.stop();
 
-      // called when messagingcontainer unmounts (user leaves route), so we can reset all the states
-      fns.walletStore.lock();
-      fns.uiStore.setSettingsOpen(false);
-      fns.closeAllModals();
+      walletStore.lock();
+      uiStore.setSettingsOpen(false);
+      closeAllModals();
 
-      fns.messageStore.setOpenedRecipient(null);
+      messageStore.setOpenedRecipient(null);
 
       // clear broadcast store state when leaving messaging
       useBroadcastStore.getState().reset();
-
-      // clear any attachments
-      fns.setAttachment(null);
+      useLiveStore.getState().stop();
+      setAttachment(null);
     };
   }, []);
 
