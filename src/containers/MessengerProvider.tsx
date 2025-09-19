@@ -1,23 +1,20 @@
 import { FC, useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Outlet } from "react-router";
 import { ErrorCard } from "../components/ErrorCard";
 import { useMessagingStore } from "../store/messaging.store";
-import { useUiStore } from "../store/ui.store";
 import { useWalletStore } from "../store/wallet.store";
+import { useUiStore } from "../store/ui.store";
+import { useBroadcastStore } from "../store/broadcast.store";
+import { useComposerStore } from "../store/message-composer.store";
+import { useLiveStore } from "../store/live.store";
 import { useMessengerRouting } from "../hooks/useMessengerRouting";
 import { useMobileViewManager } from "../hooks/useMobileViewManager";
 import { SidebarSection } from "../components/SideBarPane/SidebarSection";
-import { DirectsSection } from "../components/MessagesPane/DirectsSection";
-import { BroadcastSection } from "../components/MessagesPane/BroadcastSection";
-import { useBroadcastStore } from "../store/broadcast.store";
-import { useComposerStore } from "../store/message-composer.store";
 import { LoadingMessages } from "../components/LoadingMessages";
-import { useLiveStore } from "../store/live.store";
 
-export const MessengerContainer: FC = () => {
+export const MessengerProvider: FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isWalletReady, setIsWalletReady] = useState(false);
-  const uiStore = useUiStore();
 
   // use routing hook for all url-related logic
   const {
@@ -32,10 +29,8 @@ export const MessengerContainer: FC = () => {
   const [contactsCollapsed, setContactsCollapsed] = useState(false);
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
-  const { isBroadcastMode } = useBroadcastStore();
-  const setAttachment = useComposerStore((s) => s.setAttachment);
 
-  // Use mobile view manager hook
+  // use mobile view manager hook
   const { mobileView, setMobileView, isMobile } = useMobileViewManager(
     contactId,
     channelId,
@@ -51,29 +46,10 @@ export const MessengerContainer: FC = () => {
   }, [isMobile, contactsCollapsed]);
 
   const navigate = useNavigate();
-  const { closeAllModals } = useUiStore();
 
   useEffect(() => {
     if (walletStore.unlockedWallet) setIsWalletReady(true);
   }, [walletStore.unlockedWallet]);
-
-  // clean up useeffect
-  useEffect(() => {
-    return () => {
-      messageStore.stop();
-
-      walletStore.lock();
-      uiStore.setSettingsOpen(false);
-      closeAllModals();
-
-      messageStore.setOpenedRecipient(null);
-
-      // clear broadcast store state when leaving messaging
-      useBroadcastStore.getState().reset();
-      useLiveStore.getState().stop();
-      setAttachment(null);
-    };
-  }, []);
 
   // effect to restore last opened conversation after messages are loaded (desktop only)
   useEffect(() => {
@@ -85,6 +61,7 @@ export const MessengerContainer: FC = () => {
       messageStore.oneOnOneConversations.length > 0 &&
       !isCurrentlyInBroadcastMode // only for direct messages
     ) {
+      console.error("adsadasdsdadsdsad");
       const walletAddress = walletStore.address?.toString();
       if (walletAddress) {
         // helper function to find contact id from address
@@ -151,7 +128,6 @@ export const MessengerContainer: FC = () => {
   }, [
     messageStore.isLoaded,
     contactId,
-    channelId,
     messageStore.oneOnOneConversations,
     walletStore.isAccountServiceRunning,
     walletStore.address,
@@ -160,6 +136,28 @@ export const MessengerContainer: FC = () => {
     navigate,
     walletId,
   ]);
+
+  // cleanup effect - only runs when leaving the entire messaging area
+  useEffect(() => {
+    return () => {
+      const messageStore = useMessagingStore.getState();
+      const walletStore = useWalletStore.getState();
+      const uiStore = useUiStore.getState();
+      const composerStore = useComposerStore.getState();
+
+      messageStore.stop();
+      walletStore.lock();
+      uiStore.setSettingsOpen(false);
+      uiStore.closeAllModals();
+      messageStore.setOpenedRecipient(null);
+
+      // clear broadcast store state when leaving messaging
+      useBroadcastStore.getState().reset();
+      useLiveStore.getState().stop();
+      composerStore.setAttachment(null);
+      console.error("CLOSEDOWN");
+    };
+  }, []);
 
   return (
     <>
@@ -190,29 +188,7 @@ export const MessengerContainer: FC = () => {
                   }
                 }}
               />
-              {isBroadcastMode ? (
-                <BroadcastSection
-                  mobileView={mobileView}
-                  setMobileView={(view) => {
-                    setMobileView(view);
-                    // when switching to contacts view on mobile, navigate back to broadcast base route
-                    if (isMobile && view === "contacts") {
-                      navigate(`/${walletId}/broadcasts`);
-                    }
-                  }}
-                />
-              ) : (
-                <DirectsSection
-                  mobileView={mobileView}
-                  setMobileView={(view) => {
-                    setMobileView(view);
-                    // when switching to contacts view on mobile, navigate back to directs base route
-                    if (isMobile && view === "contacts") {
-                      navigate(`/${walletId}/directs`);
-                    }
-                  }}
-                />
-              )}
+              <Outlet />
             </>
           ) : isWalletReady ? (
             <LoadingMessages />

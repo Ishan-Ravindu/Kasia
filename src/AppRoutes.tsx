@@ -9,7 +9,9 @@ import { RequireUnlockedWallet } from "./components/Layout/RequireUnlockedWallet
 
 import type { NetworkType } from "./types/all";
 import { useWalletStore } from "./store/wallet.store";
-import { MessengerContainer } from "./containers/MessengerContainer";
+import { DirectsContainer } from "./containers/DirectsContainer";
+import { BroadcastsContainer } from "./containers/BroadcastsContainer";
+import { MessengerProvider } from "./containers/MessengerProvider";
 
 type WalletFlowRouteConfig = {
   path: string | undefined;
@@ -66,7 +68,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
                 initialStep === "unlock" &&
                 unlockedWallet &&
                 selectedWalletId ? (
-                  <Navigate to={`/${selectedWalletId}`} replace />
+                  <Navigate to={`/${selectedWalletId}/directs`} replace />
                 ) : (
                   <WalletLockedFlowContainer
                     initialStep={initialStep}
@@ -81,16 +83,21 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           ))}
         </Route>
 
-        {/* Main Messenging container once you are unlocked */}
+        {/* Main Messaging container once you are unlocked */}
         <Route element={<RequireUnlockedWallet />}>
-          <Route path=":walletId" element={<MessengerContainer />}>
-            <Route index element={<Navigate to="directs" replace />} />
-            <Route path="directs" element={<MessengerContainer />} />
-            <Route path="directs/:contactId" element={<MessengerContainer />} />
-            <Route path="broadcasts" element={<MessengerContainer />} />
+          <Route element={<MessengerProvider />}>
+            <Route path=":walletId/directs" element={<DirectsContainer />} />
             <Route
-              path="broadcasts/:channelId"
-              element={<MessengerContainer />}
+              path=":walletId/directs/:contactId"
+              element={<DirectsContainer />}
+            />
+            <Route
+              path=":walletId/broadcasts"
+              element={<BroadcastsContainer />}
+            />
+            <Route
+              path=":walletId/broadcasts/:channelId"
+              element={<BroadcastsContainer />}
             />
           </Route>
         </Route>
