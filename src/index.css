@@ -22,10 +22,10 @@
   /* amber-300 */
 
   /* Older iOS uses constant(); harmless on Android */
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
-  --sal: env(safe-area-inset-left, 0px);
-  --sar: env(safe-area-inset-right, 0px);
+  --sat: "env(safe-area-inset-top, 0px) pointer-fine:hidden";
+  --sab: "env(safe-area-inset-bottom, 0px) pointer-fine:hidden";
+  --sal: "env(safe-area-inset-left, 0px) pointer-fine:hidden";
+  --sar: "env(safe-area-inset-right, 0px) pointer-fine:hidden";
 }
 
 /* Light Theme */
