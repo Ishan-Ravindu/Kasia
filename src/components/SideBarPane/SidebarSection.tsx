@@ -90,7 +90,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
                     setShowSearch(!showSearch);
                   }
                 }}
-                className="hover:text-kas-primary hover:bg-primary-bg/50 absolute top-1/2 left-1 z-10 size-7 -translate-y-[15px] cursor-pointer rounded p-1 focus:outline-none active:scale-90 active:opacity-80"
+                className="hover:text-kas-primary hover:bg-primary-bg/50 absolute top-1/2 left-1 z-10 flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded focus:outline-none active:scale-90 active:opacity-80"
                 aria-label="Toggle search"
               >
                 <Search className="size-6" />
@@ -136,7 +136,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
           </div>
         ) : (
           /* Plus button when collapsed */
-          <div className="flex flex-1 justify-center">
+          <div className="flex w-full justify-center">
             <HoldablePlusButton
               broadcastEnabled={broadcastEnabled}
               isBroadcastMode={isBroadcastMode}
