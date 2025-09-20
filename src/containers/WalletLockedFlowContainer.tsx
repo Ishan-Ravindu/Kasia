@@ -142,7 +142,8 @@ export const WalletLockedFlowContainer = ({
           "fixed top-safe bottom-safe w-full max-h-screen overflow-y-auto flex flex-col p-4",
           (step.type === "home" && wallets.length <= 2) ||
           step.type === "success" ||
-          step.type === "create"
+          step.type === "create" ||
+          step.type === "unlock"
             ? "justify-center"
             : "justify-start",
         ]
