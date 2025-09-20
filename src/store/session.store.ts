@@ -6,6 +6,7 @@ import {
   getData,
   checkStatus,
 } from "@tauri-apps/plugin-biometry";
+import { platform } from "@tauri-apps/plugin-os";
 
 type SessionState = {
   supportSecuredBiometry: () => Promise<boolean>;
@@ -36,6 +37,11 @@ export const useSessionState = create<SessionState>((set, get) => {
           return false;
         }
 
+        // temporary disable for iOS
+        if (platform() === "ios") {
+          return false;
+        }
+
         const status = await checkStatus();
 
         return status.isAvailable;
@@ -50,6 +56,11 @@ export const useSessionState = create<SessionState>((set, get) => {
         return null;
       }
 
+      // temporary disable for iOS
+      if (platform() === "ios") {
+        return null;
+      }
+
       const data = await getData({
         domain: "kas.kluster.kasia",
         name: `${tenantId}.password`,
@@ -60,6 +71,11 @@ export const useSessionState = create<SessionState>((set, get) => {
       return data?.data ?? null;
     },
     async hasSession(tenantId) {
+      // temporary disable for iOS
+      if (platform() === "ios") {
+        return false;
+      }
+
       if (!(await get().supportSecuredBiometry())) {
         return false;
       }
@@ -70,6 +86,11 @@ export const useSessionState = create<SessionState>((set, get) => {
       });
     },
     async setSession(tenantId, password) {
+      // temporary disable for iOS
+      if (platform() === "ios") {
+        return;
+      }
+
       if (!(await get().supportSecuredBiometry())) {
         return;
       }

@@ -28,6 +28,7 @@ tauri-plugin-biometry = {git= "https://github.com/IzioDev/tauri-plugin-biometry.
 tauri-plugin-app-events = {git = "https://github.com/IzioDev/tauri-plugin-app-events.git", branch="main"}
 rand = "0.9.2"
 tokio = {version = "1.47.1", features = ["time"] }
+tauri-plugin-os = "2"
 
 # taken from default configuration at https://tauri.app/concept/size/
 [profile.dev]
