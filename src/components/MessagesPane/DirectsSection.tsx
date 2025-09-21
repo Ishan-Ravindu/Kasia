@@ -1,7 +1,6 @@
 import { FC, useEffect, useState, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 
-import { FetchApiMessages } from "../FetchApiMessages";
 import { DirectsList } from "./Directs/DirectsList";
 import { DirectComposer } from "./Composing/Directs/DirectComposer";
 import { useMessagingStore } from "../../store/messaging.store";
@@ -285,11 +284,6 @@ export const DirectsSection: FC<{
                 />
               </h3>
             </div>
-            {openedRecipient && (
-              <div className="flex items-center gap-3">
-                {address && <FetchApiMessages address={address.toString()} />}
-              </div>
-            )}
           </div>
 
           <div
@@ -305,10 +299,6 @@ export const DirectsSection: FC<{
           <DirectComposer recipient={openedRecipient || undefined} />
         </>
       )}
-
-      <div className="hidden">
-        {address && <FetchApiMessages address={address.toString()} />}
-      </div>
     </div>
   );
 };
