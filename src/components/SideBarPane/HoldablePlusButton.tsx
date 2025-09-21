@@ -47,6 +47,7 @@ export const HoldablePlusButton: FC<HoldablePlusButtonProps> = ({
       className={buttonClasses}
       ariaLabel={broadcastEnabled ? "new channel" : "new chat"}
       ringColor="var(--kas-primary)"
+      hoverColor="var(--kas-primary)"
     >
       <Plus className="h-6 w-6" />
     </HoldToAction>

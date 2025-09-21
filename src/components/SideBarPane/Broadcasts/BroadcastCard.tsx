@@ -89,8 +89,9 @@ export const BroadcastCard: FC<{
           <HoldToDelete
             onComplete={() => onDelete(channel.channelName)}
             size="md"
-            className="absolute top-1/2 right-2 z-10 -translate-y-1/2 opacity-100 transition-all hover:text-[var(--accent-red)]/80 sm:opacity-0 sm:group-hover:opacity-100"
+            className="absolute top-1/2 right-2 z-10 -translate-y-1/2 opacity-100 transition-all sm:opacity-0 sm:group-hover:opacity-100"
             title="Click and hold to delete channel"
+            hoverColor="var(--accent-red)"
           />
         )}
       </div>

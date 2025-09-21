@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { Settings, ChevronRight } from "lucide-react";
 import { NetworkSelector } from "../NetworkSelector";
 import { TrustMessage } from "../Layout/TrustMessage";
 import { Button } from "../Common/Button";
@@ -74,55 +74,68 @@ export const Home = ({
           <div
             key={w.id}
             onClick={() => onSelectWallet(w)}
-            className="hover:border-kas-secondary border-primary-border group relative flex cursor-pointer flex-col items-start gap-2 rounded-xl border bg-[var(--primary-bg)] p-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              (e.key === "Enter" || e.key === " ") && onSelectWallet(w)
+            }
+            className="hover:border-kas-secondary border-primary-border group focus-visible:ring-kas-secondary relative flex min-h-[56px] cursor-pointer flex-col items-center gap-2 rounded-xl border bg-[var(--primary-bg)] p-3 pr-16 text-center transition-all duration-200 outline-none hover:bg-[var(--primary-bg)]/50 hover:shadow-sm focus-visible:ring-2 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between sm:p-4 sm:pr-20 sm:text-left"
           >
-            {/* delete icon positioned on the right */}
-            <HoldToDelete
-              onComplete={() => onDeleteWallet(w.id)}
-              size="md"
-              className="absolute top-1/2 right-2 z-10 -translate-y-1/2 opacity-100 transition-all hover:text-[var(--accent-red)]/80 sm:opacity-0 sm:group-hover:opacity-100"
-              title="Click and hold to delete wallet"
-            />
-
-            <div className="flex w-full flex-col gap-1">
-              <div className="font-semibold text-[var(--text-primary)]">
-                <span>{w.name}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                <span>
-                  Created: {new Date(w.createdAt).toLocaleDateString()}
+            <div className="flex w-full flex-col items-center gap-1 sm:flex-1 sm:items-start">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <span className="max-w-[18rem] truncate font-semibold text-[var(--text-primary)] sm:max-w-[32rem]">
+                  {w.name}
                 </span>
-                <div className="ml-2">
-                  {w.derivationType === "standard" ? (
-                    <span
-                      className={clsx({
-                        "bg-kas-secondary/20 border-kas-secondary rounded-3xl border px-2 py-1 text-xs font-medium": true,
-                      })}
-                      title="Kaspium Compatible"
-                    >
-                      Standard
-                    </span>
-                  ) : (
-                    <span className="rounded bg-amber-400 px-2 py-1 text-xs font-medium text-[var(--text-primary)]">
-                      Legacy
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                {w.derivationType === "legacy" && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStepChange("migrate", w.id);
-                    }}
-                    className="bg-kas-secondary/20 hover:bg-kas-secondary/50 animate-pulse cursor-pointer rounded px-2 py-1 text-xs transition-colors duration-200"
-                    title="Migrate to standard derivation"
+                {w.derivationType === "standard" ? (
+                  <span
+                    className={clsx(
+                      "rounded-3xl border px-2 py-0.5 text-xs leading-none font-medium",
+                      {
+                        "bg-kas-secondary/20 border-kas-secondary text-[var(--text-primary)]": true,
+                      }
+                    )}
+                    title="Kaspium Compatible"
                   >
-                    Migrate
-                  </button>
+                    Standard
+                  </span>
+                ) : (
+                  <span className="rounded-3xl border border-amber-400/50 bg-amber-400/20 px-2 py-0.5 text-xs leading-none font-medium text-[var(--text-primary)]">
+                    Legacy
+                  </span>
                 )}
               </div>
+
+              <time
+                className="text-xs text-[var(--text-secondary)] sm:text-[13px]"
+                dateTime={new Date(w.createdAt).toISOString()}
+              >
+                Created: {new Date(w.createdAt).toLocaleDateString()}
+              </time>
+
+              {w.derivationType === "legacy" && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStepChange("migrate", w.id);
+                  }}
+                  className="bg-kas-secondary/20 hover:bg-kas-secondary/40 focus-visible:ring-kas-secondary mt-2 animate-pulse rounded px-2 py-1 text-xs transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none sm:mt-1"
+                >
+                  Migrate
+                </button>
+              )}
+            </div>
+
+            <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-3">
+              <HoldToDelete
+                onComplete={() => onDeleteWallet(w.id)}
+                size="md"
+                className="z-20 text-[var(--text-secondary)] transition-colors duration-200 sm:opacity-0 sm:group-hover:opacity-100"
+                title="Click and hold to delete wallet"
+                hoverColor="var(--accent-red)"
+              />
+              <ChevronRight
+                aria-hidden
+                className="pointer-events-none hidden size-6 text-[var(--text-secondary)] opacity-40 transition-transform duration-200 group-hover:translate-x-0.5 sm:block"
+              />
             </div>
           </div>
         ))}
