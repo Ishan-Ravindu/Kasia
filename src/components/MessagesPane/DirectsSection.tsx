@@ -49,26 +49,6 @@ export const DirectsSection: FC<{
   const [knsMovedDomain, setKnsMovedDomain] = useState<string | null>(null);
   const [knsMovedContact, setKnsMovedContact] = useState<Contact | null>(null);
 
-  // Nickname editing state
-  const [isEditingNickname, setIsEditingNickname] = useState(false);
-  const [tempNickname, setTempNickname] = useState("");
-
-  // Nickname editing handlers
-  const handleNicknameSave = () => {
-    if (oneOnOneConversation) {
-      messageStore.setContactNickname(
-        oneOnOneConversation.contact.kaspaAddress,
-        tempNickname
-      );
-      setIsEditingNickname(false);
-    }
-  };
-
-  const handleNicknameCancel = () => {
-    setTempNickname(oneOnOneConversation?.contact.name || "");
-    setIsEditingNickname(false);
-  };
-
   const lastKnsCheckRef = useRef<{ nickname: string; address: string } | null>(
     null
   );
@@ -283,27 +263,18 @@ export const DirectsSection: FC<{
               </button>
 
               <h3 className="flex items-center gap-2 truncate text-base font-semibold">
-                {isEditingNickname ? (
-                  <input
-                    type="text"
-                    value={tempNickname}
-                    onChange={(e) => setTempNickname(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleNicknameSave();
-                      if (e.key === "Escape") handleNicknameCancel();
-                    }}
-                    autoFocus
-                    placeholder={oneOnOneConversation.contact.kaspaAddress}
-                    className="h-6 flex-1 rounded-sm border border-gray-600 bg-transparent px-2 text-sm leading-none"
-                  />
-                ) : oneOnOneConversation.contact.name ? (
+                {oneOnOneConversation.contact.name ? (
                   <span title={oneOnOneConversation.contact.name}>
                     {isMobile
                       ? truncateNickname(oneOnOneConversation.contact.name)
                       : oneOnOneConversation.contact.name}
                   </span>
                 ) : (
-                  <KaspaAddress address={openedRecipient ?? ""} />
+                  <div className="flex items-center">
+                    <div className="[&_span]:!text-base [&_span]:!leading-normal [&>*]:!align-baseline">
+                      <KaspaAddress address={openedRecipient ?? ""} />
+                    </div>
+                  </div>
                 )}
                 <ContactMenu
                   oneOnOneConversation={oneOnOneConversation}
