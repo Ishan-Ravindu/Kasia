@@ -14,7 +14,7 @@ interface HoldToActionProps {
   ariaLabel?: string;
   disabled?: boolean;
   ringColor?: string;
-  hoverColor?: string;
+  hoverClass?: string;
 }
 
 // This is a generic component that you can pass a child icon to and
@@ -32,7 +32,7 @@ export const HoldToAction: FC<HoldToActionProps> = ({
   ariaLabel,
   disabled = false,
   ringColor = "var(--kas-primary)",
-  hoverColor = "var(--accent-red)",
+  hoverClass,
 }) => {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -175,7 +175,7 @@ export const HoldToAction: FC<HoldToActionProps> = ({
         disabled={disabled}
         className={clsx(
           "flex cursor-pointer items-center justify-center text-[var(--text-primary)] focus:outline-none",
-          `hover:text-[${hoverColor}]`,
+          hoverClass,
           hasAbsolutePositioning ? "" : "relative",
           sizeClasses[size]
         )}

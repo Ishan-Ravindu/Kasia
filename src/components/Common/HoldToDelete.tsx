@@ -8,7 +8,7 @@ interface HoldToDeleteProps {
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   title?: string;
-  hoverColor?: string;
+  hoverClass?: string;
 }
 
 export const HoldToDelete: FC<HoldToDeleteProps> = ({
@@ -17,7 +17,7 @@ export const HoldToDelete: FC<HoldToDeleteProps> = ({
   size = "md",
   className = "",
   title = "Click and hold to delete",
-  hoverColor = "var(--accent-red)",
+  hoverClass = "hover:text-red-500",
 }) => {
   const iconSizeMap = {
     sm: "size-4",
@@ -34,7 +34,7 @@ export const HoldToDelete: FC<HoldToDeleteProps> = ({
       className={className}
       ariaLabel={title}
       ringColor="var(--accent-red)"
-      hoverColor={hoverColor}
+      hoverClass={hoverClass}
     >
       <Trash2 className={iconSizeMap[size] || "size-5"} />
     </HoldToAction>

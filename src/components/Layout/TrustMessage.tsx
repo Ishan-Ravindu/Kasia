@@ -87,7 +87,7 @@ export const TrustMessage: FC = () => {
         {/* Collapsible Content */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            openWhy ? "mt-2 max-h-28 opacity-100" : "max-h-0 opacity-0"
+            openWhy ? "mt-2 max-h-fit opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <p className="break-word w-full text-center text-sm leading-relaxed text-[var(--text-secondary)]">

@@ -91,7 +91,7 @@ export const BroadcastCard: FC<{
             size="md"
             className="absolute top-1/2 right-2 z-10 -translate-y-1/2 opacity-100 transition-all sm:opacity-0 sm:group-hover:opacity-100"
             title="Click and hold to delete channel"
-            hoverColor="var(--accent-red)"
+            hoverClass="hover:text-red-500"
           />
         )}
       </div>
