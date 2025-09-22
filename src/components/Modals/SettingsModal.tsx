@@ -38,6 +38,7 @@ import { toHex, PROTOCOL } from "../../config/protocol";
 import { devMode } from "../../config/dev-mode";
 import { useDBStore } from "../../store/db.store";
 import { useSessionState } from "../../store/session.store";
+import { WarningBlock } from "../Common/WarningBlock";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -752,15 +753,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <h3 className="mb-4 text-lg font-medium">Security</h3>
                     <div className="space-y-2">
                       {/* Wallet Security */}
-                      <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
-                        <div className="text-text-warning mb-2 text-sm font-medium">
-                          Wallet Security
-                        </div>
-                        <div className="text-text-warning/80 text-xs">
-                          Your wallet is protected by your password. Keep your
-                          password and seed phrase secure.
-                        </div>
-                      </div>
+                      <WarningBlock title="Wallet Security">
+                        Your wallet is protected by your password. Keep your
+                        password and seed phrase secure.
+                      </WarningBlock>
 
                       {/* Change Password */}
                       <button
@@ -924,15 +920,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <h3 className="mb-4 text-lg font-medium">Extra</h3>
                 <div className="space-y-2">
                   {/* Warning */}
-                  <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
-                    <div className="text-text-warning mb-2 text-sm font-medium">
-                      Warning
-                    </div>
-                    <div className="text-text-warning/80 text-xs">
-                      Some of these features are in beta or expose you to
-                      external content
-                    </div>
-                  </div>
+                  <WarningBlock title="Warning">
+                    Some of these features are in beta or expose you to external
+                    content
+                  </WarningBlock>
                   {Object.entries(flips).map(([flagKey, item]) => (
                     <div
                       key={flagKey}

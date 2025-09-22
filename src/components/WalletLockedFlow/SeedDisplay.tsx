@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Mnemonic } from "kaspa-wasm";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../Common/Button";
 import { StringCopy } from "../Common/StringCopy";
+import { WarningBlock } from "../Common/WarningBlock";
 
 type SeedPhraseDisplayProps = {
   mnemonic: Mnemonic;
@@ -22,13 +23,12 @@ export const SeedPhraseDisplay = ({
         <p className="font-semibold">
           Please save your mnemonic phrase securely:
         </p>
-        <div className="border-text-warning/50 bg-text-warning/5 my-1 rounded-2xl border p-2">
-          <div className="text-text-warning mb-2 flex flex-col items-center text-center text-sm font-semibold">
-            <AlertTriangle className="h-7 w-7" />
-            Please keep your seed phrase safe, if you lose your seed phrase
-            there is no recovery.
-          </div>
-        </div>
+        <WarningBlock title="Important" className="my-1.5 sm:w-11/12">
+          Please keep your seed phrase safe, if you lose your seed phrase there
+          is no recovery.
+          <br />
+          Remember: Anyone with your seed phrase can access your wallet.
+        </WarningBlock>
         <div
           className={`mb-3.5 grid w-full grid-cols-3 gap-2.5 p-2 transition-all duration-300 ease-linear ${
             revealed
@@ -48,11 +48,6 @@ export const SeedPhraseDisplay = ({
             </span>
           ))}
         </div>
-
-        <div className="text-text-warning mb-4 text-center text-sm">
-          Anyone with your seed phrase can access your wallet
-        </div>
-
         <div className="flex items-center justify-center gap-2">
           <input
             type="checkbox"
