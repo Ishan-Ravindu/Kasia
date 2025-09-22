@@ -414,7 +414,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={clsx(
-                    "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
+                    "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-[var(--primary-bg)]/50",
                     {
                       "mx-1 min-w-14 flex-col items-center justify-center":
                         isMobile,
@@ -423,8 +423,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         isMobile && activeTab === tab.id,
                       "text-primary bg-primary-bg border-kas-secondary rounded-lg border":
                         !isMobile && activeTab === tab.id,
+                      "text-muted-foreground hover:text-primary border-b-2 border-transparent":
+                        isMobile && activeTab !== tab.id,
                       "text-muted-foreground hover:text-primary border border-transparent":
-                        activeTab !== tab.id,
+                        !isMobile && activeTab !== tab.id,
                     }
                   )}
                 >
