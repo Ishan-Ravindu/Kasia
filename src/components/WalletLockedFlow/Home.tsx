@@ -129,7 +129,7 @@ export const Home = ({
               <HoldToDelete
                 onComplete={() => onDeleteWallet(w.id)}
                 size="md"
-                className="z-20 text-[var(--text-secondary)] transition-colors duration-200 sm:opacity-0 sm:group-hover:opacity-100"
+                className="z-20 text-[var(--text-secondary)] transition-all duration-600 sm:opacity-0 sm:group-hover:opacity-70"
                 title="Click and hold to delete wallet"
                 hoverClass="hover:text-red-500"
               />
