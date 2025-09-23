@@ -48,7 +48,7 @@ export const Home = ({
     <>
       {isMobile ? (
         <span
-          className="text-text-secondary absolute top-4 left-4 size-6 text-sm"
+          className="text-text-secondary absolute top-4 left-4 text-sm"
           title={__COMMIT_SHA__}
         >
           v{__APP_VERSION__}
