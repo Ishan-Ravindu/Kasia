@@ -12,11 +12,7 @@ import {
 import { AccountService } from "../service/account-service";
 import { encrypt_message } from "cipher";
 import { NetworkType } from "../types/all";
-import {
-  WalletDerivationType,
-  UnlockedWallet,
-  WalletBalance,
-} from "../types/wallet.type";
+import { UnlockedWallet, WalletBalance } from "../types/wallet.type";
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
@@ -54,7 +50,6 @@ type WalletState = {
     id: string;
     name: string;
     createdAt: string;
-    derivationType?: WalletDerivationType;
   }[];
   selectedWalletId: string | null;
   unlockedWallet: UnlockedWallet | null;
@@ -79,7 +74,6 @@ type WalletState = {
     name: string,
     mnemonic: Mnemonic,
     password: string,
-    derivationType?: WalletDerivationType,
     passphrase?: string
   ) => Promise<string>;
   deleteWallet: (walletId: string) => void;
@@ -91,13 +85,6 @@ type WalletState = {
   fetchFeeEstimates: () => Promise<void>;
   startFeeEstimatePolling: () => void;
   stopFeeEstimatePolling: () => void;
-
-  // migration functionality
-  migrateLegacyWallet: (
-    walletId: string,
-    password: string,
-    newName?: string
-  ) => Promise<string>;
 
   // password management
   changePassword: (
@@ -175,14 +162,12 @@ export const useWalletStore = create<WalletState>((set, get) => {
       name: string,
       mnemonic: Mnemonic,
       password: string,
-      derivationType?: WalletDerivationType,
       passphrase?: string
     ) => {
       const walletId = _walletStorage.create(
         name,
         mnemonic,
         password,
-        derivationType,
         passphrase
       );
       get().loadWallets();
@@ -496,20 +481,6 @@ export const useWalletStore = create<WalletState>((set, get) => {
         // Update the RPC client
         set({ rpc: client });
       }
-    },
-
-    migrateLegacyWallet: async (
-      walletId: string,
-      password: string,
-      newName?: string
-    ) => {
-      const newWalletId = await _walletStorage.migrateLegacyWallet(
-        walletId,
-        password,
-        newName
-      );
-      get().loadWallets();
-      return newWalletId;
     },
 
     changePassword: async (

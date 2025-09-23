@@ -12,7 +12,6 @@ import { CreateWallet } from "../components/WalletLockedFlow/Create";
 import { Home } from "../components/WalletLockedFlow/Home";
 import { Import } from "../components/WalletLockedFlow/Import";
 import { Unlock } from "../components/WalletLockedFlow/Unlock";
-import { Migrate } from "../components/WalletLockedFlow/Migrate";
 import { ImportSuccess } from "../components/WalletLockedFlow/ImportSuccess";
 import { SeedPhraseDisplay } from "../components/WalletLockedFlow/SeedDisplay";
 
@@ -22,7 +21,6 @@ export type Step = {
     | "create"
     | "import"
     | "unlock"
-    | "migrate"
     | "seed"
     | "success"
     | "unlocked";
@@ -102,9 +100,6 @@ export const WalletLockedFlowContainer = ({
       case "unlock":
         navigate(`/wallet/unlock/${walletId ?? ""}`);
         break;
-      case "migrate":
-        navigate(`/wallet/migrate/${walletId ?? ""}`);
-        break;
       default:
         return;
     }
@@ -131,10 +126,6 @@ export const WalletLockedFlowContainer = ({
 
   const onUnlockSuccess = (walletId: string) => {
     onStepChange("unlocked", walletId);
-  };
-
-  const onMigrateSuccess = () => {
-    navigate("/");
   };
 
   const style = window.getComputedStyle(document.body);
@@ -203,15 +194,6 @@ export const WalletLockedFlowContainer = ({
 
       {step.type === "success" && (
         <ImportSuccess onBack={() => onStepChange("home")} />
-      )}
-
-      {step.type === "migrate" && (
-        <Migrate
-          walletId={step.walletId}
-          wallets={wallets}
-          onSuccess={onMigrateSuccess}
-          onBack={() => onStepChange("home")}
-        />
       )}
 
       {step.type === "unlock" && (
