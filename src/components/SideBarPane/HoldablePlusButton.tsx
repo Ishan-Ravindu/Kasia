@@ -32,7 +32,7 @@ export const HoldablePlusButton: FC<HoldablePlusButtonProps> = ({
   const handleClick = isBroadcastMode ? onNewBroadcast : undefined;
 
   const buttonClasses = clsx(
-    "hover:bg-primary-bg/50 cursor-pointer hover:text-[var(--kas-primary)] focus:outline-none active:scale-90 active:opacity-80",
+    "hover:bg-primary-bg/50 cursor-pointer focus:outline-none active:scale-90 active:opacity-80",
     collapsed ? "rounded p-2" : "rounded p-1"
   );
 
@@ -47,6 +47,7 @@ export const HoldablePlusButton: FC<HoldablePlusButtonProps> = ({
       className={buttonClasses}
       ariaLabel={broadcastEnabled ? "new channel" : "new chat"}
       ringColor="var(--kas-primary)"
+      hoverClass="hover:text-[var(--kas-primary)]"
     >
       <Plus className="h-6 w-6" />
     </HoldToAction>

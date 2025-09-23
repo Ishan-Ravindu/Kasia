@@ -37,7 +37,7 @@ export const TrustMessage: FC = () => {
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#70C7BA]">
             <Lock className="h-4 w-4 text-white" />
           </div>
-          <span className="text-secondary-text text-sm font-medium select-none">
+          <span className="text-sm font-medium text-[var(--text-secondary)] select-none">
             Your keys, your messages
           </span>
         </div>
@@ -45,20 +45,20 @@ export const TrustMessage: FC = () => {
         {/* Collapsible Content */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            openTrust ? "mt-4 max-h-32 opacity-100" : "max-h-0 opacity-0"
+            openTrust ? "mt-2 max-h-32 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <p className="break-word mb-2 w-full text-center text-sm leading-relaxed text-gray-400">
+          <p className="break-word mb-2 w-full text-center text-sm leading-relaxed text-[var(--text-secondary)]">
             We never store your private keys or have access to your messages.
-            Everything is encrypted and controlled by you.
+            Messages are encrypted and controlled by you.
           </p>
-          <p className="break-word w-full text-center text-xs leading-relaxed text-gray-400">
+          <p className="break-word w-full text-center text-xs leading-relaxed text-[var(--text-secondary)]">
             You can even run Kasia yourself!
             <a
               href="https://github.com/K-Kluster/Kasia"
               target="_blank"
               rel="noopener noreferrer"
-              className="break-word ml-1 text-gray-400 underline hover:text-gray-300"
+              className="break-word ml-1 text-[var(--text-secondary)] underline hover:text-gray-300"
             >
               github.com/K-Kluster/Kasia
             </a>
@@ -87,14 +87,17 @@ export const TrustMessage: FC = () => {
         {/* Collapsible Content */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            openWhy ? "mt-4 max-h-28 opacity-100" : "max-h-0 opacity-0"
+            openWhy ? "mt-2 max-h-fit opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <p className="break-word w-full text-center text-sm leading-relaxed text-gray-400">
-            Kasia is a private messaging app that protects your privacy. Your
-            Kaspa wallet acts as your secure login – no email, phone number, or
-            personal details needed. Messages are encrypted and stored on the
-            Kaspa blockDAG, making them completely private and decentralized.
+          <p className="break-word w-full text-center text-sm leading-relaxed text-[var(--text-secondary)]">
+            Kasia is messaging app that protects your privacy. Your Kaspa wallet
+            acts as your secure login – no email, phone number, or personal
+            details needed. Messages are encrypted and sequenced on the Kaspa
+            blockDAG, making them completely private and decentralized.
+          </p>
+          <p className="break-word w-full text-center text-xs leading-relaxed text-[var(--text-secondary)]">
+            Kasia is community built by volunteers.
           </p>
         </div>
       </div>

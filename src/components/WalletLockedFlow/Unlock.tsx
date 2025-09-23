@@ -104,8 +104,8 @@ export const Unlock = ({
   };
 
   return (
-    <>
-      <div inert className="mb-4 flex w-full justify-center opacity-70">
+    <div className="flex flex-col gap-y-4">
+      <div inert className="flex w-full justify-center opacity-70">
         <NetworkSelector
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
@@ -115,7 +115,7 @@ export const Unlock = ({
       </div>
 
       {wallets.find((w) => w.id === selectedWalletId) && (
-        <div className="mt-16 mb-5 flex justify-center">
+        <div className="flex justify-center">
           <div className="border-kas-secondary bg-kas-secondary/10 rounded-md border px-4 py-2 text-center">
             <span className="text-lg font-bold">
               {wallets.find((w) => w.id === selectedWalletId)?.name}
@@ -150,7 +150,7 @@ export const Unlock = ({
           />
 
           <div className="mb-3.5">
-            <label htmlFor="password" className="mb-3.5 block font-medium">
+            <label htmlFor="password" className="mb-3.5 block font-semibold">
               Password
             </label>
             <input
@@ -195,6 +195,6 @@ export const Unlock = ({
           </div>
         </form>
       )}
-    </>
+    </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { Mnemonic } from "kaspa-wasm";
 import { useWalletStore } from "../store/wallet.store";
 import { useUiStore } from "../store/ui.store";
@@ -69,6 +69,13 @@ export const WalletLockedFlowContainer = ({
   useEffect(() => {
     loadWallets();
   }, [loadWallets]);
+
+  // select wallet from URL parameter when component mounts, needed if user routes to unlock screen
+  useEffect(() => {
+    if (wallet && !selectedWalletId) {
+      selectWallet(wallet);
+    }
+  }, [wallet, selectedWalletId, selectWallet]);
 
   // ref for scroll up when step changes, like a page reset
   const containerRef = useRef<HTMLDivElement>(null);
@@ -142,7 +149,8 @@ export const WalletLockedFlowContainer = ({
           "fixed top-safe bottom-safe w-full max-h-screen overflow-y-auto flex flex-col p-4",
           (step.type === "home" && wallets.length <= 2) ||
           step.type === "success" ||
-          step.type === "create"
+          step.type === "create" ||
+          step.type === "unlock"
             ? "justify-center"
             : "justify-start",
         ]

@@ -2,11 +2,12 @@ import { FC, useEffect, useState } from "react";
 import { decryptXChaCha20Poly1305 } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { StoredWallet } from "../../types/wallet.type";
-import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
 import { StringCopy } from "../Common/StringCopy";
+import { WarningBlock } from "../Common/WarningBlock";
 
 export const WalletSeedRetreiveDisplay: FC = () => {
   const [password, setPassword] = useState("");
@@ -87,13 +88,10 @@ export const WalletSeedRetreiveDisplay: FC = () => {
   return (
     <div className="mt-2">
       <h4 className="text-center text-lg font-semibold">Security</h4>
-      <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
-        <div className="text-text-warning mb-2 text-sm font-bold">Warning</div>
-        <div className="text-text-warning/80 text-xs font-semibold">
-          Never share your seed phrase with anyone. Anyone with access to your
-          seed phrase can access your funds.
-        </div>
-      </div>
+      <WarningBlock title="Warning" className="mt-2">
+        Never share your seed phrase with anyone. Anyone with access to your
+        seed phrase can access your funds.
+      </WarningBlock>
       {!showSeedPhrase ? (
         <div>
           <p className="mb-2 p-2 text-center font-semibold">
@@ -104,7 +102,7 @@ export const WalletSeedRetreiveDisplay: FC = () => {
               e.preventDefault();
               handleViewSeedPhrase();
             }}
-            className="flex flex-col items-center"
+            className="space-y-4"
           >
             {/* hidden username field for password manager accessibility */}
             <input
@@ -123,37 +121,32 @@ export const WalletSeedRetreiveDisplay: FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter wallet password"
               autoComplete="current-password"
-              className="border-primary-border bg-primary-bg mb-2 w-full rounded-3xl border px-4 py-2 md:w-3/4"
+              className="border-primary-border bg-primary-bg w-full rounded-3xl border px-4 py-2"
               required
             />
-            <Button type="submit" variant="primary" className="md:w-3/4">
+            <Button type="submit" variant="primary" className="w-full">
               View Seed Phrase
             </Button>
           </form>
         </div>
       ) : (
         <div>
+          {hasPassphrase && (
+            <WarningBlock title="Extra Security" icon={Lock} className="my-2">
+              This wallet was created with a BIP39 passphrase.
+              <br />
+              You'll need both the seed phrase AND the passphrase to recover
+              this wallet elsewhere.
+            </WarningBlock>
+          )}
           <p className="mb-2 p-2 text-center font-semibold">
             Your seed phrase:
           </p>
-          {hasPassphrase && (
-            <div className="mb-2 flex items-center gap-3 rounded-lg border border-[var(--accent-yellow)] bg-[var(--secondary-bg)] p-3 text-sm">
-              <AlertTriangle className="h-5 w-5 flex-shrink-0 text-[var(--text-warning)]" />
-              <div className="text-left">
-                <div className="text-[var(--text-warning)]">
-                  <strong>Important:</strong> This wallet was created with a
-                  BIP39 passphrase.
-                  <br />
-                  You'll need both the seed phrase AND the passphrase to recover
-                  this wallet elsewhere.
-                </div>
-              </div>
-            </div>
-          )}
           <div
             className={clsx(
               "word-break border-primary-border bg-primary-bg mb-4 rounded-3xl border px-4 py-3 font-mono break-all",
-              { "blur-sm filter": isBlurred }
+              { "blur-sm filter": isBlurred },
+              { "select-none": isBlurred }
             )}
           >
             {seedPhrase}

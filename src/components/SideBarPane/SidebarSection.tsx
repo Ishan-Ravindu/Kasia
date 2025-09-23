@@ -14,6 +14,7 @@ import { HoldablePlusButton } from "./HoldablePlusButton";
 
 interface SidebarSectionProps {
   onContactClicked: (contact: Contact) => void;
+  onModeChange: (isBroadcastMode: boolean) => void;
   openedRecipient: string | null;
   walletAddress: string | undefined;
   mobileView: "contacts" | "messages";
@@ -24,6 +25,7 @@ interface SidebarSectionProps {
 
 export const SidebarSection: FC<SidebarSectionProps> = ({
   onContactClicked,
+  onModeChange,
   openedRecipient,
   walletAddress,
   mobileView,
@@ -35,7 +37,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
   const isMobile = useIsMobile();
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const { openModal } = useUiStore();
-  const { isBroadcastMode, setIsBroadcastMode } = useBroadcastStore();
+  const { isBroadcastMode } = useBroadcastStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
@@ -88,7 +90,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
                     setShowSearch(!showSearch);
                   }
                 }}
-                className="hover:text-kas-primary hover:bg-primary-bg/50 absolute top-1/2 left-1 z-10 size-7 -translate-y-[15px] cursor-pointer rounded p-1 focus:outline-none active:scale-90 active:opacity-80"
+                className="hover:text-kas-primary hover:bg-primary-bg/50 absolute top-1/2 left-1 z-10 flex size-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded focus:outline-none active:scale-90 active:opacity-80"
                 aria-label="Toggle search"
               >
                 <Search className="size-6" />
@@ -119,7 +121,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
             </div>
             {broadcastEnabled && !showSearch && (
               <ModeSelector
-                onModeChange={setIsBroadcastMode}
+                onModeChange={onModeChange}
                 isBroadcastMode={isBroadcastMode}
                 shouldShow={broadcastEnabled && !showSearch}
               />
@@ -134,7 +136,7 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
           </div>
         ) : (
           /* Plus button when collapsed */
-          <div className="flex flex-1 justify-center">
+          <div className="flex w-full justify-center">
             <HoldablePlusButton
               broadcastEnabled={broadcastEnabled}
               isBroadcastMode={isBroadcastMode}

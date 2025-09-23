@@ -38,6 +38,7 @@ import { toHex, PROTOCOL } from "../../config/protocol";
 import { devMode } from "../../config/dev-mode";
 import { useDBStore } from "../../store/db.store";
 import { useSessionState } from "../../store/session.store";
+import { WarningBlock } from "../Common/WarningBlock";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -414,7 +415,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={clsx(
-                    "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
+                    "flex cursor-pointer items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 hover:bg-[var(--primary-bg)]/50",
                     {
                       "mx-1 min-w-14 flex-col items-center justify-center":
                         isMobile,
@@ -423,8 +424,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         isMobile && activeTab === tab.id,
                       "text-primary bg-primary-bg border-kas-secondary rounded-lg border":
                         !isMobile && activeTab === tab.id,
+                      "text-muted-foreground hover:text-primary border-b-2 border-transparent":
+                        isMobile && activeTab !== tab.id,
                       "text-muted-foreground hover:text-primary border border-transparent":
-                        activeTab !== tab.id,
+                        !isMobile && activeTab !== tab.id,
                     }
                   )}
                 >
@@ -444,10 +447,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             })}
           >
             {activeTab === "account" && (
-              <div className="mt-2 space-y-6 sm:mt-0">
+              <div className="mt-3 space-y-6 sm:mt-0">
                 {!showNameChange && !showImportExport ? (
                   <>
-                    <h3 className="mb-2 text-lg font-medium">Account</h3>
+                    <h3 className="mb-4 text-lg font-medium">Account</h3>
                     <div className="space-y-2">
                       {/* Current Wallet Info */}
                       {unlockedWallet && (
@@ -612,10 +615,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
             {activeTab === "theme" && (
-              <div className="mt-4 space-y-6 sm:mt-0">
+              <div className="mt-3 space-y-6 sm:mt-0">
                 {!showCustomTheme ? (
                   <>
-                    <h3 className="mb-2 text-lg font-medium">Theme</h3>
+                    <h3 className="mb-4 text-lg font-medium">Theme</h3>
                     <div className="grid grid-cols-1 space-y-2">
                       <button
                         onClick={() => setTheme("light")}
@@ -710,7 +713,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
 
             {activeTab === "network" && (
-              <div className="mt-4 space-y-6 sm:mt-0">
+              <div className="mt-3 space-y-6 sm:mt-0">
                 <h3 className="mb-4 text-lg font-medium">Network</h3>
                 <div className="space-y-4">
                   {/* Current Network Info */}
@@ -744,21 +747,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
             {activeTab === "security" && (
-              <div className="mt-4 space-y-6 sm:mt-0">
+              <div className="mt-3 space-y-6 sm:mt-0">
                 {!showPasswordChange ? (
                   <>
-                    <h3 className="mb-2 text-lg font-medium">Security</h3>
+                    <h3 className="mb-4 text-lg font-medium">Security</h3>
                     <div className="space-y-2">
                       {/* Wallet Security */}
-                      <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
-                        <div className="text-text-warning mb-2 text-sm font-medium">
-                          Wallet Security
-                        </div>
-                        <div className="text-text-warning/80 text-xs">
-                          Your wallet is protected by your password. Keep your
-                          password and seed phrase secure.
-                        </div>
-                      </div>
+                      <WarningBlock title="Wallet Security">
+                        Your wallet is protected by your password. Keep your
+                        password and seed phrase secure.
+                      </WarningBlock>
 
                       {/* Change Password */}
                       <button
@@ -918,70 +916,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
             {activeTab === "extras" && (
-              <>
-                <div className="mt-4 space-y-6 sm:mt-0"></div>
-                <h3 className="mb-2 text-lg font-medium">Extra</h3>
-                {/* Warning */}
-                <div className="border-text-warning/50 bg-text-warning/5 rounded-2xl border p-4">
-                  <div className="text-text-warning mb-2 text-sm font-medium">
-                    Warning
-                  </div>
-                  <div className="text-text-warning/80 text-xs">
+              <div className="mt-3 space-y-6 sm:mt-0">
+                <h3 className="mb-4 text-lg font-medium">Extra</h3>
+                <div className="space-y-2">
+                  {/* Warning */}
+                  <WarningBlock title="Warning">
                     Some of these features are in beta or expose you to external
                     content
-                  </div>
-                </div>
-                {Object.entries(flips).map(([flagKey, item]) => (
-                  <div
-                    key={flagKey}
-                    onClick={() =>
-                      setFlag(
-                        flagKey as FeatureFlags,
-                        !flags[flagKey as FeatureFlags]
-                      )
-                    }
-                    className="border-primary-border bg-primary-bg hover:bg-primary-bg/50 my-2 cursor-pointer rounded-2xl border p-4 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="mb-1 text-sm font-semibold">
-                          {item.label}
+                  </WarningBlock>
+                  {Object.entries(flips).map(([flagKey, item]) => (
+                    <div
+                      key={flagKey}
+                      onClick={() =>
+                        setFlag(
+                          flagKey as FeatureFlags,
+                          !flags[flagKey as FeatureFlags]
+                        )
+                      }
+                      className="border-primary-border bg-primary-bg hover:bg-primary-bg/50 my-2 cursor-pointer rounded-2xl border p-4 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="mb-1 text-sm font-semibold">
+                            {item.label}
+                          </div>
+                          <div className="text-muted-foreground text-xs whitespace-pre-line">
+                            {item.desc}
+                          </div>
                         </div>
-                        <div className="text-muted-foreground text-xs whitespace-pre-line">
-                          {item.desc}
-                        </div>
-                      </div>
-                      <Switch
-                        checked={flags[flagKey as FeatureFlags] || false}
-                        onChange={(enabled) =>
-                          setFlag(flagKey as FeatureFlags, enabled)
-                        }
-                        className={clsx(
-                          "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
-                          {
-                            "bg-kas-secondary": flags[flagKey as FeatureFlags],
-                            "bg-gray-300": !flags[flagKey as FeatureFlags],
+                        <Switch
+                          checked={flags[flagKey as FeatureFlags] || false}
+                          onChange={(enabled) =>
+                            setFlag(flagKey as FeatureFlags, enabled)
                           }
-                        )}
-                      >
-                        <span
                           className={clsx(
-                            "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                            "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
                             {
-                              "translate-x-6": flags[flagKey as FeatureFlags],
-                              "translate-x-1": !flags[flagKey as FeatureFlags],
+                              "bg-kas-secondary":
+                                flags[flagKey as FeatureFlags],
+                              "bg-gray-300": !flags[flagKey as FeatureFlags],
                             }
                           )}
-                        />
-                      </Switch>
+                        >
+                          <span
+                            className={clsx(
+                              "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                              {
+                                "translate-x-6": flags[flagKey as FeatureFlags],
+                                "translate-x-1":
+                                  !flags[flagKey as FeatureFlags],
+                              }
+                            )}
+                          />
+                        </Switch>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </>
+                  ))}
+                </div>
+              </div>
             )}
-            {activeTab === "dev" ? (
-              <>
-                <div className="mt-4 space-y-6 sm:mt-0"></div>
+            {activeTab === "dev" && (
+              <div className="mt-3 space-y-6 sm:mt-0">
                 <h3 className="mb-4 text-lg font-medium">Development Mode</h3>
 
                 <div className="my-2">
@@ -1006,8 +1001,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </Button>
                   </div>
                 </div>
-              </>
-            ) : null}
+              </div>
+            )}
           </div>
         </div>
       </div>
