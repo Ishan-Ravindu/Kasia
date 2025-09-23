@@ -71,11 +71,6 @@ export const useSessionState = create<SessionState>((set, get) => {
       return data?.data ?? null;
     },
     async hasSession(tenantId) {
-      // temporary disable for iOS
-      if (platform() === "ios") {
-        return false;
-      }
-
       if (!(await get().supportSecuredBiometry())) {
         return false;
       }
@@ -86,11 +81,6 @@ export const useSessionState = create<SessionState>((set, get) => {
       });
     },
     async setSession(tenantId, password) {
-      // temporary disable for iOS
-      if (platform() === "ios") {
-        return;
-      }
-
       if (!(await get().supportSecuredBiometry())) {
         return;
       }
