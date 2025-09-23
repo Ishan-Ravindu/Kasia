@@ -70,6 +70,13 @@ export const WalletLockedFlowContainer = ({
     loadWallets();
   }, [loadWallets]);
 
+  // select wallet from URL parameter when component mounts, needed if user routes to unlock screen
+  useEffect(() => {
+    if (wallet && !selectedWalletId) {
+      selectWallet(wallet);
+    }
+  }, [wallet, selectedWalletId, selectWallet]);
+
   // ref for scroll up when step changes, like a page reset
   const containerRef = useRef<HTMLDivElement>(null);
 
