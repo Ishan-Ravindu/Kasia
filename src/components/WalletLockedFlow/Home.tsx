@@ -62,7 +62,7 @@ export const Home = ({
       </button>
       <div
         className={clsx(
-          "mb-1 flex flex-col items-center justify-center",
+          "mb-1 flex items-center justify-center",
           isMobile ? "grow-0" : "grow"
         )}
       >
