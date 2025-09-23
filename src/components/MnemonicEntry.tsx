@@ -1,6 +1,7 @@
 import React, { useState, ClipboardEvent, ChangeEvent, useEffect } from "react";
 import { Switch } from "@headlessui/react";
 import clsx from "clsx";
+import { PasswordField } from "./Common/PasswordField";
 
 interface MnemonicEntryProps {
   seedPhraseLength: number;
@@ -115,14 +116,11 @@ export const MnemonicEntry = ({
 
       {showPassphrase && (
         <div className="mt-4 mb-4">
-          <label className="mb-3 block text-base font-semibold text-[var(--text-primary)]">
-            Passphrase (Optional)
-          </label>
-          <input
-            ref={passphraseRef}
-            type="password"
+          <PasswordField
+            label="Passphrase (Optional)"
+            classLabel="mb-3 block text-base font-semibold text-[var(--text-primary)]"
             placeholder="Enter passphrase (leave empty if none)"
-            className={clsx(
+            classInput={clsx(
               "w-full rounded-xl p-2",
               "border-primary-border border bg-[var(--primary-bg)]",
               "text-[var(--text-primary)]",
