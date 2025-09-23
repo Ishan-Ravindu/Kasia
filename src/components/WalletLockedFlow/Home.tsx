@@ -46,6 +46,14 @@ export const Home = ({
 }: HomeProps) => {
   return (
     <>
+      {isMobile ? (
+        <span
+          className="text-text-secondary absolute top-4 left-4 size-6 text-sm"
+          title={__COMMIT_SHA__}
+        >
+          v{__APP_VERSION__}
+        </span>
+      ) : null}
       <button
         onClick={() => openModal("settings")}
         className="absolute top-4 right-4 size-6 text-[var(--text-secondary)] hover:cursor-pointer hover:opacity-80 active:scale-90"
@@ -54,7 +62,7 @@ export const Home = ({
       </button>
       <div
         className={clsx(
-          "mb-1 flex items-center justify-center",
+          "mb-1 flex flex-col items-center justify-center",
           isMobile ? "grow-0" : "grow"
         )}
       >
@@ -141,7 +149,6 @@ export const Home = ({
           </div>
         ))}
       </div>
-
       <div className="mt-8 flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
         <Button variant="primary" onClick={() => onStepChange("create")}>
           Create New Wallet
