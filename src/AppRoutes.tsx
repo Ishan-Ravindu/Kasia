@@ -5,7 +5,6 @@ import {
   WalletLockedFlowContainer,
   Step,
 } from "./containers/WalletLockedFlowContainer";
-import { RequireUnlockedWallet } from "./components/Layout/RequireUnlockedWallet";
 
 import type { NetworkType } from "./types/all";
 import { useWalletStore } from "./store/wallet.store";
@@ -84,7 +83,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         </Route>
 
         {/* Main Messaging container once you are unlocked */}
-        <Route element={<RequireUnlockedWallet />}>
+        {unlockedWallet ? (
           <Route element={<MessengerProvider />}>
             <Route path=":walletId/directs" element={<DirectsContainer />} />
             <Route
@@ -100,7 +99,9 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               element={<BroadcastsContainer />}
             />
           </Route>
-        </Route>
+        ) : (
+          <Route path="/*" element={<Navigate to="/" replace />} />
+        )}
       </Route>
     </Routes>
   );
