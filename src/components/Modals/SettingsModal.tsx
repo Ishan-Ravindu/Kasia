@@ -39,6 +39,7 @@ import { devMode } from "../../config/dev-mode";
 import { useDBStore } from "../../store/db.store";
 import { useSessionState } from "../../store/session.store";
 import { WarningBlock } from "../Common/WarningBlock";
+import { PasswordField } from "../Common/PasswordField";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -817,65 +818,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       ) : (
                         <>
                           {/* Current Password */}
-                          <div>
-                            <label
-                              htmlFor="current-password"
-                              className="mb-2 block text-sm font-medium"
-                            >
-                              Current Password
-                            </label>
-                            <input
-                              type="password"
-                              id="current-password"
-                              value={currentPassword}
-                              onChange={(e) =>
-                                setCurrentPassword(e.target.value)
-                              }
-                              className="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
-                              placeholder="Enter your current password"
-                              disabled={isChangingPassword}
-                            />
-                          </div>
+                          <PasswordField
+                            id="current-password"
+                            name="current-password"
+                            label="Current Password"
+                            classLabel="mb-2 block text-sm font-medium"
+                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            disabled={isChangingPassword}
+                            placeholder="Enter your current password"
+                          />
 
                           {/* New Password */}
-                          <div>
-                            <label
-                              htmlFor="new-password"
-                              className="mb-2 block text-sm font-medium"
-                            >
-                              New Password
-                            </label>
-                            <input
-                              type="password"
-                              id="new-password"
-                              value={newPassword}
-                              onChange={(e) => setNewPassword(e.target.value)}
-                              className="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
-                              placeholder="Enter your new password"
-                              disabled={isChangingPassword}
-                            />
-                          </div>
+                          <PasswordField
+                            id="new-password"
+                            name="new-password"
+                            label="New Password"
+                            classLabel="mb-2 block text-sm font-medium"
+                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            disabled={isChangingPassword}
+                            placeholder="Enter your new password"
+                          />
 
                           {/* Confirm New Password */}
-                          <div>
-                            <label
-                              htmlFor="confirm-password"
-                              className="mb-2 block text-sm font-medium"
-                            >
-                              Confirm New Password
-                            </label>
-                            <input
-                              type="password"
-                              id="confirm-password"
-                              value={confirmPassword}
-                              onChange={(e) =>
-                                setConfirmPassword(e.target.value)
-                              }
-                              className="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
-                              placeholder="Confirm your new password"
-                              disabled={isChangingPassword}
-                            />
-                          </div>
+                          <PasswordField
+                            id="confirm-password"
+                            name="confirm-password"
+                            label="Confirm Password"
+                            classLabel="mb-2 block text-sm font-medium"
+                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            disabled={isChangingPassword}
+                            placeholder="Confirm your new password"
+                          />
 
                           {/* Error Message */}
                           {passwordChangeError && (

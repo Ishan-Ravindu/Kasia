@@ -10,6 +10,7 @@ import {
 import { MnemonicEntry } from "../MnemonicEntry";
 import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
+import { PasswordField } from "../Common/PasswordField";
 
 type ImportWalletProps = {
   onSuccess: () => void;
@@ -157,13 +158,13 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
       />
 
       <div className="mb-6">
-        <label className="mb-3 block text-base font-semibold">Password</label>
-        <input
-          ref={passwordRef}
-          type="password"
+        <PasswordField
+          label="Password"
+          classLabel="mb-3 block text-base font-semibold"
+          classInput="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
           placeholder="Enter password"
           onChange={handleInputChange}
-          className="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
+          ref={passwordRef}
         />
       </div>
 

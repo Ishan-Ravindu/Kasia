@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "../Common/Button";
 import { Wallet } from "../../types/wallet.type";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
+import { PasswordField } from "../Common/PasswordField";
 
 type MigrateWalletProps = {
   walletId: string | undefined;
@@ -86,15 +87,13 @@ export const Migrate = ({
       </div>
 
       <div className="mb-3">
-        <label className="mb-3 block text-base font-semibold text-[var(--text-primary)]">
-          Password
-        </label>
-        <input
+        <PasswordField
+          label="Password"
+          classLabel="mb-3 block text-base font-semibold text-[var(--text-primary)]"
           ref={passwordRef}
-          type="password"
           placeholder="Enter your current wallet password"
           onChange={handleInputChange}
-          className="focus:!border-kas-primary border-primary-border w-full rounded border bg-[var(--primary-bg)] p-2.5 text-base text-[var(--text-primary)] transition-all duration-200 focus:outline-none"
+          classInput="focus:!border-kas-primary border-primary-border w-full rounded border bg-[var(--primary-bg)] p-2.5 text-base text-[var(--text-primary)] transition-all duration-200 focus:outline-none"
         />
       </div>
 

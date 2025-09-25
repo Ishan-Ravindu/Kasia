@@ -83,6 +83,10 @@ body {
   min-height: 100dvh;
 }
 
+input[type="password"]::-webkit-reveal-button {
+  display: none;
+}
+
 @supports (height: 100svh) {
   #root {
     min-height: 100svh;

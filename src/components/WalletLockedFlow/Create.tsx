@@ -10,6 +10,7 @@ import {
 import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
 import { useSessionState } from "../../store/session.store";
+import { PasswordField } from "../Common/PasswordField";
 
 type CreateWalletProps = {
   onSuccess: (walletId: string, mnemonic: Mnemonic) => void;
@@ -182,16 +183,13 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
       </RadioGroup>
 
       <div className="mt-1 mb-6">
-        <label className="mb-3 block text-base font-semibold text-[var(--text-primary)]">
-          Password
-        </label>
-        <input
-          autoComplete="new-password"
+        <PasswordField
+          classLabel="mb-3 block text-base font-semibold text-[var(--text-primary)]"
+          label="Password"
           ref={passwordRef}
-          type="password"
           placeholder="Enter password"
           onChange={handleInputChange}
-          className="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
+          classInput="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
         />
       </div>
 
