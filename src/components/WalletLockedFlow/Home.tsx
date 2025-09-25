@@ -46,14 +46,6 @@ export const Home = ({
 }: HomeProps) => {
   return (
     <>
-      {isMobile ? (
-        <span
-          className="text-text-secondary absolute top-4 left-4 text-sm"
-          title={__COMMIT_SHA__}
-        >
-          v{__APP_VERSION__}
-        </span>
-      ) : null}
       <button
         onClick={() => openModal("settings")}
         className="absolute top-4 right-4 size-6 text-[var(--text-secondary)] hover:cursor-pointer hover:opacity-80 active:scale-90"

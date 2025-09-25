@@ -18,12 +18,6 @@ export const Header: FC<Props> = () => {
         />
         <div className="ml-3 text-2xl font-semibold text-[var(--text-primary)]">
           Kasia
-          <span
-            title={__COMMIT_SHA__}
-            className="text-text-secondary ml-2 text-sm"
-          >
-            v{__APP_VERSION__}
-          </span>
         </div>
       </div>
 
