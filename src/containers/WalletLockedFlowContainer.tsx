@@ -12,18 +12,11 @@ import { CreateWallet } from "../components/WalletLockedFlow/Create";
 import { Home } from "../components/WalletLockedFlow/Home";
 import { Import } from "../components/WalletLockedFlow/Import";
 import { Unlock } from "../components/WalletLockedFlow/Unlock";
-import { ImportSuccess } from "../components/WalletLockedFlow/ImportSuccess";
 import { SeedPhraseDisplay } from "../components/WalletLockedFlow/SeedDisplay";
+import { toast } from "../utils/toast-helper";
 
 export type Step = {
-  type:
-    | "home"
-    | "create"
-    | "import"
-    | "unlock"
-    | "seed"
-    | "success"
-    | "unlocked";
+  type: "home" | "create" | "import" | "unlock" | "seed" | "unlocked";
   mnemonic?: Mnemonic;
   name?: string;
   walletId?: string;
@@ -121,7 +114,11 @@ export const WalletLockedFlowContainer = ({
   };
 
   const onImportSuccess = () => {
-    setStep({ type: "success" });
+    onStepChange("home");
+    // delay toast so that toast isn't cleared
+    setTimeout(() => {
+      toast.success("Wallet Successfully Imported");
+    }, 100);
   };
 
   const onUnlockSuccess = (walletId: string) => {
@@ -139,7 +136,6 @@ export const WalletLockedFlowContainer = ({
       ? [
           "fixed top-safe bottom-safe w-full max-h-screen overflow-y-auto flex flex-col p-4",
           (step.type === "home" && wallets.length <= 2) ||
-          step.type === "success" ||
           step.type === "create" ||
           step.type === "unlock"
             ? "justify-center"
@@ -190,10 +186,6 @@ export const WalletLockedFlowContainer = ({
           onSuccess={onImportSuccess}
           onBack={() => onStepChange("home")}
         />
-      )}
-
-      {step.type === "success" && (
-        <ImportSuccess onBack={() => onStepChange("home")} />
       )}
 
       {step.type === "unlock" && (

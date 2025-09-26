@@ -6,6 +6,7 @@ import { HoldToDelete } from "../Common/HoldToDelete";
 import { Wallet } from "../../types/wallet.type";
 import { NetworkType } from "../../types/all";
 import { ModalType } from "../../store/ui.store";
+import { Step } from "../../containers/WalletLockedFlowContainer";
 import clsx from "clsx";
 
 type HomeProps = {
@@ -16,17 +17,7 @@ type HomeProps = {
   isConnecting: boolean;
   onSelectWallet: (wallet: Wallet) => void;
   onDeleteWallet: (walletId: string) => void;
-  onStepChange: (
-    type:
-      | "home"
-      | "create"
-      | "import"
-      | "unlock"
-      | "seed"
-      | "success"
-      | "unlocked",
-    walletId?: string
-  ) => void;
+  onStepChange: (type: Step["type"], walletId?: string) => void;
   openModal: (modal: ModalType) => void;
   isMobile: boolean;
 };
