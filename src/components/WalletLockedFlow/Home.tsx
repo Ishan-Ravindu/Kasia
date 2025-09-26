@@ -6,6 +6,7 @@ import { HoldToDelete } from "../Common/HoldToDelete";
 import { Wallet } from "../../types/wallet.type";
 import { NetworkType } from "../../types/all";
 import { ModalType } from "../../store/ui.store";
+import { Step } from "../../containers/WalletLockedFlowContainer";
 import clsx from "clsx";
 
 type HomeProps = {
@@ -16,18 +17,7 @@ type HomeProps = {
   isConnecting: boolean;
   onSelectWallet: (wallet: Wallet) => void;
   onDeleteWallet: (walletId: string) => void;
-  onStepChange: (
-    type:
-      | "home"
-      | "create"
-      | "import"
-      | "unlock"
-      | "migrate"
-      | "seed"
-      | "success"
-      | "unlocked",
-    walletId?: string
-  ) => void;
+  onStepChange: (type: Step["type"], walletId?: string) => void;
   openModal: (modal: ModalType) => void;
   isMobile: boolean;
 };
@@ -85,23 +75,17 @@ export const Home = ({
                 <span className="max-w-full truncate font-semibold text-[var(--text-primary)] sm:max-w-lg">
                   {w.name}
                 </span>
-                {w.derivationType === "standard" ? (
-                  <span
-                    className={clsx(
-                      "rounded-3xl border px-2 py-0.5 text-xs leading-none font-medium",
-                      {
-                        "bg-kas-secondary/20 border-kas-secondary text-[var(--text-primary)]": true,
-                      }
-                    )}
-                    title="Kaspium Compatible"
-                  >
-                    Standard
-                  </span>
-                ) : (
-                  <span className="rounded-3xl border border-amber-400/50 bg-amber-400/20 px-2 py-0.5 text-xs leading-none font-medium text-[var(--text-primary)]">
-                    Legacy
-                  </span>
-                )}
+                <span
+                  className={clsx(
+                    "rounded-3xl border px-2 py-0.5 text-xs leading-none font-medium",
+                    {
+                      "bg-kas-secondary/20 border-kas-secondary text-[var(--text-primary)]": true,
+                    }
+                  )}
+                  title="Kaspium Compatible"
+                >
+                  Standard
+                </span>
               </div>
 
               <time
@@ -110,19 +94,6 @@ export const Home = ({
               >
                 Created: {new Date(w.createdAt).toLocaleDateString()}
               </time>
-
-              {/* migration button for old wallet types */}
-              {w.derivationType === "legacy" && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStepChange("migrate", w.id);
-                  }}
-                  className="bg-kas-secondary/20 hover:bg-kas-secondary/40 focus-visible:ring-kas-secondary mt-2 animate-pulse rounded px-2 py-1 text-xs transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none sm:mt-1"
-                >
-                  Migrate
-                </button>
-              )}
             </div>
 
             <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-3">

@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useWalletStore } from "../../store/wallet.store";
 import { Mnemonic } from "kaspa-wasm";
 import { Radio, RadioGroup, Label } from "@headlessui/react";
-import { WalletDerivationType } from "../../types/wallet.type";
 import {
   PASSWORD_MIN_LENGTH,
   disablePasswordRequirements,
@@ -19,8 +18,6 @@ type ImportWalletProps = {
 
 export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
   const [seedPhraseLength, setSeedPhraseLength] = useState<12 | 24>(24);
-  const [derivationType, setDerivationType] =
-    useState<WalletDerivationType>("standard");
   const [mnemonicValue, setMnemonicValue] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -47,13 +44,7 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
     try {
       const mnemonic = new Mnemonic(mnemonicValue);
       const passphrase = passphraseRef.current?.value || undefined;
-      await createWallet(
-        nameRef.current.value,
-        mnemonic,
-        pw,
-        derivationType,
-        passphrase
-      );
+      await createWallet(nameRef.current.value, mnemonic, pw, passphrase);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid mnemonic");
@@ -72,46 +63,6 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
   return (
     <>
       <h2 className="text-center text-lg font-bold">Import Wallet</h2>
-
-      <RadioGroup
-        name="derivationType"
-        value={derivationType}
-        onChange={setDerivationType}
-        className="mb-3"
-      >
-        <Label className="my-3 block text-base font-semibold text-[var(--text-primary)]">
-          Derivation Standard
-        </Label>
-
-        <div className="flex flex-col gap-2 sm:gap-3">
-          {[
-            {
-              value: "standard",
-              label: "Standard (Recommended)",
-              description: "Compatible with Kaspium and other standard wallets",
-            },
-            {
-              value: "legacy",
-              label: "Legacy",
-              description: "For compatibility with older wallets",
-            },
-          ].map((opt) => (
-            <Radio
-              key={opt.value}
-              as="label"
-              value={opt.value}
-              className="group hover:border-kas-secondary/50 border-primary-border flex cursor-pointer flex-col items-start gap-y-1 rounded-2xl border bg-[var(--primary-bg)] p-3 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl data-checked:border-[var(--color-kas-secondary)] data-checked:bg-[var(--color-kas-secondary)]/5"
-            >
-              <span className="text-sm font-semibold text-[var(--text-primary)] group-data-checked:text-[var(--color-kas-secondary)] sm:text-base">
-                {opt.label}
-              </span>
-              <small className="text-xs text-[var(--text-secondary)] group-data-checked:text-[var(--color-kas-primary)] sm:text-sm">
-                {opt.description}
-              </small>
-            </Radio>
-          ))}
-        </div>
-      </RadioGroup>
 
       <div className="mb-3">
         <label className="mb-3 block text-base font-semibold text-[var(--text-primary)]">

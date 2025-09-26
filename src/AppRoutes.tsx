@@ -21,7 +21,6 @@ const walletFlowRoutes: WalletFlowRouteConfig[] = [
   { path: "create", initialStep: "create" },
   { path: "import", initialStep: "import" },
   { path: "unlock/:wallet", initialStep: "unlock" },
-  { path: "migrate/:wallet", initialStep: "migrate" },
 ];
 
 export type AppRoutesProps = {
