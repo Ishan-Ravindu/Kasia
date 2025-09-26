@@ -10,6 +10,10 @@ const isTauri = process.env.TAURI_ENV_PLATFORM_VERSION !== undefined;
 
 // https://vite.dev/config/
 const config = defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.APP_VERSION),
+    __COMMIT_SHA__: JSON.stringify(process.env.COMMIT_SHA),
+  },
   test: {
     printConsoleTrace: true,
     // mock kaspa wasm and cipher globally

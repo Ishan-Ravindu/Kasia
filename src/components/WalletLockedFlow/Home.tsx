@@ -112,7 +112,6 @@ export const Home = ({
           </div>
         ))}
       </div>
-
       <div className="mt-8 flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
         <Button variant="primary" onClick={() => onStepChange("create")}>
           Create New Wallet

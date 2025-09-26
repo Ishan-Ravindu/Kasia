@@ -40,6 +40,7 @@ import { useDBStore } from "../../store/db.store";
 import { useSessionState } from "../../store/session.store";
 import { WarningBlock } from "../Common/WarningBlock";
 import { PasswordField } from "../Common/PasswordField";
+import { AppVersion } from "../App/AppVersion";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -406,10 +407,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             })}
           >
             <nav
-              className={clsx({
-                "flex space-x-4 overflow-x-auto pb-2": isMobile,
-                "space-y-2": !isMobile,
-              })}
+              className={clsx(
+                {
+                  "flex space-x-4 overflow-x-auto pb-2": isMobile,
+                  "space-y-2": !isMobile,
+                },
+                "relative h-full"
+              )}
             >
               {tabs.map((tab) => (
                 <button
@@ -436,6 +440,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {tab.label}
                 </button>
               ))}
+
+              {!isMobile ? (
+                <div className="absolute bottom-4 left-0 flex w-full items-center justify-center">
+                  <AppVersion />
+                </div>
+              ) : null}
             </nav>
             {isMobile && (
               <div className="bg-primary-border my-0 h-0.5 w-full" />
@@ -983,6 +993,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
           </div>
+          {/* App Version Mobile */}
+          {isMobile ? (
+            <div className="absolute bottom-4 left-0 flex w-full items-center justify-center">
+              <AppVersion />
+            </div>
+          ) : null}
         </div>
       </div>
     </Modal>
