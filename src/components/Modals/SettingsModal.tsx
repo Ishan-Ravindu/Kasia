@@ -40,8 +40,9 @@ import { useDBStore } from "../../store/db.store";
 import { useSessionState } from "../../store/session.store";
 import { WarningBlock } from "../Common/WarningBlock";
 import { PasswordField } from "../Common/PasswordField";
+import { HoldToDelete } from "../Common/HoldToDelete";
 import { AppVersion } from "../App/AppVersion";
-
+import { toast } from "../../utils/toast-helper";
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -125,6 +126,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Import/Export messages state
   const [showImportExport, setShowImportExport] = useState(false);
 
+  // Delete all messages state
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+
   // Custom theme state
   const [showCustomTheme, setShowCustomTheme] = useState(false);
 
@@ -150,15 +154,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const onClearHistory = async () => {
     if (!unlockedWallet) return;
-    if (
-      confirm(
-        "Are you sure you want to clear ALL message history? This will completely wipe all conversations, messages, nicknames, and handshakes. This cannot be undone."
-      )
-    ) {
-      await messageStore.flushWalletHistory(unlockedWallet.id);
 
-      onClose();
-    }
+    await messageStore.flushWalletHistory(unlockedWallet.id);
   };
 
   const handlePasswordChange = async () => {
@@ -296,6 +293,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const initializeImportExport = () => {
     setShowImportExport(true);
+  };
+
+  const initializeDeleteAll = () => {
+    setShowDeleteAll(true);
   };
 
   const initializeCustomTheme = () => {
@@ -459,7 +460,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {activeTab === "account" && (
               <div className="mt-3 space-y-6 sm:mt-0">
-                {!showNameChange && !showImportExport ? (
+                {!showNameChange && !showImportExport && !showDeleteAll ? (
                   <>
                     <h3 className="mb-4 text-lg font-medium">Account</h3>
                     <div className="space-y-2">
@@ -510,7 +511,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                       {/* Delete All Messages */}
                       <button
-                        onClick={onClearHistory}
+                        onClick={initializeDeleteAll}
                         type="button"
                         className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
                       >
@@ -621,6 +622,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </h3>
                     </div>
                     <MessageBackup />
+                  </>
+                ) : showDeleteAll ? (
+                  <>
+                    <div className="mb-2 flex items-center gap-3">
+                      <button
+                        onClick={() => setShowDeleteAll(false)}
+                        className="hover:text-primary text-muted-foreground cursor-pointer p-1 transition-colors"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                      <h3 className="text-lg font-medium">
+                        Delete All Messages
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <WarningBlock title="Warning">
+                        All messages, conversations, nicknames, and handshakes
+                        will be deleted from device.
+                      </WarningBlock>
+
+                      <div className="border-primary-border bg-primary-bg rounded-2xl border p-4">
+                        <div className="mb-4 text-sm font-medium">
+                          Confirm Deletion
+                        </div>
+                        <div className="text-muted-foreground mb-4 text-sm">
+                          Click and hold the delete button below to confirm you
+                          want to permanently delete all messages.
+                        </div>
+                        <div className="flex justify-center">
+                          <HoldToDelete
+                            onComplete={() => {
+                              onClearHistory();
+                              toast.success("Messages Deleted");
+                              setShowDeleteAll(false);
+                            }}
+                            size="xl"
+                            className="text-[var(--text-secondary)]"
+                            title="Click and hold to delete all messages"
+                            hoverClass="hover:text-red-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </>
                 ) : null}
               </div>
