@@ -14,6 +14,7 @@ import { ImagePresenter } from "../Modals/ImagePresenter";
 import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
 import { QrScannerModal } from "../Modals/QrScannerModal";
 import { OffChainHandshakeModal } from "../Modals/OffChainHandshakeModal";
+import { DeleteWalletModal } from "../Modals/DeleteWalletModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
 
 // This component subscribes to modal state and renders the appropriate modal
@@ -145,6 +146,14 @@ export const ModalHost = () => {
           isOpen={modals["offchain-handshake"] || false}
           onClose={() => closeModal("offchain-handshake")}
           kaspaAddress={walletStore.address?.toString() || ""}
+        />
+      )}
+
+      {/* Delete Wallet Modal */}
+      {modals.delete && (
+        <DeleteWalletModal
+          isOpen={modals.delete || false}
+          onClose={() => closeModal("delete")}
         />
       )}
     </>

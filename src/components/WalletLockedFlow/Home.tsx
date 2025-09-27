@@ -70,7 +70,7 @@ export const Home = ({
             }
             className="hover:border-kas-secondary border-primary-border group focus-visible:ring-kas-secondary relative flex min-h-14 cursor-pointer flex-col items-center gap-2 rounded-xl border bg-[var(--primary-bg)] p-3 pr-16 text-center transition-all duration-200 outline-none hover:bg-[var(--primary-bg)]/50 hover:shadow-sm focus-visible:ring-2 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between sm:p-4 sm:pr-20 sm:text-left"
           >
-            <div className="flex w-full flex-col items-center gap-1 sm:flex-1 sm:items-start">
+            <div className="flex w-full flex-col items-center gap-1 select-none sm:flex-1 sm:items-start">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <span className="max-w-full truncate font-semibold text-[var(--text-primary)] sm:max-w-lg">
                   {w.name}
@@ -96,14 +96,16 @@ export const Home = ({
               </time>
             </div>
 
-            <div className="absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-3">
-              <HoldToDelete
-                onComplete={() => onDeleteWallet(w.id)}
-                size="md"
-                className="z-20 text-[var(--text-secondary)] transition-all duration-600 sm:opacity-0 sm:group-hover:opacity-70"
-                title="Click and hold to delete wallet"
-                hoverClass="hover:text-red-500"
-              />
+            <div className="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 items-center gap-3">
+              <div className="pointer-events-auto">
+                <HoldToDelete
+                  onComplete={() => onDeleteWallet(w.id)}
+                  size="md"
+                  className="z-20 text-[var(--text-secondary)] transition-all duration-600 sm:opacity-0 sm:group-hover:opacity-70"
+                  title="Click and hold to delete wallet"
+                  hoverClass="hover:text-red-500"
+                />
+              </div>
               <ChevronRight
                 aria-hidden
                 className="pointer-events-none hidden size-6 text-[var(--text-secondary)] opacity-40 transition-transform duration-200 group-hover:translate-x-0.5 sm:block"

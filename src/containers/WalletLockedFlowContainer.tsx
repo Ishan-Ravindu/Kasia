@@ -40,6 +40,9 @@ export const WalletLockedFlowContainer = ({
   const navigate = useNavigate();
   const { wallet } = useParams<{ wallet: string }>();
   const openModal = useUiStore((s) => s.openModal);
+  const setPendingDeleteWalletId = useUiStore(
+    (s) => s.setPendingDeleteWalletId
+  );
 
   const isMobile = useIsMobile();
 
@@ -54,7 +57,6 @@ export const WalletLockedFlowContainer = ({
     unlockedWallet,
     loadWallets,
     selectWallet,
-    deleteWallet,
   } = useWalletStore();
 
   useEffect(() => {
@@ -99,9 +101,8 @@ export const WalletLockedFlowContainer = ({
   };
 
   const onDeleteWallet = (walletId: string) => {
-    if (window.confirm("Are you sure you want to delete this wallet?")) {
-      deleteWallet(walletId);
-    }
+    setPendingDeleteWalletId(walletId);
+    openModal("delete");
   };
 
   const onSelectWallet = (wallet: Wallet) => {

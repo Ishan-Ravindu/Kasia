@@ -60,6 +60,10 @@ type UiState = {
   // QR scanner state
   qrScannerCallback: ((data: string) => void) | null;
   setQrScannerCallback: (callback: ((data: string) => void) | null) => void;
+
+  // Delete wallet modal state
+  pendingDeleteWalletId: string | null;
+  setPendingDeleteWalletId: (id: string | null) => void;
 };
 
 // Get initial theme from localStorage or default to system
@@ -215,4 +219,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   // QR scanner state
   qrScannerCallback: null,
   setQrScannerCallback: (callback) => set({ qrScannerCallback: callback }),
+
+  // Delete wallet state
+  pendingDeleteWalletId: null,
+  setPendingDeleteWalletId: (id) => set({ pendingDeleteWalletId: id }),
 }));

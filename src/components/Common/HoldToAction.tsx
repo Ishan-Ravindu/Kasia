@@ -174,7 +174,7 @@ export const HoldToAction: FC<HoldToActionProps> = ({
         aria-label={ariaLabel}
         disabled={disabled}
         className={clsx(
-          "flex cursor-pointer items-center justify-center text-[var(--text-primary)] focus:outline-none",
+          "flex cursor-pointer items-center justify-center text-[var(--text-primary)] select-none focus:outline-none",
           hoverClass,
           hasAbsolutePositioning ? "" : "relative",
           sizeClasses[size]
