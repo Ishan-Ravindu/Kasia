@@ -187,6 +187,8 @@ export const HoldToAction: FC<HoldToActionProps> = ({
         onBlur={stopHold}
         onClick={(e) => e.preventDefault()}
       >
+        {/* span to increate butotn push area on touch devices */}
+        <span className="absolute w-full p-7 pointer-fine:hidden"></span>
         {isHolding && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <svg
