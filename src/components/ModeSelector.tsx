@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 import { MessageCircle, Radio } from "lucide-react";
+import { toast } from "../utils/toast-helper";
 
 type ModeSelectorProps = {
   onModeChange: (isBroadcastMode: boolean) => void;
@@ -27,7 +28,7 @@ export const ModeSelector: FC<ModeSelectorProps> = ({
   const modes = [
     {
       id: "chat",
-      displayableString: "Chat",
+      displayableString: "DMs",
       icon: <MessageCircle className="size-5" />,
       value: false,
     },
@@ -39,6 +40,30 @@ export const ModeSelector: FC<ModeSelectorProps> = ({
     },
   ];
 
+  // if fewer than 3 modes, handle direct toggle with toast
+  if (modes.length < 3) {
+    const handleToggle = () => {
+      const newMode = !isBroadcastMode;
+      const selectedMode = modes.find((mode) => mode.value === newMode);
+
+      onModeChange(newMode);
+      setTimeout(() => {
+        toast.info(`Switched to ${selectedMode?.displayableString}`);
+      }, 100);
+    };
+
+    return (
+      <button
+        onClick={handleToggle}
+        className="text-text-primary hover:bg-primary-bg/50 inline-flex size-10 cursor-pointer items-center justify-center rounded transition-colors duration-200 hover:text-[var(--kas-primary)] active:scale-90 active:opacity-80"
+      >
+        {modeIcon}
+      </button>
+    );
+  }
+
+  // behavior for 3+ modes
+  // unused atm but will be used when (if) games is introduced
   return (
     <Menu>
       <MenuButton className="text-text-primary hover:bg-primary-bg/50 inline-flex size-10 cursor-pointer items-center justify-center rounded transition-colors duration-200 hover:text-[var(--kas-primary)] active:scale-90 active:opacity-80">
