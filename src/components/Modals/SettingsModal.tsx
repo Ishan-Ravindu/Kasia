@@ -992,13 +992,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* App Version */}
+            {isMobile && (
+              <div className="mt-6 flex w-full items-center justify-center">
+                <AppVersion />
+              </div>
+            )}
           </div>
-          {/* App Version Mobile */}
-          {isMobile ? (
-            <div className="absolute bottom-4 left-0 flex w-full items-center justify-center">
-              <AppVersion />
-            </div>
-          ) : null}
         </div>
       </div>
     </Modal>

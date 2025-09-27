@@ -52,7 +52,7 @@ export const generateBubbleClasses = ({
   };
 
   return clsx(
-    "relative z-0 max-w-[70%] cursor-pointer px-4 py-1 text-left break-words hyphens-auto",
+    "relative z-0 sm:max-w-[70%] max-w-[90%] cursor-pointer px-4 py-1 text-left break-words hyphens-auto",
     getBackgroundClass(),
     bubbleClass,
     className
