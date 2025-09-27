@@ -45,7 +45,7 @@ const EditNicknameInput: FC<{
         onCancel();
       }
     }}
-    className="w-full rounded border border-[var(--primary-border)] bg-[var(--secondary-bg)] px-2 py-1 text-sm text-[var(--text-primary)]"
+    className="w-full rounded border border-[var(--primary-border)] bg-[var(--secondary-bg)] px-2 py-1 text-base text-[var(--text-primary)] sm:text-sm"
     autoFocus
   />
 );

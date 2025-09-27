@@ -565,7 +565,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               id="wallet-name"
                               value={newWalletName}
                               onChange={(e) => setNewWalletName(e.target.value)}
-                              className="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                              className="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-base focus:ring-2 focus:outline-none sm:text-sm"
                               placeholder="Enter wallet name"
                               disabled={isChangingName}
                               maxLength={50}
@@ -833,7 +833,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             name="current-password"
                             label="Current Password"
                             classLabel="mb-2 block text-sm font-medium"
-                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-base sm:text-sm focus:ring-2 focus:outline-none"
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
                             disabled={isChangingPassword}
@@ -846,7 +846,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             name="new-password"
                             label="New Password"
                             classLabel="mb-2 block text-sm font-medium"
-                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-base sm:text-sm focus:ring-2 focus:outline-none"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             disabled={isChangingPassword}
@@ -859,7 +859,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             name="confirm-password"
                             label="Confirm Password"
                             classLabel="mb-2 block text-sm font-medium"
-                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-sm focus:ring-2 focus:outline-none"
+                            classInput="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-base sm:text-sm focus:ring-2 focus:outline-none"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             disabled={isChangingPassword}
