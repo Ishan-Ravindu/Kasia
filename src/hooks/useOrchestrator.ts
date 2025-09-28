@@ -8,6 +8,7 @@ import { useDBStore } from "../store/db.store";
 import { UnlockedWallet } from "../types/wallet.type";
 import { useLiveStore } from "../store/live.store";
 import { useBroadcastStore } from "../store/broadcast.store";
+import { useFeatureFlagsStore, FeatureFlags } from "../store/featureflag.store";
 
 export type ConnectOpts = {
   networkType?: NetworkType;
@@ -125,6 +126,22 @@ export const useOrchestrator = () => {
     });
 
     await messagingStore.load(receivedAddressString);
+
+    // load broadcast channels async so we can start processing them straight away
+    const isBroadcastEnabled =
+      useFeatureFlagsStore.getState().flags[FeatureFlags.BROADCAST];
+    if (isBroadcastEnabled) {
+      useBroadcastStore
+        .getState()
+        .loadChannels()
+        .then(() => console.log("Broadcast channels loaded"))
+        .catch((error) =>
+          console.error(
+            "Failed to load broadcast channels during initialization:",
+            error
+          )
+        );
+    }
 
     if (networkStore.rpc) {
       liveStore.start(networkStore.rpc, receivedAddressString);
