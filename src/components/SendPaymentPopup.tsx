@@ -10,6 +10,7 @@ import { Address } from "kaspa-wasm";
 import { toast } from "../utils/toast-helper";
 import { KasiaTransaction } from "../types/all";
 import { PROTOCOL } from "../config/protocol";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 export const SendPaymentPopup: FC<{
   address: string;
@@ -27,6 +28,7 @@ export const SendPaymentPopup: FC<{
   const storeKasiaTransactions = useMessagingStore(
     (s) => s.storeKasiaTransactions
   );
+  const isMobile = useIsMobile();
 
   // Close panel on outside click
   useEffect(() => {
@@ -253,7 +255,12 @@ export const SendPaymentPopup: FC<{
       {panelOpen && (
         <div
           ref={panelRef}
-          className="absolute bottom-full left-0 z-50 mt-3 mb-20 block min-w-[320px] translate-y-2/5 transform rounded-lg border border-[var(--border-color)] bg-[var(--secondary-bg)] p-4 shadow-2xl shadow-(color:--button-primary)/30 transition duration-200 ease-out sm:translate-y-1/2"
+          className={clsx(
+            "block transform rounded-lg border border-[var(--border-color)] bg-[var(--secondary-bg)] p-4 shadow-2xl shadow-(color:--button-primary)/30 transition duration-200 ease-out",
+            isMobile
+              ? "fixed bottom-0 left-0 z-50 w-screen min-w-[320px] rounded-t-lg"
+              : "absolute bottom-full left-0 z-50 mt-3 mb-20 w-full min-w-[320px] translate-y-2/5 sm:translate-y-1/2"
+          )}
         >
           <div className="mb-3 flex items-center justify-between">
             <h4 className="text-sm font-medium text-[var(--text-primary)]">
@@ -275,7 +282,7 @@ export const SendPaymentPopup: FC<{
                 }
                 disabled={!canSendMessageWithPayment}
                 className={clsx(
-                  "w-full rounded-md border border-[var(--border-color)] bg-[var(--primary-bg)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-transparent focus:ring-2 focus:ring-[#70C7BA] focus:outline-none",
+                  "min-h-[44px] w-full rounded-md border border-[var(--border-color)] bg-[var(--primary-bg)] px-3 py-2 text-base text-[var(--text-primary)] focus:border-transparent focus:ring-2 focus:ring-[#70C7BA] focus:outline-none",
                   {
                     "cursor-not-allowed opacity-50": !canSendMessageWithPayment,
                   }
@@ -297,7 +304,7 @@ export const SendPaymentPopup: FC<{
                     value={payAmount}
                     onChange={(e) => handlePayAmountChange(e.target.value)}
                     placeholder="Amount (KAS)"
-                    className="w-full rounded-md border border-[var(--border-color)] bg-[var(--primary-bg)] px-3 py-2 pr-12 text-sm text-[var(--text-primary)] focus:border-transparent focus:ring-2 focus:ring-[#70C7BA] focus:outline-none"
+                    className="min-h-[44px] w-full rounded-md border border-[var(--border-color)] bg-[var(--primary-bg)] px-3 py-2 pr-12 text-base text-[var(--text-primary)] focus:border-transparent focus:ring-2 focus:ring-[#70C7BA] focus:outline-none"
                   />
                   <button
                     type="button"
