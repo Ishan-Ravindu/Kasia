@@ -27,7 +27,7 @@ export const ColorPicker: FC<ColorPickerProps> = ({
           type="text"
           value={color}
           onChange={(e) => onChange(e.target.value)}
-          className="w-16 rounded border border-[var(--primary-border)] bg-[var(--input-bg)] px-1 py-1 text-xs text-[var(--text-primary)]"
+          className="w-16 rounded border border-[var(--primary-border)] bg-[var(--input-bg)] px-1 py-1 text-base text-[var(--text-primary)] sm:text-xs"
           placeholder="#000000"
         />
       </div>
