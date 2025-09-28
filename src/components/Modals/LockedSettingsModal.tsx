@@ -10,6 +10,7 @@ import { devMode } from "../../config/dev-mode";
 import { deleteDB } from "idb";
 import { useDBStore } from "../../store/db.store";
 import { useOrchestrator } from "../../hooks/useOrchestrator";
+import { AppVersion } from "../App/AppVersion";
 
 export const LockedSettingsModal: React.FC = () => {
   const networkStore = useNetworkStore();
@@ -151,6 +152,10 @@ export const LockedSettingsModal: React.FC = () => {
           Successfully connected to the node!
         </div>
       )}
+
+      <div className="mt-4 flex items-center justify-center">
+        <AppVersion />
+      </div>
 
       {devInfo()}
     </div>

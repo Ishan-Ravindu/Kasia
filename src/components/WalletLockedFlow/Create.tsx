@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useWalletStore } from "../../store/wallet.store";
 import { Mnemonic } from "kaspa-wasm";
 import { Radio, RadioGroup, Label } from "@headlessui/react";
-import { WalletDerivationType } from "../../types/wallet.type";
 import {
   PASSWORD_MIN_LENGTH,
   disablePasswordRequirements,
@@ -10,6 +9,7 @@ import {
 import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
 import { useSessionState } from "../../store/session.store";
+import { PasswordField } from "../Common/PasswordField";
 
 type CreateWalletProps = {
   onSuccess: (walletId: string, mnemonic: Mnemonic) => void;
@@ -18,8 +18,6 @@ type CreateWalletProps = {
 
 export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
   const [seedPhraseLength, setSeedPhraseLength] = useState<12 | 24>(24);
-  const [derivationType, setDerivationType] =
-    useState<WalletDerivationType>("standard");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -65,7 +63,6 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
         nameRef.current.value,
         mnemonic,
         pw,
-        derivationType,
         undefined
       );
 
@@ -89,45 +86,6 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
   return (
     <>
       <h2 className="mb-3 text-center text-lg font-bold">Create New Wallet</h2>
-
-      <RadioGroup
-        name="derivationType"
-        value={derivationType}
-        onChange={setDerivationType}
-        className="mb-2 sm:mb-3"
-      >
-        <Label className="mb-3 block text-base font-semibold">
-          Derivation Standard
-        </Label>
-        <div className="flex flex-col gap-2 sm:gap-3">
-          {[
-            {
-              value: "standard",
-              label: "Standard (Recommended)",
-              description: "Compatible with Kaspium and other standard wallets",
-            },
-            {
-              value: "legacy",
-              label: "Legacy",
-              description: "For compatibility with older wallets",
-            },
-          ].map((opt) => (
-            <Radio
-              key={opt.value}
-              as="label"
-              value={opt.value}
-              className="group border-primary-border flex cursor-pointer flex-col items-start gap-y-1 rounded-md border bg-[var(--primary-bg)] p-3 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl data-checked:border-[var(--color-kas-secondary)] data-checked:bg-[var(--color-kas-secondary)]/5"
-            >
-              <span className="text-sm font-semibold text-[var(--text-primary)] group-data-checked:text-[var(--color-kas-secondary)] sm:text-base">
-                {opt.label}
-              </span>
-              <small className="text-xs text-[var(--text-secondary)] group-data-checked:text-[var(--color-kas-primary)] sm:text-sm">
-                {opt.description}
-              </small>
-            </Radio>
-          ))}
-        </div>
-      </RadioGroup>
 
       <div className="my-1">
         <label className="mb-3 block text-base font-semibold">
@@ -182,16 +140,13 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
       </RadioGroup>
 
       <div className="mt-1 mb-6">
-        <label className="mb-3 block text-base font-semibold text-[var(--text-primary)]">
-          Password
-        </label>
-        <input
-          autoComplete="new-password"
+        <PasswordField
+          classLabel="mb-3 block text-base font-semibold text-[var(--text-primary)]"
+          label="Password"
           ref={passwordRef}
-          type="password"
           placeholder="Enter password"
           onChange={handleInputChange}
-          className="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
+          classInput="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
         />
       </div>
 

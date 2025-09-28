@@ -8,6 +8,7 @@ import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
 import { StringCopy } from "../Common/StringCopy";
 import { WarningBlock } from "../Common/WarningBlock";
+import { PasswordField } from "../Common/PasswordField";
 
 export const WalletSeedRetreiveDisplay: FC = () => {
   const [password, setPassword] = useState("");
@@ -114,14 +115,11 @@ export const WalletSeedRetreiveDisplay: FC = () => {
               readOnly
               tabIndex={-1}
             />
-            <input
-              type="password"
-              name="password"
-              value={password}
+            <PasswordField
+              classInput="border-primary-border bg-primary-bg w-full rounded-3xl border px-4 py-2"
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter wallet password"
-              autoComplete="current-password"
-              className="border-primary-border bg-primary-bg w-full rounded-3xl border px-4 py-2"
+              value={password}
               required
             />
             <Button type="submit" variant="primary" className="w-full">

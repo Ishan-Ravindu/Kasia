@@ -11,6 +11,7 @@ import {
   useOrchestrator,
 } from "../../hooks/useOrchestrator";
 import { useSessionState } from "../../store/session.store";
+import { PasswordField } from "../Common/PasswordField";
 
 type UnlockWalletProps = {
   selectedWalletId: string | null;
@@ -150,21 +151,14 @@ export const Unlock = ({
           />
 
           <div className="mb-3.5">
-            <label htmlFor="password" className="mb-3.5 block font-semibold">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              autoComplete="current-password"
+            <PasswordField
+              label="Password"
+              classLabel="mb-3.5 block font-semibold"
+              classInput="focus:!border-kas-primary border-primary-border bg-input-bg w-full rounded-3xl border p-2.5 px-4 text-base transition-all duration-200 focus:outline-none"
+              hasError={!!error}
               ref={usePasswordRef}
-              type="password"
               placeholder="Enter your password"
               onChange={handleInputChange}
-              className={clsx(
-                "focus:!border-kas-primary border-primary-border bg-input-bg w-full rounded-3xl border p-2.5 px-4 text-base transition-all duration-200 focus:outline-none",
-                { "!border-red-500": error }
-              )}
               disabled={unlocking}
               required
             />
