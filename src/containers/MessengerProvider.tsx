@@ -51,6 +51,7 @@ export const MessengerProvider: FC = () => {
     if (walletStore.unlockedWallet) setIsWalletReady(true);
   }, [walletStore.unlockedWallet]);
 
+  // TODO: eventually refactor this and the UE below this one.
   // effect to restore last opened conversation after messages are loaded (desktop only)
   useEffect(() => {
     if (
@@ -132,6 +133,65 @@ export const MessengerProvider: FC = () => {
     walletStore.address,
     isMobile,
     isCurrentlyInBroadcastMode,
+    navigate,
+    walletId,
+  ]);
+
+  // effect to restore last opened broadcast channel after messages are loaded (desktop only)
+  useEffect(() => {
+    if (
+      !isMobile &&
+      messageStore.isLoaded &&
+      walletStore.isAccountServiceRunning &&
+      !channelId &&
+      isCurrentlyInBroadcastMode &&
+      useBroadcastStore.getState().channels.length > 0
+    ) {
+      const walletAddress = walletStore.address?.toString();
+      if (walletAddress) {
+        try {
+          // get the last opened channel id from localstorage
+          const lastOpenedChannelId = localStorage.getItem(
+            `kasia_last_opened_channel_id_${walletAddress}`
+          );
+
+          if (lastOpenedChannelId) {
+            // check if the channel still exists
+            const broadcastStore = useBroadcastStore.getState();
+            const channelExists = broadcastStore.channels.some(
+              (channel) => channel.id === lastOpenedChannelId
+            );
+
+            if (channelExists) {
+              navigate(`/${walletId}/broadcasts/${lastOpenedChannelId}`, {
+                replace: true,
+              });
+              return;
+            }
+          }
+
+          // fallback: select the first available channel
+          const firstChannel = useBroadcastStore.getState().channels[0];
+          if (firstChannel) {
+            navigate(`/${walletId}/broadcasts/${firstChannel.id}`, {
+              replace: true,
+            });
+          }
+        } catch (error) {
+          console.error(
+            "Error restoring last opened broadcast channel:",
+            error
+          );
+        }
+      }
+    }
+  }, [
+    messageStore.isLoaded,
+    channelId,
+    isCurrentlyInBroadcastMode,
+    walletStore.isAccountServiceRunning,
+    walletStore.address,
+    isMobile,
     navigate,
     walletId,
   ]);
