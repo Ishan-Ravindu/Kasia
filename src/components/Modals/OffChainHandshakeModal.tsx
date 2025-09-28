@@ -352,7 +352,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
             <div className={blockVisible(isQrOpen)}>
               <div className="relative">
                 <Textarea
-                  className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-20 text-sm text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
+                  className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-20 text-base text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
                   rows={2}
                   value={partnerAddress}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
@@ -453,7 +453,7 @@ export const OffChainHandshakeModal: React.FC<OffChainHandshakeModalProps> = ({
                     <div className="relative">
                       <input
                         type="text"
-                        className="border-primary-border bg-primary-bg flex min-h-14 w-full cursor-text items-center rounded-lg border px-3 py-2 pr-20 font-mono text-[13px] leading-[1.4] break-all text-[var(--text-primary)] placeholder-gray-400 transition-colors focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
+                        className="border-primary-border bg-primary-bg flex min-h-14 w-full cursor-text items-center rounded-lg border px-3 py-2 pr-20 font-mono text-base leading-[1.4] break-all text-[var(--text-primary)] placeholder-gray-400 transition-colors focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
                         value={theirAliasForUs}
                         onChange={(e) => updateTheirAlias(e.target.value)}
                         placeholder="Enter the alias your partner generated for you"
