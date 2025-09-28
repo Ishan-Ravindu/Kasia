@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <link rel="icon" type="image/png" href="/kasia-logo.png" />
     <link rel="stylesheet" href="/src/index.css" />
@@ -48,6 +48,7 @@
 
   <body>
     <div id="root"></div>
+
     <script>
       // Adds a CSS var '--kb' with the keyboard height (best-effort)
       (function () {
@@ -64,6 +65,16 @@
         window.addEventListener("orientationchange", setKb);
         setKb();
       })();
+
+      // prevent double tap and pinch zooming
+      // we do set `touch-action: manipulation;` in css, but need this as fallback for other browsers (ios etc)
+      document.addEventListener(
+        "gesturestart",
+        function (e) {
+          e.preventDefault();
+        },
+        { passive: false }
+      );
     </script>
     <script type="module" src="/src/init.ts"></script>
   </body>
