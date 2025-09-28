@@ -444,7 +444,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {!isMobile ? (
                 <div className="absolute bottom-4 left-0 flex w-full items-center justify-center">
-                  <AppVersion />
+                  {(activeTab === "account" || activeTab === "dev") && (
+                    <AppVersion />
+                  )}
                 </div>
               ) : null}
             </nav>
@@ -1039,7 +1041,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
 
             {/* App Version */}
-            {isMobile && (
+            {isMobile && (activeTab === "account" || activeTab === "dev") && (
               <div className="mt-6 flex w-full items-center justify-center">
                 <AppVersion />
               </div>

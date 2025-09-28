@@ -39,7 +39,7 @@ const featureFlips: FeatureFlips = {
   },
   [FeatureFlags.BROADCAST]: {
     label: "Broadcasts - Beta Version",
-    desc: `Unencrypted open messages.\nCurrently live messages only, no storage.\nReminder: Broadcasts are unencrypted.`,
+    desc: `Unencrypted open messages.\nLive messages only, no storage.\nReminder: Broadcasts are unencrypted.`,
     icon: Radio,
   },
 };
