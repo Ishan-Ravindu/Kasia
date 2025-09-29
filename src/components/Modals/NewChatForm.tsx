@@ -88,11 +88,14 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
     }
   }, [recipientInputValue]);
 
-  const useRecipientInputRef = (node: HTMLTextAreaElement | null) => {
-    if (node) {
-      node.focus();
+  const recipientInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus the address input on mount only (not ever render)
+  useEffect(() => {
+    if (recipientInputRef.current) {
+      recipientInputRef.current.focus();
     }
-  };
+  }, []);
 
   // Handle escape key to close
   useEffect(() => {
@@ -436,7 +439,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
           </label>
           <div className="relative">
             <Textarea
-              ref={useRecipientInputRef}
+              ref={recipientInputRef}
               className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-24 text-base text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
               rows={3}
               id="recipientAddress"
