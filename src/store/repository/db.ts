@@ -21,6 +21,7 @@ import {
   DbBroadcastChannel,
   BroadcastChannelRepository,
 } from "./broadcast-channel.repository";
+import { MetaRespository } from "./meta.repository";
 
 const CURRENT_DB_VERSION = 3;
 
@@ -276,6 +277,7 @@ export class Repositories {
   public readonly handshakeRepository: HandshakeRepository;
   public readonly savedHandshakeRepository: SavedHandhshakeRepository;
   public readonly broadcastChannelRepository: BroadcastChannelRepository;
+  public readonly metadataRepository: MetaRespository;
 
   constructor(
     readonly db: KasiaDB,
@@ -325,6 +327,8 @@ export class Repositories {
       tenantId,
       walletPassword
     );
+
+    this.metadataRepository = new MetaRespository(tenantId);
   }
 
   async getKasiaEventsByConversationId(

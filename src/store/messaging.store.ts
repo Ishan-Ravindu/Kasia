@@ -165,15 +165,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         aliasesToFetch.add(oooc.conversation.theirAlias);
       }
 
-      // get last message&payment timestamp in parallel
-      const [lastMessageTimestamp, lastPaymentTimestamp] = await Promise.all([
-        await repositories.messageRepository
-          .getLastDbMessageByCreatedAt()
-          .then((v) => v?.createdAt.getTime() ?? 0),
-        await repositories.paymentRepository
-          .getLastDbPaymentByCreatedAt()
-          .then((v) => v?.createdAt.getTime() ?? 0),
-      ]);
+      // get last message&payment timestamp
+      const metadata = repositories.metadataRepository.load();
+      const lastPaymentTimestamp = metadata.lastPaymentBlockTime;
+      const lastMessageTimestamp = metadata.lastMessageBlockTime;
 
       const [indexerPayments, indexerMessages] = await Promise.all([
         _historicalSyncer.fetchHistoricalPaymentsFromAddress(
@@ -206,6 +201,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const newKasiaTransactions: KasiaTransaction[] = [];
 
+      let lastProcessedMessageBlockTime = lastMessageTimestamp;
+      let lastProcessedPaymentBlockTime = lastPaymentTimestamp;
+
       for (const m of newIndexerMessages) {
         try {
           const payload = m.message_payload;
@@ -231,6 +229,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           };
           console.log("kasia transaction from message", { kasiaTransaction });
           newKasiaTransactions.push(kasiaTransaction);
+
+          if (lastProcessedMessageBlockTime < Number(m.block_time)) {
+            lastProcessedMessageBlockTime = Number(m.block_time);
+          }
         } catch (error) {
           // chill
           console.error(error);
@@ -262,6 +264,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             senderAddress: p.sender,
             transactionId: p.tx_id,
           });
+
+          if (lastProcessedPaymentBlockTime < Number(p.block_time)) {
+            lastProcessedPaymentBlockTime = Number(p.block_time);
+          }
         } catch {
           //nothing
         }
@@ -270,6 +276,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       if (newKasiaTransactions.length > 0) {
         await g().storeKasiaTransactions(newKasiaTransactions);
       }
+
+      // update last fetch timestamp
+      repositories.metadataRepository.store({
+        lastMessageBlockTime: lastProcessedMessageBlockTime,
+        lastPaymentBlockTime: lastProcessedPaymentBlockTime,
+      });
     } catch {
       // chill
     }
@@ -335,23 +347,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         "Loading Strategy - Getting last saved handshake and handshake..."
       );
       // get last date of handshakes
-      const lastSavedHanshake =
-        await repositories.savedHandshakeRepository.getLastSavedHandshakesByCreatedAt();
-      const lastSavedHanshakeTimestamp = (
-        lastSavedHanshake?.createdAt || new Date(0)
-      ).getTime();
 
-      // consideration for the future: if for some reasons, at some point an user is unable to retreive historical
-      // handshake the last time, but still create live handshakes (init or response), they could miss some receive historical handshake updates
-      // potential mitigation: store the last time the user has had a successful handshake retreival and use that point for future historical retreives
-      const lastHandshake =
-        await repositories.handshakeRepository.getLastDbHandshakesByCreatedAt();
-      const lastHandshakeTimestamp = (
-        lastHandshake?.createdAt || new Date(0)
-      ).getTime();
+      const metadata = repositories.metadataRepository.load();
       const getHistoricalHandshakes = initLazyHistoricalHandshakeLoad(
-        lastSavedHanshakeTimestamp,
-        lastHandshakeTimestamp
+        metadata.lastSavedHandshakeBlockTime,
+        metadata.lastHandshakeBlockTime
       );
 
       console.log("Loading Strategy - Initializing Conversation Manager");
@@ -522,6 +522,10 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         ...lastSentHSBySenderAddress.keys(),
       ]);
 
+      let lastProcessedHandhshakeBlockTime = metadata.lastHandshakeBlockTime;
+      let lastProcessedSavedHandshakeBlockTime =
+        metadata.lastSavedHandshakeBlockTime;
+
       const processOneSender = async (senderAddress: string) => {
         let oooc = ooocsByAddress.get(senderAddress);
 
@@ -532,6 +536,14 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               lastSentHS.payload,
               lastSentHS.selfStash.tx_id
             );
+            if (
+              lastProcessedSavedHandshakeBlockTime <=
+              Number(lastSentHS.selfStash.block_time)
+            ) {
+              lastProcessedSavedHandshakeBlockTime = Number(
+                lastSentHS.selfStash.block_time
+              );
+            }
           } catch (error) {
             console.error(
               "Messaging Store - Error while ingesting last sent handshake",
@@ -547,6 +559,14 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               senderAddress,
               lastReceivedHS.payload
             );
+            if (
+              lastProcessedHandhshakeBlockTime <=
+              Number(lastReceivedHS.handshake.block_time)
+            ) {
+              lastProcessedHandhshakeBlockTime = Number(
+                lastReceivedHS.handshake.block_time
+              );
+            }
           } catch (error) {
             console.error(
               "Messaging Store - Error while ingesting last received handshake",
@@ -639,6 +659,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       };
 
       await Promise.all([...uniqueSenderAddresses].map(processOneSender));
+
+      repositories.metadataRepository.store({
+        lastSavedHandshakeBlockTime: lastProcessedSavedHandshakeBlockTime,
+        lastHandshakeBlockTime: lastProcessedHandhshakeBlockTime,
+      });
 
       console.log("Loading Strategy - handshake history reconciliation loaded");
 
