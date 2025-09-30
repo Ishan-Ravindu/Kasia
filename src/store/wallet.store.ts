@@ -1,21 +1,18 @@
 import { create } from "zustand";
-import { KaspaClient } from "../service/kaspa-client";
 import { WalletStorageService } from "../service/wallet-storage-service";
 import {
   Address,
   GeneratorSummary,
   Mnemonic,
+  NetworkId,
+  RpcClient,
   sompiToKaspaString,
   UtxoEntryReference,
 } from "kaspa-wasm";
 import { AccountService } from "../service/account-service";
 import { encrypt_message } from "cipher";
 import { NetworkType } from "../types/all";
-import {
-  WalletDerivationType,
-  UnlockedWallet,
-  WalletBalance,
-} from "../types/wallet.type";
+import { UnlockedWallet, WalletBalance } from "../types/wallet.type";
 import { TransactionId } from "../types/transactions";
 import { PriorityFeeConfig } from "../types/all";
 import { FEE_ESTIMATE_POLLING_INTERVAL_IN_MS } from "../config/constants";
@@ -48,29 +45,17 @@ export interface WalletStoreSendTransactionArgs {
   priorityFee?: PriorityFeeConfig;
 }
 
-export interface WalletStoreSendTransactionArgs {
-  /**
-   * payload to use for the transaction, if encryption is required, it should be encrypted before passing it here
-   */
-  payload?: string;
-  toAddress: Address;
-  password: string;
-  customAmount?: bigint;
-  priorityFee?: PriorityFeeConfig;
-}
-
 type WalletState = {
   wallets: {
     id: string;
     name: string;
     createdAt: string;
-    derivationType?: WalletDerivationType;
   }[];
   selectedWalletId: string | null;
   unlockedWallet: UnlockedWallet | null;
   address: Address | null;
   balance: WalletBalance;
-  rpcClient: KaspaClient | null;
+  rpc: RpcClient | null;
   isAccountServiceRunning: boolean;
   accountService: AccountService | null;
   selectedNetwork: NetworkType;
@@ -89,26 +74,17 @@ type WalletState = {
     name: string,
     mnemonic: Mnemonic,
     password: string,
-    derivationType?: WalletDerivationType
+    passphrase?: string
   ) => Promise<string>;
   deleteWallet: (walletId: string) => void;
-  unlock: (
-    walletId: string,
-    password: string
-  ) => Promise<UnlockedWallet | null>;
+  unlock: (walletId: string, password: string) => Promise<UnlockedWallet>;
   lock: () => void;
 
+  // note: this shouldn't be wallet responsability
   // fee estimate management
   fetchFeeEstimates: () => Promise<void>;
   startFeeEstimatePolling: () => void;
   stopFeeEstimatePolling: () => void;
-
-  // migration functionality
-  migrateLegacyWallet: (
-    walletId: string,
-    password: string,
-    newName?: string
-  ) => Promise<string>;
 
   // password management
   changePassword: (
@@ -130,6 +106,11 @@ type WalletState = {
   sendMessageWithContext: (
     args: WalletStoreSendContextualMessageArgs
   ) => Promise<TransactionId>;
+  sendBroadcastWithContext: (args: {
+    message: string;
+    channelName: string;
+    priorityFee?: PriorityFeeConfig;
+  }) => Promise<TransactionId>;
   getMatureUtxos: () => UtxoEntryReference[];
 
   estimateSendMessageFees: (
@@ -138,9 +119,16 @@ type WalletState = {
     priorityFee?: PriorityFeeConfig
   ) => Promise<GeneratorSummary>;
 
+  estimateSendBroadcastFees: (
+    message: string,
+    toAddress: Address,
+    channelName: string,
+    priorityFee?: PriorityFeeConfig
+  ) => Promise<GeneratorSummary>;
+
   // Actions
   setSelectedNetwork: (network: NetworkType) => void;
-  setRpcClient: (client: KaspaClient | null) => void;
+  setRpc: (client: RpcClient | null) => void;
 };
 
 let _accountService: AccountService | null = null;
@@ -155,7 +143,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
     unlockedWallet: null,
     address: null,
     balance: null,
-    rpcClient: null,
+    rpc: null,
     isAccountServiceRunning: false,
     accountService: null,
     selectedNetwork: import.meta.env.VITE_DEFAULT_KASPA_NETWORK ?? "mainnet",
@@ -174,13 +162,13 @@ export const useWalletStore = create<WalletState>((set, get) => {
       name: string,
       mnemonic: Mnemonic,
       password: string,
-      derivationType?: WalletDerivationType
+      passphrase?: string
     ) => {
       const walletId = _walletStorage.create(
         name,
         mnemonic,
         password,
-        derivationType
+        passphrase
       );
       get().loadWallets();
       return walletId;
@@ -196,7 +184,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
 
     fetchFeeEstimates: async () => {
       const state = get();
-      if (!state.rpcClient?.rpc) return;
+      if (!state.rpc) return;
 
       try {
         // For testing network congestion, uncomment this mock data
@@ -225,7 +213,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
         set({ feeEstimate: mockCongestion });
         return;
         */
-        const result = await state.rpcClient.rpc.getFeeEstimate();
+        const result = await state.rpc.getFeeEstimate();
         set({ feeEstimate: result });
       } catch (err) {
         console.error("Failed to fetch fee estimates:", err);
@@ -255,66 +243,70 @@ export const useWalletStore = create<WalletState>((set, get) => {
     },
 
     unlock: async (walletId: string, password: string) => {
-      try {
-        const wallet = await _walletStorage.getDecrypted(walletId, password);
+      const wallet = _walletStorage.getDecrypted(walletId, password);
 
-        const currentRpcClient = get().rpcClient;
-        if (!currentRpcClient) {
-          throw new Error("RPC client not initialized");
-        }
-        wallet.client = currentRpcClient;
-        set({ unlockedWallet: wallet });
+      const currentRpc = get().rpc;
+      if (!currentRpc) {
+        throw new Error("RPC client not initialized");
+      }
 
-        _accountService = new AccountService(currentRpcClient, wallet);
-        _accountService.setPassword(password);
-        // Set up event listeners
-        _accountService.on("balance", (balance) => {
-          set({ balance });
-        });
-        await _accountService.start();
+      set({
+        unlockedWallet: wallet,
+        address: wallet.receivePublicKey.toAddress(
+          currentRpc.networkId ?? new NetworkId("mainnet")
+        ),
+      });
 
-        const initialBalance = _accountService.context.balance;
-        if (initialBalance) {
-          const matureUtxos = _accountService.context.getMatureRange(
-            0,
-            _accountService.context.matureLength
-          );
-          const pendingUtxos = _accountService.context.getPending();
+      if (_accountService) {
+        await _accountService.clear();
+        _accountService.removeAllListeners();
+      }
 
-          set({
-            balance: {
-              mature: initialBalance.mature,
-              pending: initialBalance.pending,
-              outgoing: initialBalance.outgoing,
-              matureDisplay: sompiToKaspaString(initialBalance.mature),
-              pendingDisplay: sompiToKaspaString(initialBalance.pending),
-              outgoingDisplay: sompiToKaspaString(initialBalance.outgoing),
-              matureUtxoCount: matureUtxos.length,
-              pendingUtxoCount: pendingUtxos.length,
-            },
-          });
-        }
+      _accountService = new AccountService(currentRpc, wallet);
+      _accountService.setPassword(password);
+      // Set up event listeners
+      _accountService.on("balance", (balance) => {
+        set({ balance });
+      });
+      await _accountService.start();
+
+      const initialBalance = _accountService.context.balance;
+      if (initialBalance) {
+        const matureUtxos = _accountService.context.getMatureRange(
+          0,
+          _accountService.context.matureLength
+        );
+        const pendingUtxos = _accountService.context.getPending();
 
         set({
-          rpcClient: currentRpcClient,
-          address: _accountService.receiveAddress,
-          isAccountServiceRunning: true,
-          accountService: _accountService,
+          balance: {
+            mature: initialBalance.mature,
+            pending: initialBalance.pending,
+            outgoing: initialBalance.outgoing,
+            matureDisplay: sompiToKaspaString(initialBalance.mature),
+            pendingDisplay: sompiToKaspaString(initialBalance.pending),
+            outgoingDisplay: sompiToKaspaString(initialBalance.outgoing),
+            matureUtxoCount: matureUtxos.length,
+            pendingUtxoCount: pendingUtxos.length,
+          },
         });
-
-        // Start fee polling when wallet starts
-        get().startFeeEstimatePolling();
-
-        return wallet;
-      } catch (error) {
-        console.error("Failed to unlock wallet:", error);
-        throw error;
       }
+
+      set({
+        rpc: currentRpc,
+        isAccountServiceRunning: true,
+        accountService: _accountService,
+      });
+
+      // Start fee polling when wallet starts
+      get().startFeeEstimatePolling();
+
+      return wallet;
     },
 
     lock: () => {
       if (_accountService) {
-        _accountService.stop();
+        _accountService.clear();
         _accountService = null;
       }
       set({
@@ -327,7 +319,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
     },
     stop: () => {
       if (_accountService) {
-        _accountService.stop();
+        _accountService.clear();
         _accountService = null;
       }
 
@@ -335,7 +327,7 @@ export const useWalletStore = create<WalletState>((set, get) => {
       get().stopFeeEstimatePolling();
 
       set({
-        rpcClient: null,
+        rpc: null,
         address: null,
         isAccountServiceRunning: false,
       });
@@ -355,6 +347,24 @@ export const useWalletStore = create<WalletState>((set, get) => {
         message,
         toAddress,
         priorityFee,
+      });
+    },
+    estimateSendBroadcastFees: async (
+      message: string,
+      toAddress: Address,
+      channelName: string,
+      priorityFee?: PriorityFeeConfig
+    ) => {
+      const state = get();
+      if (!state.unlockedWallet || !state.accountService) {
+        throw new Error("Wallet not unlocked or account service not running");
+      }
+
+      return state.accountService.estimateSendBroadcastFees({
+        message,
+        toAddress,
+        priorityFee,
+        channelName,
       });
     },
     sendTransaction: async (args) => {
@@ -396,6 +406,60 @@ export const useWalletStore = create<WalletState>((set, get) => {
         throw error;
       }
     },
+    sendBroadcastWithContext: async ({ message, channelName, priorityFee }) => {
+      const state = get();
+      if (!state.unlockedWallet || !state.accountService) {
+        throw new Error("Wallet not unlocked or account service not running");
+      }
+
+      try {
+        console.log("Sending broadcast message to channel:", channelName);
+
+        // Retry logic for UTXO conflicts (moved from useBroadcastComposer)
+        let txId: string;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+          try {
+            txId = await state.accountService.createBroadcastTransaction({
+              channelName: channelName.toLowerCase(),
+              message,
+              priorityFee,
+            });
+            break; // Success, exit retry loop
+          } catch (error) {
+            attempts++;
+            console.log(`Broadcast attempt ${attempts} failed:`, error);
+
+            if (attempts >= maxAttempts) {
+              throw error;
+            }
+
+            // Check if it's a UTXO/funds issue that might resolve
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            if (
+              errorMessage.includes("Insufficient funds") ||
+              errorMessage.includes("UTXO") ||
+              errorMessage.includes("balance")
+            ) {
+              // Wait a bit and retry
+              await new Promise((resolve) =>
+                setTimeout(resolve, 100 * attempts)
+              );
+            } else {
+              throw error; // Non-retryable error
+            }
+          }
+        }
+
+        return txId!;
+      } catch (error) {
+        console.error("Error sending broadcast message:", error);
+        throw error;
+      }
+    },
     getMatureUtxos: () => {
       if (!_accountService) {
         throw Error("Account service not initialized.");
@@ -405,32 +469,18 @@ export const useWalletStore = create<WalletState>((set, get) => {
     setSelectedNetwork: (network: NetworkType) =>
       set({ selectedNetwork: network }),
 
-    setRpcClient: (client: KaspaClient | null) => {
+    setRpc: (client: RpcClient | null) => {
       if (!client) {
         // If clearing the client, stop the service first
         if (_accountService) {
-          _accountService.stop();
+          _accountService.clear();
           _accountService = null;
         }
-        set({ rpcClient: null, isAccountServiceRunning: false });
+        set({ rpc: null, isAccountServiceRunning: false });
       } else {
         // Update the RPC client
-        set({ rpcClient: client });
+        set({ rpc: client });
       }
-    },
-
-    migrateLegacyWallet: async (
-      walletId: string,
-      password: string,
-      newName?: string
-    ) => {
-      const newWalletId = await _walletStorage.migrateLegacyWallet(
-        walletId,
-        password,
-        newName
-      );
-      get().loadWallets();
-      return newWalletId;
     },
 
     changePassword: async (
@@ -444,15 +494,31 @@ export const useWalletStore = create<WalletState>((set, get) => {
         newPassword
       );
 
+      const wallet = _walletStorage.getDecrypted(walletId, newPassword);
+
       // If this is the currently unlocked wallet, update its password
       const state = get();
       if (state.unlockedWallet && state.selectedWalletId === walletId) {
         set({
-          unlockedWallet: {
-            ...state.unlockedWallet,
-            password: newPassword,
-          },
+          unlockedWallet: wallet,
         });
+
+        const _rpc = get().rpc;
+        if (_accountService && _rpc) {
+          await _accountService.clear();
+          _accountService.removeAllListeners();
+          _accountService = new AccountService(_rpc, state.unlockedWallet);
+          _accountService.setPassword(state.unlockedWallet.password);
+          // Set up event listeners
+          _accountService.on("balance", (balance) => {
+            set({ balance });
+          });
+          await _accountService.start();
+
+          set({
+            accountService: _accountService,
+          });
+        }
       }
     },
 

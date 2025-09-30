@@ -1,16 +1,16 @@
-import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router";
 import { RootLayout } from "./components/Layout/RootLayout";
 import {
   WalletLockedFlowContainer,
   Step,
 } from "./containers/WalletLockedFlowContainer";
-import { RequireUnlockedWallet } from "./containers/RequireUnlockedWallet";
 
 import type { NetworkType } from "./types/all";
 import { useWalletStore } from "./store/wallet.store";
-import { MessengerContainer } from "./containers/MessengerContainer";
-import { useDBStore } from "./store/db.store";
+import { DirectsContainer } from "./containers/DirectsContainer";
+import { BroadcastsContainer } from "./containers/BroadcastsContainer";
+import { MessengerProvider } from "./containers/MessengerProvider";
 
 type WalletFlowRouteConfig = {
   path: string | undefined;
@@ -21,33 +21,22 @@ const walletFlowRoutes: WalletFlowRouteConfig[] = [
   { path: "create", initialStep: "create" },
   { path: "import", initialStep: "import" },
   { path: "unlock/:wallet", initialStep: "unlock" },
-  { path: "migrate/:wallet", initialStep: "migrate" },
 ];
 
 export type AppRoutesProps = {
   network: NetworkType;
   isConnected: boolean;
+  isConnecting: boolean;
   onNetworkChange: (n: NetworkType) => void;
 };
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({
   network,
   isConnected,
+  isConnecting,
   onNetworkChange,
 }) => {
   const { unlockedWallet, selectedWalletId } = useWalletStore();
-  const { db, initRepositories, repositories } = useDBStore();
-
-  useEffect(() => {
-    if (unlockedWallet && db) {
-      initRepositories(unlockedWallet, unlockedWallet.password);
-    }
-  }, [unlockedWallet, db, selectedWalletId, initRepositories]);
-
-  // @TODO(indexdb): style this, should take long
-  if (unlockedWallet && !db && !repositories) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <Routes>
@@ -61,6 +50,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               selectedNetwork={network}
               onNetworkChange={onNetworkChange}
               isConnected={isConnected}
+              isConnecting={isConnecting}
             />
           }
         />
@@ -76,13 +66,14 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
                 initialStep === "unlock" &&
                 unlockedWallet &&
                 selectedWalletId ? (
-                  <Navigate to={`/${selectedWalletId}`} replace />
+                  <Navigate to={`/${selectedWalletId}/directs`} replace />
                 ) : (
                   <WalletLockedFlowContainer
                     initialStep={initialStep}
                     selectedNetwork={network}
                     onNetworkChange={onNetworkChange}
                     isConnected={isConnected}
+                    isConnecting={isConnecting}
                   />
                 )
               }
@@ -90,10 +81,26 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           ))}
         </Route>
 
-        {/* Main Messenging container once you are unlocked */}
-        <Route element={<RequireUnlockedWallet />}>
-          <Route path=":walletId" element={<MessengerContainer />} />
-        </Route>
+        {/* Main Messaging container once you are unlocked */}
+        {unlockedWallet ? (
+          <Route element={<MessengerProvider />}>
+            <Route path=":walletId/directs" element={<DirectsContainer />} />
+            <Route
+              path=":walletId/directs/:contactId"
+              element={<DirectsContainer />}
+            />
+            <Route
+              path=":walletId/broadcasts"
+              element={<BroadcastsContainer />}
+            />
+            <Route
+              path=":walletId/broadcasts/:channelId"
+              element={<BroadcastsContainer />}
+            />
+          </Route>
+        ) : (
+          <Route path="/*" element={<Navigate to="/" replace />} />
+        )}
       </Route>
     </Routes>
   );

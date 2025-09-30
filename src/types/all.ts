@@ -23,7 +23,7 @@ interface Block {
   verboseData: VerboseData3;
 }
 
-interface Header {
+export interface Header {
   hash: string;
   version: number;
   parentsByLevel: string[][];
@@ -101,6 +101,22 @@ export interface VerboseData3 {
   mergeSetBluesHashes: string[];
   mergeSetRedsHashes: never[];
   isChainBlock: boolean;
+}
+
+export interface VirtualChainEvent {
+  type: string;
+  data: VirtualChainEventData;
+}
+
+export interface VirtualChainEventData {
+  removedChainBlockHashes: string[];
+  addedChainBlockHashes: string[];
+  acceptedTransactionIds: AcceptedTransactionID[];
+}
+
+export interface AcceptedTransactionID {
+  acceptingBlockHash: string;
+  acceptedTransactionIds: string[];
 }
 
 export interface FeeBucket {

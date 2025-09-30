@@ -1,14 +1,10 @@
-import { KaspaClient } from "../service/kaspa-client";
 import { PublicKey, PublicKeyGenerator } from "wasm/kaspa";
 
 export type Wallet = {
   id: string;
   name: string;
   createdAt: string;
-  derivationType?: WalletDerivationType;
 };
-
-export type WalletDerivationType = "legacy" | "standard";
 
 export type UnlockedWallet = {
   id: string;
@@ -18,9 +14,7 @@ export type UnlockedWallet = {
   encryptedXPrv: string;
   password: string;
   receivePublicKey: PublicKey;
-  client?: KaspaClient;
-  // Add derivation type to unlocked wallet
-  derivationType: WalletDerivationType;
+  passphrase?: string;
 };
 
 export type StoredWallet = {
@@ -29,8 +23,7 @@ export type StoredWallet = {
   encryptedPhrase: string;
   createdAt: string;
   accounts: { name: string }[];
-  // Add derivation type to track wallet standard
-  derivationType?: WalletDerivationType; // Optional for backward compatibility
+  encryptedPassphrase?: string;
 };
 
 export type WalletBalance = {

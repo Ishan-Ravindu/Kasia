@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Mnemonic } from "kaspa-wasm";
-import { AlertTriangle } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "../Common/Button";
 import { StringCopy } from "../Common/StringCopy";
+import { WarningBlock } from "../Common/WarningBlock";
 
 type SeedPhraseDisplayProps = {
   mnemonic: Mnemonic;
@@ -22,23 +23,12 @@ export const SeedPhraseDisplay = ({
         <p className="font-semibold">
           Please save your mnemonic phrase securely:
         </p>
-        <div className="text-text-warning my-2 flex flex-col items-center rounded-2xl p-2 text-center text-base">
-          <AlertTriangle className="h-8 w-8" />
+        <WarningBlock title="Important" className="my-1.5 sm:w-11/12">
           Please keep your seed phrase safe, if you lose your seed phrase there
           is no recovery.
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setRevealed(!revealed)}
-          className="bg-kas-primary/20 border-primary-border mx-auto my-4 cursor-pointer rounded-2xl border px-4 py-2 text-sm font-bold"
-        >
-          Anyone with your seed phrase can access your wallet
-          <div className="text-text-warning my-1 font-semibold underline">
-            {revealed ? "Hide seed phrase" : "Show seed phrase"}
-          </div>
-        </button>
-
+          <br />
+          Remember: Anyone with your seed phrase can access your wallet.
+        </WarningBlock>
         <div
           className={`mb-3.5 grid w-full grid-cols-3 gap-2.5 p-2 transition-all duration-300 ease-linear ${
             revealed
@@ -54,12 +44,29 @@ export const SeedPhraseDisplay = ({
               <span className="text-text-secondary text-xs font-bold">
                 {i + 1}
               </span>
-              <span className="w-full text-center">{word}</span>
+              <span className="w-full text-center font-semibold">{word}</span>
             </span>
           ))}
         </div>
-
-        <div className="flex justify-center">
+        <div className="flex items-center justify-center gap-2">
+          <input
+            type="checkbox"
+            id="toggleSeedVisibility"
+            checked={revealed}
+            onChange={(e) => setRevealed(e.target.checked)}
+            className="hidden"
+          />
+          <label
+            htmlFor="toggleSeedVisibility"
+            className="focus:ring-kas-secondary flex cursor-pointer items-center rounded-lg px-4 py-2 text-sm transition-all duration-300 hover:bg-gray-200/20 focus:ring-2 focus:outline-none"
+            title={revealed ? "Hide seed phrase" : "Show seed phrase"}
+          >
+            {revealed ? (
+              <EyeOff className="text-text-primary hover:text-kas-secondary size-8 align-middle transition-colors duration-300" />
+            ) : (
+              <Eye className="text-text-primary hover:text-kas-secondary size-8 align-middle transition-colors duration-300" />
+            )}
+          </label>
           <StringCopy
             text={mnemonic.phrase}
             alertText="Seed phrase copied"

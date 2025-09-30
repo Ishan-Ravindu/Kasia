@@ -2,17 +2,20 @@ import { FC, useEffect, useState } from "react";
 import { decryptXChaCha20Poly1305 } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { StoredWallet } from "../../types/wallet.type";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import clsx from "clsx";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
 import { StringCopy } from "../Common/StringCopy";
+import { WarningBlock } from "../Common/WarningBlock";
+import { PasswordField } from "../Common/PasswordField";
 
 export const WalletSeedRetreiveDisplay: FC = () => {
   const [password, setPassword] = useState("");
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
   const [seedPhrase, setSeedPhrase] = useState("");
   const [isBlurred, setIsBlurred] = useState(true);
+  const [hasPassphrase, setHasPassphrase] = useState(false);
   const selectedWalletId = useWalletStore((state) => state.selectedWalletId);
   const [blurTimeout, setBlurTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -67,6 +70,9 @@ export const WalletSeedRetreiveDisplay: FC = () => {
         return;
       }
 
+      // Check if wallet has a passphrase
+      setHasPassphrase(!!foundStoredWallet.encryptedPassphrase);
+
       // Decrypt the seed phrase
       const phrase = decryptXChaCha20Poly1305(
         foundStoredWallet.encryptedPhrase,
@@ -83,10 +89,10 @@ export const WalletSeedRetreiveDisplay: FC = () => {
   return (
     <div className="mt-2">
       <h4 className="text-center text-lg font-semibold">Security</h4>
-      <p className="text-text-warning my-2 text-center text-sm font-semibold">
-        Warning: Never share your seed phrase with anyone. Anyone with access to
-        your seed phrase can access your funds.
-      </p>
+      <WarningBlock title="Warning" className="mt-2">
+        Never share your seed phrase with anyone. Anyone with access to your
+        seed phrase can access your funds.
+      </WarningBlock>
       {!showSeedPhrase ? (
         <div>
           <p className="mb-2 p-2 text-center font-semibold">
@@ -97,7 +103,7 @@ export const WalletSeedRetreiveDisplay: FC = () => {
               e.preventDefault();
               handleViewSeedPhrase();
             }}
-            className="flex flex-col items-center"
+            className="space-y-4"
           >
             {/* hidden username field for password manager accessibility */}
             <input
@@ -109,30 +115,36 @@ export const WalletSeedRetreiveDisplay: FC = () => {
               readOnly
               tabIndex={-1}
             />
-            <input
-              type="password"
-              name="password"
-              value={password}
+            <PasswordField
+              classInput="border-primary-border bg-primary-bg w-full rounded-3xl border px-4 py-2"
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter wallet password"
-              autoComplete="current-password"
-              className="border-primary-border bg-primary-bg mb-2 w-full rounded-3xl border px-4 py-2 md:w-3/4"
+              value={password}
               required
             />
-            <Button type="submit" variant="primary" className="md:w-3/4">
+            <Button type="submit" variant="primary" className="w-full">
               View Seed Phrase
             </Button>
           </form>
         </div>
       ) : (
         <div>
+          {hasPassphrase && (
+            <WarningBlock title="Extra Security" icon={Lock} className="my-2">
+              This wallet was created with a BIP39 passphrase.
+              <br />
+              You'll need both the seed phrase AND the passphrase to recover
+              this wallet elsewhere.
+            </WarningBlock>
+          )}
           <p className="mb-2 p-2 text-center font-semibold">
             Your seed phrase:
           </p>
           <div
             className={clsx(
               "word-break border-primary-border bg-primary-bg mb-4 rounded-3xl border px-4 py-3 font-mono break-all",
-              { "blur-sm filter": isBlurred }
+              { "blur-sm filter": isBlurred },
+              { "select-none": isBlurred }
             )}
           >
             {seedPhrase}
@@ -167,6 +179,7 @@ export const WalletSeedRetreiveDisplay: FC = () => {
                 setSeedPhrase("");
                 setPassword("");
                 setIsBlurred(true);
+                setHasPassphrase(false);
               }}
               variant="secondary"
               className="px-3 py-2 shadow"

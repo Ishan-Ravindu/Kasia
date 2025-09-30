@@ -1,5 +1,6 @@
 import { FC } from "react";
 import { Check, X } from "lucide-react";
+import { Button } from "./Common/Button";
 
 export const EditNicknamePopover: FC<{
   value: string;
@@ -44,7 +45,7 @@ const EditNicknameInput: FC<{
         onCancel();
       }
     }}
-    className="w-full rounded border border-[var(--primary-border)] bg-[var(--secondary-bg)] px-2 py-1 text-sm text-[var(--text-primary)]"
+    className="w-full rounded border border-[var(--primary-border)] bg-[var(--secondary-bg)] px-2 py-1 text-base text-[var(--text-primary)] sm:text-sm"
     autoFocus
   />
 );
@@ -54,19 +55,19 @@ const EditNicknameActions: FC<{
   onCancel: () => void;
 }> = ({ onSave, onCancel }) => (
   <div className="flex flex-col gap-2">
-    <button
+    <Button
       onClick={onSave}
       className="bg-kas-primary hover:bg-kas-primary/80 flex h-10 w-full cursor-pointer items-center justify-center rounded font-bold text-white transition-colors"
       title="Save"
     >
       <Check className="h-5 w-5" />
-    </button>
-    <button
+    </Button>
+    <Button
       onClick={onCancel}
       className="flex h-10 w-full cursor-pointer items-center justify-center rounded border border-[var(--primary-border)] bg-[var(--primary-bg)] font-bold text-[var(--text-primary)] transition-colors hover:bg-[var(--primary-bg)]/80"
       title="Cancel"
     >
       <X className="h-5 w-5" />
-    </button>
+    </Button>
   </div>
 );

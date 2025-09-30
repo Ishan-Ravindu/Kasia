@@ -3,10 +3,15 @@ import { kaspaToSompi, sompiToKaspaString } from "kaspa-wasm";
 import { useWalletStore } from "../../store/wallet.store";
 import { Button } from "../Common/Button";
 import { toast } from "../../utils/toast-helper";
-import { QrScanner } from "../QrScanner";
-import { Clipboard } from "lucide-react";
+import { pasteFromClipboard } from "../../utils/clipboard";
+import { Clipboard, QrCode } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { Address, FeeSource } from "kaspa-wasm";
+import { cameraPermissionService } from "../../service/camera-permission-service";
+import {
+  useFeatureFlagsStore,
+  FeatureFlags,
+} from "../../store/featureflag.store";
 
 const maxDustAmount = kaspaToSompi("0.19")!;
 
@@ -18,13 +23,22 @@ export const WalletWithdrawal: FC = () => {
   const [amountInputError, setAmountInputError] = useState<string | null>(null);
 
   const closeModal = useUiStore((s) => s.closeModal);
+  const openModal = useUiStore((s) => s.openModal);
+  const setQrScannerCallback = useUiStore((s) => s.setQrScannerCallback);
 
   const accountService = useWalletStore((store) => store.accountService);
   const balance = useWalletStore((store) => store.balance);
 
+  // Check if camera feature is enabled
+  const { flags } = useFeatureFlagsStore();
+  const cameraEnabled = flags[FeatureFlags.ENABLED_CAMERA];
+
   const inputAmountUpdated = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      if (/^-?\d*\.?\d*$/.test(event.target.value) === false) {
+      if (
+        /^[+]?([0-9]+(?:[.][0-9]*)?|\.[0-9]+)$/.test(event.target.value) ===
+        false
+      ) {
         return;
       }
 
@@ -65,24 +79,34 @@ export const WalletWithdrawal: FC = () => {
     [balance]
   );
 
-  const handleMaxClick = useCallback(() => {
+  const handleMaxClick = () => {
     const matureBalance = balance?.mature ?? BigInt(0);
     const maxAmount = sompiToKaspaString(matureBalance);
     setWithdrawAmount(maxAmount);
     // Clear any existing errors since max amount is always valid
     setAmountInputError(null);
-  }, [balance]);
+  };
 
-  const handlePaste = useCallback(async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      setWithdrawAddress(text.toLowerCase());
-    } catch {
-      toast.error("Failed to paste from clipboard");
-    }
-  }, []);
+  const handlePaste = async () => {
+    const text = await pasteFromClipboard();
+    setWithdrawAddress(text.toLowerCase());
+  };
 
-  const handleWithdraw = useCallback(async () => {
+  const handleQrScan = async () => {
+    // Request camera access through the service
+    const hasAccess = await cameraPermissionService.requestCamera();
+    if (!hasAccess) return;
+
+    // Set the callback to handle scanned data
+    setQrScannerCallback((data: string) => {
+      setWithdrawAddress(data.toLowerCase());
+    });
+
+    // Open the QR scanner modal
+    openModal("qr-scanner");
+  };
+
+  const handleWithdraw = async () => {
     if (amountInputError !== null) {
       return;
     }
@@ -139,7 +163,7 @@ export const WalletWithdrawal: FC = () => {
     } finally {
       setIsSending(false);
     }
-  }, [withdrawAddress, withdrawAmount, amountInputError, balance]);
+  };
 
   return (
     <>
@@ -151,21 +175,27 @@ export const WalletWithdrawal: FC = () => {
             onChange={(e) => setWithdrawAddress(e.target.value)}
             placeholder="Enter Kaspa address"
             rows={3}
-            className="border-primary-border focus:ring-kas-secondary/80 bg-primary-bg w-full resize-none rounded-lg border p-2 pr-24 break-words whitespace-pre-wrap focus:ring-2 focus:outline-none"
+            className="border-primary-border focus:ring-kas-secondary/80 bg-primary-bg w-full resize-none rounded-lg border p-2 pr-24 text-base break-words whitespace-pre-wrap focus:ring-2 focus:outline-none sm:text-sm"
           />
           <div className="absolute right-2 bottom-2 flex gap-1 pb-1">
             <button
+              type="button"
               onClick={handlePaste}
               className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border px-1.5 py-1 transition-colors"
               title="Paste from clipboard"
             >
               <Clipboard size={16} />
             </button>
-            <QrScanner
-              onScan={(data: string) => {
-                setWithdrawAddress(data.toLowerCase());
-              }}
-            />
+            {cameraEnabled && (
+              <button
+                type="button"
+                className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
+                onClick={handleQrScan}
+                title="Scan QR code"
+              >
+                <QrCode className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
         <div className="relative">
@@ -184,22 +214,35 @@ export const WalletWithdrawal: FC = () => {
             Max
           </button>
         </div>
-        <div className="mt-1 flex items-start justify-start">
+        <div className="mt-0.5 flex items-start justify-start">
           <span className="text-text-secondary me-2">Funds Available:</span>
           <span className="text-text-secondary">
             {balance?.matureDisplay} KAS
           </span>
         </div>
-        <Button
-          onClick={handleWithdraw}
-          disabled={isSending || amountInputError !== null}
-          variant="primary"
-          className="mt-2 w-full"
-        >
-          {isSending ? "Sending..." : "Send"}
-        </Button>
+        <div className="mt-2 flex flex-col-reverse justify-center gap-2 sm:flex-row sm:gap-4">
+          <Button
+            onClick={() => {
+              closeModal("withdraw");
+              openModal("walletInfo");
+            }}
+            variant="secondary"
+            className="!w-full sm:w-auto"
+          >
+            Back to Wallet
+          </Button>
+
+          <Button
+            onClick={handleWithdraw}
+            disabled={isSending || amountInputError !== null}
+            variant="primary"
+            className="!w-full sm:w-auto"
+          >
+            {isSending ? "Sending..." : "Send"}
+          </Button>
+        </div>
         {amountInputError && (
-          <div className="mt-2 text-center text-sm text-red-500">
+          <div className="text-accent-red mt-2 text-center text-sm">
             {amountInputError}
           </div>
         )}

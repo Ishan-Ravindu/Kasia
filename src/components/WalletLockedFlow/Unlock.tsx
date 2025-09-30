@@ -1,5 +1,4 @@
-import { useRef, useState } from "react";
-import { useWalletStore } from "../../store/wallet.store";
+import { useEffect, useRef, useState } from "react";
 import { NetworkSelector } from "../NetworkSelector";
 import { NetworkType } from "../../types/all";
 import { Wallet } from "../../types/wallet.type";
@@ -7,6 +6,12 @@ import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
 import { Loader2 } from "lucide-react";
 import clsx from "clsx";
+import {
+  StartSessionInvalidPasswordException,
+  useOrchestrator,
+} from "../../hooks/useOrchestrator";
+import { useSessionState } from "../../store/session.store";
+import { PasswordField } from "../Common/PasswordField";
 
 type UnlockWalletProps = {
   selectedWalletId: string | null;
@@ -14,6 +19,7 @@ type UnlockWalletProps = {
   selectedNetwork: NetworkType;
   onNetworkChange: (network: NetworkType) => void;
   isConnected: boolean;
+  isConnecting: boolean;
   onSuccess: (walletId: string) => void;
   onBack: () => void;
 };
@@ -24,6 +30,7 @@ export const Unlock = ({
   selectedNetwork,
   onNetworkChange,
   isConnected,
+  isConnecting,
   onSuccess,
   onBack,
 }: UnlockWalletProps) => {
@@ -32,7 +39,8 @@ export const Unlock = ({
 
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const { unlock } = useWalletStore();
+  const { startSession } = useOrchestrator();
+  const { getSession, setSession, hasSession } = useSessionState();
 
   const usePasswordRef = (node: HTMLInputElement | null) => {
     passwordRef.current = node;
@@ -48,7 +56,12 @@ export const Unlock = ({
     setError(null);
     try {
       setUnlocking(true);
-      await unlock(selectedWalletId, pass);
+
+      // do it lossely in the background to not lock the thread
+      setSession(selectedWalletId, pass);
+
+      await startSession({ walletId: selectedWalletId, walletPassword: pass });
+
       onSuccess(selectedWalletId);
     } catch (err) {
       console.error("Unlock error:", err);
@@ -57,8 +70,7 @@ export const Unlock = ({
         passwordRef.current.focus();
       }
       const msg =
-        err instanceof Error &&
-        err.message.toLowerCase().includes("invalid password")
+        err instanceof StartSessionInvalidPasswordException
           ? "Incorrect password. Please try again."
           : "Failed to unlock wallet. Please try again.";
       setError(msg);
@@ -67,23 +79,44 @@ export const Unlock = ({
     }
   };
 
+  // session restore effect
+  useEffect(() => {
+    if (!selectedWalletId) {
+      return;
+    }
+    const sessionEffect = async () => {
+      if (await hasSession(selectedWalletId)) {
+        const password = await getSession(selectedWalletId);
+
+        if (password && passwordRef?.current) {
+          passwordRef.current.value = password;
+
+          onUnlockWallet();
+        }
+      }
+    };
+
+    sessionEffect();
+  }, []);
+
   // Clear error when user starts typing
   const handleInputChange = () => {
     if (error) setError(null);
   };
 
   return (
-    <>
-      <div inert className="mb-4 flex w-full justify-center opacity-70">
+    <div className="flex flex-col gap-y-4">
+      <div inert className="flex w-full justify-center opacity-70">
         <NetworkSelector
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
         />
       </div>
 
       {wallets.find((w) => w.id === selectedWalletId) && (
-        <div className="mt-16 mb-5 flex justify-center">
+        <div className="flex justify-center">
           <div className="border-kas-secondary bg-kas-secondary/10 rounded-md border px-4 py-2 text-center">
             <span className="text-lg font-bold">
               {wallets.find((w) => w.id === selectedWalletId)?.name}
@@ -118,21 +151,14 @@ export const Unlock = ({
           />
 
           <div className="mb-3.5">
-            <label htmlFor="password" className="mb-3.5 block font-medium">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              autoComplete="current-password"
+            <PasswordField
+              label="Password"
+              classLabel="mb-3.5 block font-semibold"
+              classInput="focus:!border-kas-primary border-primary-border bg-input-bg w-full rounded-3xl border p-2.5 px-4 text-base transition-all duration-200 focus:outline-none"
+              hasError={!!error}
               ref={usePasswordRef}
-              type="password"
               placeholder="Enter your password"
               onChange={handleInputChange}
-              className={clsx(
-                "focus:!border-kas-primary border-primary-border bg-input-bg w-full rounded-3xl border p-2.5 px-4 text-base transition-all duration-200 focus:outline-none",
-                { "!border-red-500": error }
-              )}
               disabled={unlocking}
               required
             />
@@ -163,6 +189,6 @@ export const Unlock = ({
           </div>
         </form>
       )}
-    </>
+    </div>
   );
 };

@@ -7,18 +7,23 @@ import {
 import { Contact } from "./repository/contact.repository";
 import {
   encrypt_message,
-  decrypt_with_secret_key,
   EncryptedMessage,
   decrypt_message,
   PrivateKey,
 } from "cipher";
 import { WalletStorageService } from "../service/wallet-storage-service";
-import { Address, kaspaToSompi, NetworkType } from "kaspa-wasm";
+import {
+  Address,
+  decryptXChaCha20Poly1305,
+  encryptXChaCha20Poly1305,
+  kaspaToSompi,
+} from "kaspa-wasm";
 import { ConversationManagerService } from "../service/conversation-manager-service";
 import { useWalletStore } from "./wallet.store";
 import {
   ConversationEvents,
   HandshakePayload,
+  SavedHandshakePayload,
 } from "src/types/messaging.types";
 import { UnlockedWallet } from "src/types/wallet.type";
 import { useDBStore } from "./db.store";
@@ -27,10 +32,6 @@ import {
   ActiveConversation,
   Conversation,
 } from "./repository/conversation.repository";
-import {
-  loadLegacyMessages,
-  saveMessages,
-} from "../service/storage-encryption";
 import { PROTOCOL, toHex } from "../config/protocol";
 import { Payment } from "./repository/payment.repository";
 import { Message } from "./repository/message.repository";
@@ -39,25 +40,29 @@ import { HistoricalSyncer } from "../service/historical-syncer";
 import {
   ContextualMessageResponse,
   HandshakeResponse,
+  SelfStashResponse,
 } from "../service/indexer/generated";
 import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
-
-// Helper function to determine network type from address
-function getNetworkTypeFromAddress(address: string): NetworkType {
-  if (address.startsWith("kaspatest:")) {
-    return NetworkType.Testnet;
-  } else if (address.startsWith("kaspadev:")) {
-    return NetworkType.Devnet;
-  }
-  return NetworkType.Mainnet;
-}
+import { hexToString } from "../utils/format";
+import { RawResolvedKasiaTransaction } from "../service/block-processor-service";
+import { Repositories } from "./repository/db";
+import {
+  BackupV2,
+  exportData,
+  importData,
+} from "../service/import-export-service";
+import { useNetworkStore } from "./network.store";
 
 interface MessagingState {
   isLoaded: boolean;
   isCreatingNewChat: boolean;
   oneOnOneConversations: OneOnOneConversation[];
+  processingTransactionIds: Set<string>;
+  ingestRawResolvedKasiaTransaction: (
+    tx: RawResolvedKasiaTransaction
+  ) => Promise<void>;
   storeKasiaTransactions: (transactions: KasiaTransaction[]) => Promise<void>;
-  flushWalletHistory: (address: string) => void;
+  flushWalletHistory: (walletTenant: string) => Promise<void>;
   exportMessages: (wallet: UnlockedWallet, password: string) => Promise<Blob>;
   importMessages: (
     file: File,
@@ -67,7 +72,6 @@ interface MessagingState {
 
   openedRecipient: string | null;
   setOpenedRecipient: (contact: string | null) => void;
-  setIsCreatingNewChat: (isCreatingNewChat: boolean) => void;
 
   load: (address: string) => Promise<void>;
   stop: () => void;
@@ -97,12 +101,31 @@ interface MessagingState {
   // New function to manually respond to a handshake
   respondToHandshake: (handshakeId: string) => Promise<string>;
 
+  // Create offline handshake (both parties exchange info manually)
+  createOffChainHandshake: (
+    partnerAddress: string,
+    ourAliasForPartner: string,
+    theirAliasForUs: string
+  ) => Promise<{ conversationId: string; contactId: string }>;
+
+  // Generate unique alias for conversations
+  generateUniqueAlias: () => string;
+
   // Nickname management
   setContactNickname: (address: string, nickname?: string) => Promise<void>;
   removeContactNickname: (address: string) => Promise<void>;
 
   // Last opened recipient management
   restoreLastOpenedRecipient: (walletAddress: string) => void;
+
+  // self stash management
+  createSelfStash: (handshakeData: {
+    type: "initiation" | "response";
+    partnerAddress: string;
+    ourAlias: string;
+    theirAlias?: string;
+    isResponse?: boolean;
+  }) => Promise<string>;
 
   // Hydration
   hydrateOneonOneConversations: () => Promise<void>;
@@ -122,7 +145,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
   const _fetchHistoricalForConversation = async (
     oooc: OneOnOneConversation,
     aliases: Set<string>,
-    myAddress: string
+    myAddress: string,
+    repositories: Repositories
   ): Promise<void> => {
     try {
       if (!_historicalSyncer) return;
@@ -141,15 +165,22 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         aliasesToFetch.add(oooc.conversation.theirAlias);
       }
 
+      // get last message&payment timestamp
+      const metadata = repositories.metadataRepository.load();
+      const lastPaymentTimestamp = metadata.lastPaymentBlockTime;
+      const lastMessageTimestamp = metadata.lastMessageBlockTime;
+
       const [indexerPayments, indexerMessages] = await Promise.all([
         _historicalSyncer.fetchHistoricalPaymentsFromAddress(
-          oooc.contact.kaspaAddress
+          oooc.contact.kaspaAddress,
+          lastPaymentTimestamp
         ),
         Promise.allSettled(
           [...aliasesToFetch].map((alias) =>
             _historicalSyncer.fetchHistoricalMessagesToAddress(
               oooc.contact.kaspaAddress,
-              alias
+              alias,
+              lastMessageTimestamp
             )
           )
         ).then((results) => {
@@ -170,31 +201,25 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const newKasiaTransactions: KasiaTransaction[] = [];
 
+      let lastProcessedMessageBlockTime = lastMessageTimestamp;
+      let lastProcessedPaymentBlockTime = lastPaymentTimestamp;
+
       for (const m of newIndexerMessages) {
         try {
           const payload = m.message_payload;
 
-          const hexStringBytes = payload.match(/.{1,2}/g);
-          if (!hexStringBytes) {
-            continue;
-          }
-
-          const bytes = new Uint8Array(
-            hexStringBytes.map((b) => parseInt(b, 16))
-          );
-          const decodedString = new TextDecoder().decode(bytes);
-
           // if its base64, decrypt
-          const encryptedHex = tryParseBase64AsHexToHex(decodedString);
+          const encryptedHex = tryParseBase64AsHexToHex(payload);
+          const encryptedMessage = new EncryptedMessage(encryptedHex);
 
           const decryptedContent = decrypt_message(
-            new EncryptedMessage(encryptedHex),
+            encryptedMessage,
             new PrivateKey(privateKeyString)
           );
 
           const kasiaTransaction = {
             amount: 0,
-            content: decryptedContent,
+            content: `${PROTOCOL.prefix.hex + PROTOCOL.headers.COMM.hex + hexToString(m.alias)}:${decryptedContent}`,
             createdAt: new Date(Number(m.block_time)),
             fee: 0,
             payload: payload,
@@ -202,38 +227,47 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             senderAddress: m.sender,
             transactionId: m.tx_id,
           };
-
+          console.log("kasia transaction from message", { kasiaTransaction });
           newKasiaTransactions.push(kasiaTransaction);
-        } catch {
+
+          if (lastProcessedMessageBlockTime < Number(m.block_time)) {
+            lastProcessedMessageBlockTime = Number(m.block_time);
+          }
+        } catch (error) {
           // chill
+          console.error(error);
         }
       }
 
       for (const p of newIndexerPayments) {
         if (!p.sender) continue;
         try {
-          const hexStringBytes = p.message.match(/.{1,2}/g);
-          if (!hexStringBytes) continue;
-          const bytes = new Uint8Array(
-            hexStringBytes.map((b) => parseInt(b, 16))
+          const paymentPayload = decrypt_message(
+            new EncryptedMessage(p.message),
+            new PrivateKey(privateKeyString)
           );
-          const decodedMessage = new TextDecoder().decode(bytes);
+
+          console.log("payment historical", {
+            payload: p.message,
+            decryptedPayload: paymentPayload,
+          });
           newKasiaTransactions.push({
             amount: 0,
-            content: decrypt_message(
-              new EncryptedMessage(decodedMessage),
-              new PrivateKey(privateKeyString)
-            ),
+            content: paymentPayload,
             createdAt: new Date(Number(p.block_time)),
             fee: 0,
             payload:
               PROTOCOL.prefix.hex +
               PROTOCOL.headers.PAYMENT.hex +
-              decodedMessage,
+              paymentPayload,
             recipientAddress: myAddress,
             senderAddress: p.sender,
             transactionId: p.tx_id,
           });
+
+          if (lastProcessedPaymentBlockTime < Number(p.block_time)) {
+            lastProcessedPaymentBlockTime = Number(p.block_time);
+          }
         } catch {
           //nothing
         }
@@ -242,6 +276,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       if (newKasiaTransactions.length > 0) {
         await g().storeKasiaTransactions(newKasiaTransactions);
       }
+
+      // update last fetch timestamp
+      repositories.metadataRepository.store({
+        lastMessageBlockTime: lastProcessedMessageBlockTime,
+        lastPaymentBlockTime: lastProcessedPaymentBlockTime,
+      });
     } catch {
       // chill
     }
@@ -279,36 +319,61 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
     isCreatingNewChat: false,
     openedRecipient: null,
     oneOnOneConversations: [],
+    processingTransactionIds: new Set<string>(),
     async load(address) {
-      const initLazyHistoricalHandshakeLoad = () => {
+      const initLazyHistoricalHandshakeLoad = (
+        lastSavedHanshakeTimestamp: number,
+        lastHandshakeTimestamp: number
+      ) => {
         _historicalSyncer = new HistoricalSyncer(address);
 
-        const _handshakesPromise: Promise<HandshakeResponse[]> =
-          _historicalSyncer.initialLoad();
+        const _handshakesPromise = _historicalSyncer.initialLoad(
+          lastSavedHanshakeTimestamp,
+          lastHandshakeTimestamp
+        );
 
-        const getHistoricalHandshakes = async (): Promise<
-          HandshakeResponse[]
-        > => {
+        const getHistoricalHandshakes = async () => {
           return await _handshakesPromise;
         };
 
         return getHistoricalHandshakes;
       };
 
+      const repositories = useDBStore.getState().repositories;
+
       // 0. trigger lazy loading of historical handshakes
-      const getHistoricalHandshakes = initLazyHistoricalHandshakeLoad();
+
+      console.log(
+        "Loading Strategy - Getting last saved handshake and handshake..."
+      );
+      // get last date of handshakes
+
+      const metadata = repositories.metadataRepository.load();
+      const getHistoricalHandshakes = initLazyHistoricalHandshakeLoad(
+        metadata.lastSavedHandshakeBlockTime,
+        metadata.lastHandshakeBlockTime
+      );
+
+      console.log("Loading Strategy - Initializing Conversation Manager");
 
       // 1. initialize conversation manager that hydrate conversation with contacts
       await _initializeConversationManager(address);
 
+      console.log("Loading Strategy - Hydrading OOC");
+
       // 2. hydrate events on these loaded conversations, this load in memory one on one conversation
       await g().hydrateOneonOneConversations();
 
-      // 3. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
-      // possible optimization improvement: get last event block time and only fetch events after that time
+      console.log("Loading Strategy - Waiting for histical upsteam response");
+
+      // 3. process historical saved handshakes (that were lazily loaded), this will create new conversations locally if needed
+      //   AND
+      // 4. process historical handshakes (that were lazily loaded), this will create new conversations locally if needed
       const handshakeReponses = await getHistoricalHandshakes();
 
-      const repositories = useDBStore.getState().repositories;
+      console.log("Loading Strategy - Processing Handshake from upstream", {
+        handshakeReponses,
+      });
 
       const unlockedWallet = useWalletStore.getState().unlockedWallet;
       if (!unlockedWallet) {
@@ -323,175 +388,290 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const ooocs = g().oneOnOneConversations;
       const ooocsByAddress: Map<string, OneOnOneConversation> = new Map();
-      const handshakesBySenderAddress: Map<string, HandshakeResponse[]> =
-        new Map();
 
-      for (const handshake of handshakeReponses) {
-        const handshakes = handshakesBySenderAddress.get(handshake.sender);
-        if (!handshakes) {
-          handshakesBySenderAddress.set(handshake.sender, [handshake]);
+      const lastSentHSBySenderAddress: Map<
+        string,
+        {
+          payload: SavedHandshakePayload;
+          selfStash: SelfStashResponse;
+        }
+      > = new Map();
+      const lastReceivedHSBySenderAddress: Map<
+        string,
+        { handshake: HandshakeResponse; payload: HandshakePayload }
+      > = new Map();
+      const resolvedUnknownReceivedHandshakesAliasesBySenderAddress: Record<
+        string,
+        Set<string>
+      > = {};
+
+      // try find the last saved stashed element per recipient address
+      for (const stashedElement of handshakeReponses.sentHandshakes.sort(
+        (a, b) => Number(b.block_time - a.block_time)
+      )) {
+        if (!stashedElement.owner) {
           continue;
         }
-        handshakes.push(handshake);
-        handshakesBySenderAddress.set(handshake.sender, handshakes);
+
+        // skip if already known locally
+        if (
+          await repositories.savedHandshakeRepository.doesExistsById(
+            `${unlockedWallet.id}_${stashedElement.tx_id}`
+          )
+        ) {
+          continue;
+        }
+
+        // parse decrypted message that we assume they are saved hanshake payloads
+        try {
+          // try decrypt self stash elements that we assume they are saved handshakes
+          const encryptedMessage = new EncryptedMessage(
+            stashedElement.stashed_data
+          );
+          const privateKey = new PrivateKey(privateKeyString);
+          const decrypted = decrypt_message(encryptedMessage, privateKey);
+
+          const savedHandshakePayload: SavedHandshakePayload =
+            JSON.parse(decrypted);
+
+          const sentHS = lastSentHSBySenderAddress.get(
+            savedHandshakePayload.recipientAddress
+          );
+          // only consider the last saved handshake for our recipient
+          // since we loop by last first, we can skip this iteration if already exist
+          if (sentHS) {
+            continue;
+          }
+          lastSentHSBySenderAddress.set(
+            savedHandshakePayload.recipientAddress,
+            {
+              payload: savedHandshakePayload,
+              selfStash: { ...stashedElement },
+            }
+          );
+          break;
+        } catch (error) {
+          console.warn("Cannot process sent handshake", error);
+        }
+      }
+
+      for (const handshake of handshakeReponses.receivedHandshakes.sort(
+        (a, b) => Number(b.block_time - a.block_time)
+      )) {
+        // skip is already ingested locally
+        if (
+          await repositories.handshakeRepository.doesExistsById(
+            `${unlockedWallet.id}_${handshake.tx_id}`
+          )
+        ) {
+          continue;
+        }
+
+        try {
+          const encryptedMessage = new EncryptedMessage(
+            handshake.message_payload
+          );
+
+          const privateKey = new PrivateKey(privateKeyString);
+          const decryptedPart = decrypt_message(encryptedMessage, privateKey);
+
+          const handshakePayload =
+            g().conversationManager?.parseHandshakePayload(decryptedPart);
+
+          if (!handshakePayload) {
+            continue;
+          }
+
+          // only consider the last saved handshake for our recipient
+          // since we loop by last first, we can skip this iteration if already exist
+          const handshakes = lastReceivedHSBySenderAddress.get(
+            handshake.sender
+          );
+          if (!handshakes) {
+            lastReceivedHSBySenderAddress.set(handshake.sender, {
+              handshake,
+              payload: handshakePayload,
+            });
+          }
+
+          // mark the discovered alias
+          const existing =
+            !resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
+              handshake.sender
+            ];
+          if (!existing) {
+            resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
+              handshake.sender
+            ] = new Set(handshakePayload.alias);
+          } else {
+            resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
+              handshake.sender
+            ].add(handshakePayload.alias);
+          }
+        } catch {
+          // no-op
+        }
       }
 
       for (const oooc of ooocs) {
         ooocsByAddress.set(oooc.contact.kaspaAddress, oooc);
       }
 
-      const promises: Promise<void>[] = [];
-      const resolvedUnknownHandshakesAliasesBySenderAddress: Record<
-        string,
-        Set<string>
-      > = {};
+      const uniqueSenderAddresses = new Set([
+        ...lastReceivedHSBySenderAddress.keys(),
+        ...lastSentHSBySenderAddress.keys(),
+      ]);
 
-      for (const [
-        senderAddress,
-        handshakes,
-      ] of handshakesBySenderAddress.entries()) {
-        const promise = async () => {
-          let oooc = ooocsByAddress.get(senderAddress);
+      let lastProcessedHandhshakeBlockTime = metadata.lastHandshakeBlockTime;
+      let lastProcessedSavedHandshakeBlockTime =
+        metadata.lastSavedHandshakeBlockTime;
 
-          if (!oooc) {
-            console.log(`No oooc found for ${senderAddress}, creating new one`);
+      const processOneSender = async (senderAddress: string) => {
+        let oooc = ooocsByAddress.get(senderAddress);
 
-            // ingest the first decryptable handshake to create oooc
-            let atLeastOneHandshakeDecrypted = false;
-            for (const handshake of handshakes.sort(
-              (a, b) => Number(b.block_time) - Number(a.block_time)
-            )) {
-              const encryptedMessage = new EncryptedMessage(
-                handshake.message_payload
+        const lastSentHS = lastSentHSBySenderAddress.get(senderAddress);
+        if (lastSentHS) {
+          try {
+            await g().conversationManager?.hydrateFromSavedHanshaked(
+              lastSentHS.payload,
+              lastSentHS.selfStash.tx_id
+            );
+            if (
+              lastProcessedSavedHandshakeBlockTime <=
+              Number(lastSentHS.selfStash.block_time)
+            ) {
+              lastProcessedSavedHandshakeBlockTime = Number(
+                lastSentHS.selfStash.block_time
               );
-
-              try {
-                const privateKey = new PrivateKey(privateKeyString);
-                const decrypted = decrypt_message(encryptedMessage, privateKey);
-
-                // create new conversation
-                await g().conversationManager?.processHandshake(
-                  senderAddress,
-                  decrypted
-                );
-
-                const conversationWithContact =
-                  g().conversationManager?.getConversationWithContactByAddress(
-                    senderAddress
-                  );
-
-                if (!conversationWithContact) {
-                  console.warn(
-                    `Failed to get conversation with contact while processing handshake for ${senderAddress}, processing next handshake...`
-                  );
-                  continue;
-                }
-
-                oooc = {
-                  conversation: conversationWithContact.conversation,
-                  contact: conversationWithContact.contact,
-                  events: [],
-                };
-                atLeastOneHandshakeDecrypted = true;
-                break;
-              } catch {
-                continue;
-              }
             }
-
-            if (!atLeastOneHandshakeDecrypted) {
-              console.warn(
-                `Failed to decrypt any handshake for ${senderAddress}, skipping...`
-              );
-              return;
-            }
+          } catch (error) {
+            console.error(
+              "Messaging Store - Error while ingesting last sent handshake",
+              error
+            );
           }
+        }
 
-          // transform raw handshake to kasia handshake and persist them if they are new
-          const unknownHandshakes = handshakes.filter(
-            (handshake) =>
-              oooc!.events.find((e) => e.transactionId === handshake.tx_id) ===
-              undefined
+        const lastReceivedHS = lastReceivedHSBySenderAddress.get(senderAddress);
+        if (lastReceivedHS?.handshake?.sender) {
+          try {
+            await g().conversationManager?.processHandshake(
+              senderAddress,
+              lastReceivedHS.payload
+            );
+            if (
+              lastProcessedHandhshakeBlockTime <=
+              Number(lastReceivedHS.handshake.block_time)
+            ) {
+              lastProcessedHandhshakeBlockTime = Number(
+                lastReceivedHS.handshake.block_time
+              );
+            }
+          } catch (error) {
+            console.error(
+              "Messaging Store - Error while ingesting last received handshake",
+              error
+            );
+          }
+        }
+
+        // get updated conversation from manager
+        const conversationWithContact =
+          g().conversationManager?.getConversationWithContactByAddress(
+            senderAddress
           );
 
-          for (const unknownHandshake of unknownHandshakes) {
-            try {
-              const encryptedMessage = new EncryptedMessage(
-                unknownHandshake.message_payload
-              );
+        if (!conversationWithContact) {
+          // shouldn't happen
+          console.warn(
+            `Failed to get conversation with contact while processing handshake for ${senderAddress}, processing next handshake...`
+          );
+          return;
+        }
 
-              const privateKey = new PrivateKey(privateKeyString);
+        if (!oooc) {
+          oooc = {
+            conversation: conversationWithContact.conversation,
+            contact: conversationWithContact.contact,
+            events: [],
+          };
+        }
 
-              const decrypted = decrypt_message(encryptedMessage, privateKey);
+        const kasiaHandshakesToPersist: Handshake[] = [];
 
-              const kasiaHandshake: Handshake = {
-                __type: "handshake",
-                amount: 0.2,
-                contactId: oooc!.contact.id,
-                conversationId: oooc!.conversation.id,
-                content: decrypted,
-                fromMe: false,
-                createdAt: new Date(Number(unknownHandshake.block_time)),
-                tenantId: unlockedWallet.id,
-                transactionId: unknownHandshake.tx_id,
-                id: `${unlockedWallet.id}_${unknownHandshake.tx_id}`,
-                fee: 0,
-              };
+        if (lastSentHS) {
+          kasiaHandshakesToPersist.push({
+            __type: "handshake",
+            amount: 0.2,
+            contactId: oooc.contact.id,
+            conversationId: oooc.conversation.id,
+            content: "Handshake Sent",
+            fromMe: true,
+            createdAt: new Date(Number(lastSentHS.selfStash.block_time)),
+            tenantId: unlockedWallet.id,
+            transactionId: lastSentHS.selfStash.tx_id,
+            id: `${unlockedWallet.id}_${lastSentHS.selfStash.tx_id}`,
+            fee: 0,
+          });
+        }
 
-              console.log("saving", { kasiaHandshake });
+        if (lastReceivedHS) {
+          kasiaHandshakesToPersist.push({
+            __type: "handshake",
+            amount: 0.2,
+            contactId: oooc.contact.id,
+            conversationId: oooc.conversation.id,
+            content: JSON.stringify(lastReceivedHS.payload),
+            fromMe: false,
+            createdAt: new Date(Number(lastReceivedHS.handshake.block_time)),
+            tenantId: unlockedWallet.id,
+            transactionId: lastReceivedHS.handshake.tx_id,
+            id: `${unlockedWallet.id}_${lastReceivedHS.handshake.tx_id}`,
+            fee: 0,
+          });
+        }
 
-              await repositories.handshakeRepository.saveHandshake(
-                kasiaHandshake
-              );
+        console.log("saving", {
+          kasiaHandshakeToPersist: kasiaHandshakesToPersist,
+        });
 
-              oooc!.events.push(kasiaHandshake);
-
-              // keep a record of the resolved unknown hanshake, to fetch historical events for it later
-              try {
-                const alias = g().conversationManager?.parseHandshakePayload(
-                  kasiaHandshake.content
-                )?.alias;
-                if (alias) {
-                  const existing =
-                    resolvedUnknownHandshakesAliasesBySenderAddress[
-                      senderAddress
-                    ] ?? new Set();
-                  existing.add(alias);
-                  resolvedUnknownHandshakesAliasesBySenderAddress[
-                    senderAddress
-                  ] = existing;
-                }
-              } catch (e) {
-                console.warn(
-                  `failed to parse historical handshake payload for ${unknownHandshake.tx_id}`,
-                  e
-                );
-              }
-            } catch (e) {
-              console.error("error decrypting handshake", e);
-              continue;
-            }
+        for (const kasiaHSToPersist of kasiaHandshakesToPersist) {
+          try {
+            await repositories.handshakeRepository.saveHandshake(
+              kasiaHSToPersist
+            );
+          } catch (error) {
+            console.error(
+              "Messaging Store - Error while persisting handshake",
+              error
+            );
+            continue;
           }
 
-          oooc!.events.sort(
-            (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-          );
+          oooc.events.push(kasiaHSToPersist);
+        }
 
-          ooocsByAddress.set(senderAddress, oooc!);
-        };
+        oooc.events.sort(
+          (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+        );
 
-        promises.push(promise());
-      }
+        ooocsByAddress.set(senderAddress, oooc);
+      };
 
-      await Promise.all(promises);
+      await Promise.all([...uniqueSenderAddresses].map(processOneSender));
 
-      console.log("all handshake history loaded");
+      repositories.metadataRepository.store({
+        lastSavedHandshakeBlockTime: lastProcessedSavedHandshakeBlockTime,
+        lastHandshakeBlockTime: lastProcessedHandhshakeBlockTime,
+      });
+
+      console.log("Loading Strategy - handshake history reconciliation loaded");
 
       set({
         oneOnOneConversations: Array.from(ooocsByAddress.values()),
       });
 
-      // 4. lazily trigger historical polling of events for each conversation
+      // 5. lazily trigger historical polling of events for each conversation
       console.log("Lazy historical polling of events for each conversation");
 
       Promise.all(
@@ -503,7 +683,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
           // include current conversation participant's alias
           const resolvedUnknownHandshakesAlisesForThisConversation =
-            resolvedUnknownHandshakesAliasesBySenderAddress[
+            resolvedUnknownReceivedHandshakesAliasesBySenderAddress[
               oooc.contact.kaspaAddress
             ] ?? new Set<string>();
           if (oooc.conversation.theirAlias) {
@@ -512,10 +692,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
             );
           }
 
-          await _fetchHistoricalForConversation(
+          return _fetchHistoricalForConversation(
             oooc,
             resolvedUnknownHandshakesAlisesForThisConversation,
-            address
+            address,
+            repositories
           );
         })
       );
@@ -524,7 +705,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         isLoaded: true,
       });
     },
-    // @TODO(indexdb): verify stop messenger client service is called properly
     stop() {
       _historicalSyncer = null!;
     },
@@ -556,8 +736,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       console.trace("oooc hydrated", {
         oneOnOneConversations,
       });
+      const filteredConversations = oneOnOneConversations.filter(
+        (c) => c !== null
+      );
       set({
-        oneOnOneConversations: oneOnOneConversations.filter((c) => c !== null),
+        oneOnOneConversations: filteredConversations,
       });
     },
     storeKasiaTransactions: async (transactions) => {
@@ -584,96 +767,213 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         throw new Error("Address is not available");
       }
 
+      // In-memory deduplication to prevent concurrent processing of the same transaction
       for (const transaction of transactions) {
-        const isFromMe = transaction.senderAddress === address.toString();
-        const participantAddress = isFromMe
-          ? transaction.recipientAddress
-          : transaction.senderAddress;
+        const transactionId = transaction.transactionId;
 
-        if (
-          await repositories.doesKasiaEventExistsById(
-            `${unlockedWallet.id}_${transaction.transactionId}`
-          )
-        ) {
+        // Check if this transaction is already being processed
+        if (g().processingTransactionIds.has(transactionId)) {
           console.warn(
-            "Skipping already processed transaction: ",
-            transaction.transactionId
+            `Skipping transaction already in processing: ${transactionId}`
           );
           continue;
         }
+        set((state) => ({
+          processingTransactionIds: new Set([
+            ...state.processingTransactionIds,
+            transactionId,
+          ]),
+        }));
 
-        console.log("Processing transaction: ", {
-          ...transaction,
-          isFromMe,
-          participantAddress,
-        });
+        try {
+          const isFromMe = transaction.senderAddress === address.toString();
+          const participantAddress = isFromMe
+            ? transaction.recipientAddress
+            : transaction.senderAddress;
 
-        // HANDSHAKE
-        if (
-          transaction.content.startsWith(PROTOCOL.prefix.string) &&
-          transaction.content.includes(":handshake:")
-        ) {
-          try {
-            // Parse the handshake payload
+          if (
+            await repositories.doesKasiaEventExistsById(
+              `${unlockedWallet.id}_${transaction.transactionId}`
+            )
+          ) {
+            console.warn(
+              "Skipping already processed transaction: ",
+              transaction.transactionId
+            );
+            continue;
+          }
+
+          console.log("Processing transaction: ", {
+            ...transaction,
+            isFromMe,
+            participantAddress,
+          });
+
+          // HANDSHAKE
+          if (
+            transaction.content.startsWith(PROTOCOL.prefix.string) &&
+            transaction.content.includes(":handshake:")
+          ) {
+            try {
+              // Parse the handshake payload
+              const parts = transaction.content.split(":");
+              const jsonPart = parts.slice(3).join(":");
+              const handshakePayload = JSON.parse(jsonPart);
+
+              // Skip handshake processing if it's a self-message
+              if (
+                transaction.senderAddress === address.toString() &&
+                transaction.recipientAddress === address.toString()
+              ) {
+                console.log("Skipping self-handshake message");
+                continue;
+              }
+
+              if (
+                // received handshake
+                transaction.recipientAddress === address.toString()
+              ) {
+                // Check if this handshake has already been processed
+                const handshakeId = `${unlockedWallet.id}_${transaction.transactionId}`;
+
+                const handshakeExists = await repositories.handshakeRepository
+                  .doesExistsById(handshakeId)
+                  .catch(() => false);
+
+                if (handshakeExists) {
+                  console.warn(
+                    `Skipping already processed handshake: ${handshakeId}`
+                  );
+                  continue;
+                }
+
+                console.log("Processing handshake message:", {
+                  senderAddress: transaction.senderAddress,
+                  recipientAddress: transaction.recipientAddress,
+                  isResponse: handshakePayload.isResponse,
+                  handshakePayload,
+                });
+                await g()
+                  .processHandshake(
+                    transaction.senderAddress,
+                    transaction.content
+                  )
+                  .catch((error) => {
+                    if (
+                      error.message === "Cannot create conversation with self"
+                    ) {
+                      console.log("Skipping self-conversation handshake");
+                      return;
+                    }
+                    console.error("Error processing handshake:", error);
+                  });
+
+                const conversationWithContact =
+                  g().conversationManager?.getConversationWithContactByAddress(
+                    transaction.senderAddress
+                  );
+
+                // persist in-memory & db kasia events
+                if (conversationWithContact) {
+                  const handshake: Handshake = {
+                    __type: "handshake",
+                    amount: transaction.amount,
+                    contactId: conversationWithContact.contact.id,
+                    content: transaction.content,
+                    conversationId: conversationWithContact.conversation.id,
+                    createdAt: transaction.createdAt,
+                    fromMe: isFromMe,
+                    id: `${unlockedWallet.id}_${transaction.transactionId}`,
+                    tenantId: unlockedWallet.id,
+                    transactionId: transaction.transactionId,
+                    fee: transaction.fee,
+                  };
+                  await repositories.handshakeRepository.saveHandshake(
+                    handshake
+                  );
+
+                  // if already exists in memory, add even in place else add new one on one conversation
+                  const existingConversationIndex =
+                    g().oneOnOneConversations.findIndex(
+                      (c) =>
+                        c.conversation.id ===
+                        conversationWithContact.conversation.id
+                    );
+
+                  if (existingConversationIndex !== -1) {
+                    const updatedConversations = [...g().oneOnOneConversations];
+                    updatedConversations[existingConversationIndex] = {
+                      ...updatedConversations[existingConversationIndex],
+                      conversation: conversationWithContact.conversation,
+                      events: [
+                        ...updatedConversations[existingConversationIndex]
+                          .events,
+                        handshake,
+                      ],
+                    };
+                    set({ oneOnOneConversations: updatedConversations });
+                  } else {
+                    set({
+                      oneOnOneConversations: [
+                        ...g().oneOnOneConversations,
+                        {
+                          contact: conversationWithContact.contact,
+                          events: [handshake],
+                          conversation: conversationWithContact.conversation,
+                        },
+                      ],
+                    });
+                  }
+                }
+                continue;
+              }
+            } catch (error) {
+              console.error("Error processing handshake message:", error);
+              throw error;
+            }
+          }
+
+          // SELF STASH - SAVED HANDSHAKE
+          if (
+            transaction.content.startsWith(PROTOCOL.prefix.string) &&
+            transaction.content.includes(":handshake:")
+          ) {
+            // prefix:1:self_stash[:optional_scope]:data
             const parts = transaction.content.split(":");
-            const jsonPart = parts.slice(3).join(":");
-            const handshakePayload = JSON.parse(jsonPart);
 
-            // Skip handshake processing if it's a self-message
-            if (
-              transaction.senderAddress === address.toString() &&
-              transaction.recipientAddress === address.toString()
-            ) {
-              console.log("Skipping self-handshake message");
-              return;
+            const hasSavedHandshakeScope = parts[3] === "saved_handshake";
+
+            if (!hasSavedHandshakeScope) {
+              continue;
             }
 
-            if (
-              // received handshake
-              transaction.recipientAddress === address.toString()
-            ) {
-              console.log("Processing handshake message:", {
-                senderAddress: transaction.senderAddress,
-                recipientAddress: transaction.recipientAddress,
-                isResponse: handshakePayload.isResponse,
-                handshakePayload,
-              });
-              await g()
-                .processHandshake(
-                  transaction.senderAddress,
-                  transaction.content
-                )
-                .catch((error) => {
-                  if (
-                    error.message === "Cannot create conversation with self"
-                  ) {
-                    console.log("Skipping self-conversation handshake");
-                    return;
-                  }
-                  console.error("Error processing handshake:", error);
-                });
+            try {
+              const payload: SavedHandshakePayload = JSON.parse(parts[4]);
+
+              await g().conversationManager?.hydrateFromSavedHanshaked(
+                payload,
+                transaction.transactionId
+              );
 
               const conversationWithContact =
                 g().conversationManager?.getConversationWithContactByAddress(
                   transaction.senderAddress
                 );
 
-              // persist in-memory & db kasia events
               if (conversationWithContact) {
                 const handshake: Handshake = {
                   __type: "handshake",
                   amount: transaction.amount,
                   contactId: conversationWithContact.contact.id,
-                  content: transaction.content,
                   conversationId: conversationWithContact.conversation.id,
+                  content: "Handshake sent",
+                  fromMe: true,
                   createdAt: transaction.createdAt,
-                  fromMe: isFromMe,
-                  id: `${unlockedWallet.id}_${transaction.transactionId}`,
                   tenantId: unlockedWallet.id,
                   transactionId: transaction.transactionId,
-                  fee: transaction.fee,
+                  id: `${unlockedWallet.id}_${transaction.transactionId}`,
+                  fee: 0,
                 };
-                await repositories.handshakeRepository.saveHandshake(handshake);
 
                 // if already exists in memory, add even in place else add new one on one conversation
                 const existingConversationIndex =
@@ -706,198 +1006,233 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                     ],
                   });
                 }
+
+                console.log("saving", { handshake });
+
+                await repositories.handshakeRepository.saveHandshake(handshake);
               }
-              return;
+            } catch (error) {
+              console.error(`Error while handling saved handshake`, error);
+              continue;
             }
-          } catch (error) {
-            console.error("Error processing handshake message:", error);
-            throw error;
-          }
-        }
-
-        const existingConversationWithContactIndex =
-          state.oneOnOneConversations.findIndex(
-            (c) => c.contact.kaspaAddress === participantAddress
-          );
-
-        if (existingConversationWithContactIndex === -1) {
-          throw new Error("Conversation not found, ignoring message");
-        }
-
-        const existingConversationWithContact =
-          state.oneOnOneConversations[existingConversationWithContactIndex];
-
-        const isTransactionAlreadyIngested =
-          existingConversationWithContact.events.some(
-            (e) => e.transactionId === transaction.transactionId
-          );
-
-        if (isTransactionAlreadyIngested) {
-          console.warn("Transaction already ingested, ignoring message");
-          return;
-        }
-
-        let kasiaEvent: KasiaConversationEvent | null = null;
-
-        // PAYMENT
-        if (
-          transaction.payload.startsWith(PROTOCOL.prefix.hex) &&
-          transaction.payload.includes(PROTOCOL.headers.PAYMENT.hex)
-        ) {
-          let paymentContent = transaction.content ?? "";
-          if (
-            !_isIncomingContentAllowed(
-              existingConversationWithContact.conversation,
-              isFromMe
-            )
-          ) {
-            // drop note for incoming payments if not accepted/alias unknown
-            try {
-              const parsed = JSON.parse(paymentContent);
-              if (parsed && parsed.type === PROTOCOL.headers.PAYMENT.type) {
-                delete parsed.message;
-                paymentContent = JSON.stringify(parsed);
-              }
-            } catch {
-              paymentContent = "";
-            }
-          }
-          const payment: Payment = {
-            __type: "payment",
-            amount: transaction.amount,
-            contactId: existingConversationWithContact.contact.id,
-            conversationId: existingConversationWithContact.conversation.id,
-            content: paymentContent,
-            createdAt: transaction.createdAt,
-            fromMe: transaction.senderAddress === address.toString(),
-            id: `${unlockedWallet.id}_${transaction.transactionId}`,
-            tenantId: unlockedWallet.id,
-            transactionId: transaction.transactionId,
-            fee: transaction.fee,
-          };
-
-          await repositories.paymentRepository.savePayment(payment);
-
-          kasiaEvent = payment;
-        } else {
-          // block incoming messages unless conversation is accepted and alias known
-          if (
-            !_isIncomingContentAllowed(
-              existingConversationWithContact.conversation,
-              isFromMe
-            )
-          ) {
             continue;
           }
 
-          const message: Message = {
-            __type: "message",
-            amount: transaction.amount,
-            contactId: existingConversationWithContact.contact.id,
-            conversationId: existingConversationWithContact.conversation.id,
-            content: transaction.content ?? "",
-            createdAt: transaction.createdAt,
-            fromMe: transaction.senderAddress === address.toString(),
-            id: `${unlockedWallet.id}_${transaction.transactionId}`,
-            tenantId: unlockedWallet.id,
-            transactionId: transaction.transactionId,
-            fee: transaction.fee,
-          };
+          const existingConversationWithContactIndex =
+            state.oneOnOneConversations.findIndex(
+              (c) => c.contact.kaspaAddress === participantAddress
+            );
 
-          await repositories.messageRepository.saveMessage(message);
-
-          kasiaEvent = message;
-        }
-
-        // touch conversation last activity
-        await repositories.conversationRepository.updateLastActivity(
-          existingConversationWithContact.conversation.id,
-          transaction.createdAt
-        );
-
-        set((state) => {
-          const updatedConversationWithContacts = [
-            ...state.oneOnOneConversations,
-          ];
-
-          const ooocToUpdateIndex = updatedConversationWithContacts.findIndex(
-            (oooc) => oooc.contact.kaspaAddress === participantAddress
-          );
-
-          if (ooocToUpdateIndex === -1) {
-            console.log("ooocToUpdateIndex not found", participantAddress);
-            return state;
+          if (existingConversationWithContactIndex === -1) {
+            throw new Error("Conversation not found, ignoring message");
           }
 
-          const updatedConversation = {
-            ...updatedConversationWithContacts[ooocToUpdateIndex],
-            conversation: {
-              ...updatedConversationWithContacts[ooocToUpdateIndex]
-                .conversation,
-              lastActivityAt: transaction.createdAt,
-            },
-            events: [
-              ...updatedConversationWithContacts[ooocToUpdateIndex].events,
-              kasiaEvent,
-            ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
-          };
+          const existingConversationWithContact =
+            state.oneOnOneConversations[existingConversationWithContactIndex];
 
-          updatedConversationWithContacts[ooocToUpdateIndex] =
-            updatedConversation;
+          const isTransactionAlreadyIngested =
+            existingConversationWithContact.events.some(
+              (e) => e.transactionId === transaction.transactionId
+            );
 
-          console.log(
-            "updatedConversationWithContacts",
-            updatedConversationWithContacts
+          if (isTransactionAlreadyIngested) {
+            console.warn("Transaction already ingested, ignoring message");
+            return;
+          }
+
+          let kasiaEvent: KasiaConversationEvent | null = null;
+
+          // PAYMENT
+          if (
+            transaction.payload.startsWith(PROTOCOL.prefix.hex) &&
+            transaction.payload.includes(PROTOCOL.headers.PAYMENT.hex)
+          ) {
+            let paymentContent = transaction.content ?? "";
+            if (
+              !_isIncomingContentAllowed(
+                existingConversationWithContact.conversation,
+                isFromMe
+              )
+            ) {
+              // drop note for incoming payments if not accepted/alias unknown
+              try {
+                const parsed = JSON.parse(paymentContent);
+                if (parsed && parsed.type === PROTOCOL.headers.PAYMENT.type) {
+                  delete parsed.message;
+                  paymentContent = JSON.stringify(parsed);
+                }
+              } catch {
+                paymentContent = "";
+              }
+            }
+            const payment: Payment = {
+              __type: "payment",
+              amount: transaction.amount,
+              contactId: existingConversationWithContact.contact.id,
+              conversationId: existingConversationWithContact.conversation.id,
+              content: paymentContent,
+              createdAt: transaction.createdAt,
+              fromMe: transaction.senderAddress === address.toString(),
+              id: `${unlockedWallet.id}_${transaction.transactionId}`,
+              tenantId: unlockedWallet.id,
+              transactionId: transaction.transactionId,
+              fee: transaction.fee,
+            };
+
+            await repositories.paymentRepository.savePayment(payment);
+
+            kasiaEvent = payment;
+          }
+
+          if (
+            transaction.content.startsWith(PROTOCOL.prefix.hex) &&
+            transaction.content.includes(PROTOCOL.headers.COMM.hex)
+          ) {
+            // block incoming messages unless conversation is accepted and alias known
+            if (
+              !_isIncomingContentAllowed(
+                existingConversationWithContact.conversation,
+                isFromMe
+              )
+            ) {
+              continue;
+            }
+            const decryptedContent = transaction.content.substring(
+              transaction.content.indexOf(":") + 1
+            );
+
+            const message: Message = {
+              __type: "message",
+              amount: transaction.amount,
+              contactId: existingConversationWithContact.contact.id,
+              conversationId: existingConversationWithContact.conversation.id,
+              content: decryptedContent ?? "",
+              createdAt: transaction.createdAt,
+              fromMe: transaction.senderAddress === address.toString(),
+              id: `${unlockedWallet.id}_${transaction.transactionId}`,
+              tenantId: unlockedWallet.id,
+              transactionId: transaction.transactionId,
+              fee: transaction.fee,
+            };
+
+            await repositories.messageRepository.saveMessage(message);
+
+            kasiaEvent = message;
+          }
+
+          // touch conversation last activity
+          await repositories.conversationRepository.updateLastActivity(
+            existingConversationWithContact.conversation.id,
+            transaction.createdAt
           );
 
-          return { oneOnOneConversations: updatedConversationWithContacts };
-        });
+          if (!kasiaEvent) {
+            continue;
+          }
+
+          set((state) => {
+            const updatedConversationWithContacts = [
+              ...state.oneOnOneConversations,
+            ];
+
+            const ooocToUpdateIndex = state.oneOnOneConversations.findIndex(
+              (oooc) => oooc.contact.kaspaAddress === participantAddress
+            );
+
+            if (ooocToUpdateIndex === -1) {
+              console.log("ooocToUpdateIndex not found", participantAddress);
+              return state;
+            }
+
+            // Check if this event already exists to prevent duplicates
+            const existingEventIndex = state.oneOnOneConversations[
+              ooocToUpdateIndex
+            ].events.findIndex(
+              (event) => event.transactionId === kasiaEvent.transactionId
+            );
+
+            const updatedConversation = {
+              ...state.oneOnOneConversations[ooocToUpdateIndex],
+              conversation: {
+                ...state.oneOnOneConversations[ooocToUpdateIndex].conversation,
+                lastActivityAt: transaction.createdAt,
+              },
+              events:
+                existingEventIndex === -1
+                  ? [
+                      ...state.oneOnOneConversations[ooocToUpdateIndex].events,
+                      kasiaEvent,
+                    ].sort(
+                      (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+                    )
+                  : state.oneOnOneConversations[ooocToUpdateIndex].events, // Event already exists, don't add duplicate
+            };
+
+            updatedConversationWithContacts[ooocToUpdateIndex] =
+              updatedConversation;
+
+            console.log(
+              "updatedConversationWithContacts",
+              updatedConversationWithContacts
+            );
+
+            return { oneOnOneConversations: updatedConversationWithContacts };
+          });
+        } finally {
+          // remove transaction ID from processing set
+          set((state) => {
+            const newSet = new Set(state.processingTransactionIds);
+            newSet.delete(transactionId);
+            return { processingTransactionIds: newSet };
+          });
+        }
       }
     },
-    flushWalletHistory: (address: string) => {
+    flushWalletHistory: async (walletTenant: string) => {
       // 1. Clear wallet messages from localStorage using new per-address system
       const walletStore = useWalletStore.getState();
-      const password = walletStore.unlockedWallet?.password;
-      const walletId = walletStore.selectedWalletId;
+      const unlockedWallet = walletStore.unlockedWallet;
 
-      if (!password) {
-        console.error("Wallet password not available for flushing history.");
+      if (!unlockedWallet) {
+        console.error("Wallet is not unlocked for flushing history.");
         return;
       }
 
-      if (!walletId) {
-        console.error("No wallet selected for flushing history.");
-        return;
-      }
+      const network = useNetworkStore.getState().network;
 
-      // Remove the specific address storage key
-      const storageKey = `msg_${walletId.substring(0, 8)}_${address.replace(/^kaspa[test]?:/, "").slice(-10)}`;
-      localStorage.removeItem(storageKey);
+      const receiveAddress = unlockedWallet.publicKeyGenerator
+        .receiveAddress(network, 0)
+        .toString();
 
-      // 2. Clear nickname mappings for this wallet
-      const nicknameKey = `contact_nicknames_${address}`;
-      localStorage.removeItem(nicknameKey);
-
-      // 3. Clear conversation manager data for this wallet
-      const conversationKey = `encrypted_conversations_${address}`;
-      localStorage.removeItem(conversationKey);
-
-      // 4. Clear last opened recipient for this wallet
-      const lastOpenedRecipientKey = `kasia_last_opened_recipient_${address}`;
+      // 1. Clear last opened recipient for this wallet
+      const lastOpenedRecipientKey = `kasia_last_opened_recipient_${receiveAddress}`;
       localStorage.removeItem(lastOpenedRecipientKey);
 
-      // 5. Reset all UI state immediately
+      // 2. Remove all IndexDB related to this tenant
+      const repositories = useDBStore.getState().repositories;
+
+      await Promise.all([
+        repositories.paymentRepository.deleteTenant(walletTenant),
+        repositories.broadcastChannelRepository.deleteTenant(walletTenant),
+        repositories.contactRepository.deleteTenant(walletTenant),
+        repositories.decryptionTrialRepository.deleteTenant(walletTenant),
+        repositories.handshakeRepository.deleteTenant(walletTenant),
+        repositories.messageRepository.deleteTenant(walletTenant),
+        repositories.savedHandshakeRepository.deleteTenant(walletTenant),
+      ]);
+
+      // 3. Reset all UI state immediately
       set({
         oneOnOneConversations: [],
         openedRecipient: null,
         isCreatingNewChat: false,
       });
 
-      // 6. Clear and reinitialize conversation manager
+      // 4. Clear and reinitialize conversation manager
       const manager = g().conversationManager;
       if (manager) {
         // Reinitialize fresh conversation manager
-        _initializeConversationManager(address);
+        _initializeConversationManager(receiveAddress);
       }
 
       console.log("Complete history clear completed - all data wiped");
@@ -921,246 +1256,31 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         }
       }
     },
-    setIsCreatingNewChat: (isCreatingNewChat) => {
-      set({ isCreatingNewChat });
-    },
     exportMessages: async (wallet, password) => {
-      try {
-        console.log("Starting message export process...");
+      const backup = await exportData(useDBStore.getState().repositories);
 
-        const password = useWalletStore.getState().unlockedWallet?.password;
-        if (!password) {
-          throw new Error(
-            "Wallet password not available for exporting messages."
-          );
-        }
+      const encryptedBackup = encryptXChaCha20Poly1305(
+        JSON.stringify(backup),
+        password
+      );
 
-        const messagesMap = loadLegacyMessages(password);
+      const blob = new Blob([encryptedBackup], {
+        type: "application/json",
+      });
 
-        console.log("Getting private key generator...");
-        const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-          wallet,
-          password
-        );
-
-        console.log("Getting receive key...");
-        const receiveKey = privateKeyGenerator.receiveKey(0);
-
-        // Get the current network type from the first message's address
-        let networkType = NetworkType.Mainnet; // Default to mainnet
-        const addresses = Object.keys(messagesMap);
-        if (addresses.length > 0) {
-          networkType = getNetworkTypeFromAddress(addresses[0]);
-        }
-        console.log("Using network type:", networkType);
-
-        const receiveAddress = receiveKey.toAddress(networkType);
-        const walletAddress = receiveAddress.toString();
-        console.log("Using receive address:", walletAddress);
-
-        // Export nicknames for this wallet
-        const nicknameStorageKey = `contact_nicknames_${walletAddress}`;
-        const nicknames = JSON.parse(
-          localStorage.getItem(nicknameStorageKey) || "{}"
-        );
-        console.log("Exporting nicknames:", nicknames);
-
-        // Create backup object with metadata
-        const backup = {
-          version: "1.0",
-          timestamp: Date.now(),
-          type: "kaspa-messages-backup",
-          data: messagesMap,
-          nicknames: nicknames,
-          // contacts: g().conversationManager.get,
-          conversations: {
-            active: g().conversationManager?.getActiveConversations() || [],
-            pending: g().conversationManager?.getPendingConversations() || [],
-          },
-        };
-
-        console.log("Converting backup to string...");
-        const backupStr = JSON.stringify(backup);
-
-        console.log("Encrypting backup data...");
-        try {
-          const encryptedData = await encrypt_message(
-            receiveAddress.toString(),
-            backupStr
-          );
-
-          // Create a Blob with the encrypted data wrapped in JSON
-          const backupFile = {
-            type: "kaspa-messages-backup",
-            data: encryptedData.to_hex(),
-          };
-
-          const blob = new Blob([JSON.stringify(backupFile)], {
-            type: "application/json",
-          });
-
-          return blob;
-        } catch (error: unknown) {
-          console.error("Detailed export error:", error);
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          throw new Error(`Failed to create backup: ${errorMessage}`);
-        }
-      } catch (error: unknown) {
-        console.error("Error exporting messages:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        throw new Error(`Failed to create backup: ${errorMessage}`);
-      }
+      return blob;
     },
     importMessages: async (file, wallet, password) => {
-      try {
-        console.log("Starting import process...");
+      const fileContent = await file.text();
 
-        // Read and parse file content
-        const fileContent = await file.text();
-        console.log("Parsing backup file...");
-        const backupFile = JSON.parse(fileContent);
+      const decryptedBackup = decryptXChaCha20Poly1305(fileContent, password);
 
-        // Validate backup file format
-        if (
-          !backupFile.type ||
-          backupFile.type !== "kaspa-messages-backup" ||
-          !backupFile.data
-        ) {
-          throw new Error("Invalid backup file format");
-        }
+      const backup: BackupV2 = JSON.parse(decryptedBackup);
 
-        console.log("Getting private key for decryption...");
-        const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-          wallet,
-          password
-        );
-        const privateKey = privateKeyGenerator.receiveKey(0);
+      await importData(useDBStore.getState().repositories, backup);
 
-        // Get private key bytes
-        const privateKeyBytes =
-          WalletStorageService.getPrivateKeyBytes(privateKey);
-        if (!privateKeyBytes) {
-          throw new Error("Failed to get private key bytes");
-        }
-
-        console.log("Creating EncryptedMessage from hex...");
-        const encryptedMessage = new EncryptedMessage(backupFile.data);
-
-        console.log("Decrypting backup data...");
-        const decryptedStr = await decrypt_with_secret_key(
-          encryptedMessage,
-          privateKeyBytes
-        );
-
-        console.log("Parsing decrypted data...");
-        const decryptedData = JSON.parse(decryptedStr);
-
-        // Validate decrypted data structure
-        if (
-          !decryptedData.version ||
-          !decryptedData.type ||
-          !decryptedData.data
-        ) {
-          throw new Error("Invalid backup data structure");
-        }
-
-        console.log("Merging with existing messages...");
-        // Merge with existing messages
-        const currentPassword =
-          useWalletStore.getState().unlockedWallet?.password;
-        if (!currentPassword) {
-          throw new Error(
-            "Wallet password not available for importing messages."
-          );
-        }
-
-        const existingMessages = loadLegacyMessages(currentPassword);
-
-        const mergedMessages = {
-          ...existingMessages,
-          ...decryptedData.data,
-        };
-
-        // Save merged messages
-        saveMessages(mergedMessages, currentPassword);
-
-        // Get network type and current address first
-        let networkType = NetworkType.Mainnet; // Default to mainnet
-        const addresses = Object.keys(mergedMessages);
-        if (addresses.length > 0) {
-          networkType = getNetworkTypeFromAddress(addresses[0]);
-        }
-        console.log("Using network type:", networkType);
-
-        // Get the current address from the private key using detected network type
-        const receiveAddress = privateKey.toAddress(networkType);
-        const currentAddress = receiveAddress.toString();
-        console.log("Using receive address:", currentAddress);
-
-        // Restore nicknames if they exist in the backup
-        if (decryptedData.nicknames) {
-          console.log("Restoring nicknames...");
-          const nicknameStorageKey = `contact_nicknames_${currentAddress}`;
-          const existingNicknames = JSON.parse(
-            localStorage.getItem(nicknameStorageKey) || "{}"
-          );
-
-          // Merge existing nicknames with backup nicknames (backup takes precedence)
-          const mergedNicknames = {
-            ...existingNicknames,
-            ...decryptedData.nicknames,
-          };
-
-          localStorage.setItem(
-            nicknameStorageKey,
-            JSON.stringify(mergedNicknames)
-          );
-          console.log("Nicknames restored:", mergedNicknames);
-        }
-
-        // Restore conversations if they exist in the backup
-        if (decryptedData.conversations) {
-          console.log("Restoring conversations...");
-          const { active = [], pending = [] } = decryptedData.conversations;
-
-          // Restore active conversations
-          active.forEach((conv: ActiveConversation) => {
-            if (g().conversationManager?.isValidConversation(conv)) {
-              g().conversationManager?.restoreConversation(conv);
-            } else {
-              console.error("Invalid conversation object in backup:", conv);
-            }
-          });
-
-          // Restore pending conversations
-          pending.forEach((conv: PendingConversation) => {
-            if (isValidConversation(conv)) {
-              g().conversationManager?.restoreConversation(conv);
-            } else {
-              console.error("Invalid conversation object in backup:", conv);
-            }
-          });
-        }
-
-        // Reload messages using the current address
-        g().loadMessages(currentAddress);
-
-        // Set flag to trigger API fetching after next account service start
-        localStorage.setItem("kasia_fetch_api_on_start", "true");
-
-        console.log("Import completed successfully");
-        console.log(
-          "Set flag to fetch API messages on next wallet service start"
-        );
-      } catch (error: unknown) {
-        console.error("Error importing messages:", error);
-        if (error instanceof Error) {
-          throw new Error(`Failed to import messages: ${error.message}`);
-        }
-        throw new Error("Failed to import messages: Unknown error");
-      }
+      await g()?.conversationManager?.loadConversations();
+      await g().hydrateOneonOneConversations();
     },
     conversationManager: null,
     initiateHandshake: async (
@@ -1190,27 +1310,29 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         version: 1,
       };
 
-      const encryptedMessage = encrypt_message(
+      // their payload
+      const encryptedMessageForThem = encrypt_message(
         recipientAddress,
         JSON.stringify(handshakePayload)
       );
 
-      const payload = `${toHex("ciph_msg:1:handshake:")}${encryptedMessage.to_hex()}`;
+      const theirPayload = `${toHex("ciph_msg:1:handshake:")}${encryptedMessageForThem.to_hex()}`;
+
       // Send the handshake message
       console.log("Sending handshake message to:", recipientAddress);
       try {
-        const txId = await walletStore.sendTransaction({
-          payload,
+        const theirTxId = await walletStore.sendTransaction({
+          payload: theirPayload,
           toAddress: new Address(recipientAddress),
           password: walletStore.unlockedWallet.password,
           customAmount,
         });
 
-        console.log("Handshake message sent, transaction ID:", txId);
+        console.log("Handshake message sent, transaction ID:", theirTxId);
 
         // Create a message object for the handshake
         const kasiaTransaction: KasiaTransaction = {
-          transactionId: txId,
+          transactionId: theirTxId,
           senderAddress: walletStore.address.toString(),
           recipientAddress: recipientAddress,
           createdAt: new Date(),
@@ -1218,12 +1340,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           fee: 0,
           content: "Handshake initiated",
           amount: Number(customAmount || 20000000n) / 100000000, // Convert bigint to KAS number
-          payload: payload,
+          payload: theirPayload,
         };
 
         const handshake: Handshake = {
           __type: "handshake",
-          id: `${walletStore.unlockedWallet.id}_${txId}`,
+          id: `${walletStore.unlockedWallet.id}_${theirTxId}`,
           tenantId: walletStore.unlockedWallet.id,
           amount: kasiaTransaction.amount,
           contactId: contact.id,
@@ -1251,6 +1373,15 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         set({
           oneOnOneConversations,
         });
+
+        // create self-stash for handshake initiation
+        const selfStashTxId = await g().createSelfStash({
+          type: "initiation",
+          partnerAddress: recipientAddress,
+          ourAlias: conversation.myAlias,
+        });
+
+        console.log("Handshake initiation self-stash created:", selfStashTxId);
       } catch (error) {
         console.error("Error sending handshake message:", error);
         throw error;
@@ -1261,7 +1392,11 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       if (!manager) {
         throw new Error("Conversation manager not initialized");
       }
-      return await manager.processHandshake(senderAddress, payload);
+
+      const validatedPayload: HandshakePayload =
+        manager.parseHandshakePayload(payload);
+
+      return await manager.processHandshake(senderAddress, validatedPayload);
     },
     getActiveConversationsWithContacts: () => {
       const manager = g().conversationManager;
@@ -1275,7 +1410,44 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const manager = g().conversationManager;
       return manager ? manager.getPendingConversationsWithContact() : [];
     },
-    // New function to manually respond to a handshake
+    // add an offline handshake
+    createOffChainHandshake: async (
+      partnerAddress: string,
+      ourAliasForPartner: string,
+      theirAliasForUs: string
+    ) => {
+      const manager = g().conversationManager;
+
+      if (!manager) {
+        throw new Error("Conversation manager not initialized");
+      }
+
+      // Call the service method
+      const result = await manager.createOffChainHandshake(
+        partnerAddress,
+        ourAliasForPartner,
+        theirAliasForUs
+      );
+
+      // Refresh conversation manager to pick up the new conversation
+      await manager.loadConversations();
+
+      // Refresh the UI state to trigger re-render with the new contact
+      await g().hydrateOneonOneConversations();
+
+      return result;
+    },
+
+    generateUniqueAlias: () => {
+      const manager = g().conversationManager;
+
+      if (!manager) {
+        throw new Error("Conversation manager not initialized");
+      }
+
+      return manager.generateUniqueAlias();
+    },
+
     respondToHandshake: async (handshakeId: string) => {
       try {
         const repositories = useDBStore.getState().repositories;
@@ -1361,6 +1533,17 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
           await repositories.handshakeRepository.saveHandshake(eventToAdd);
 
+          // create self-stash for handshake response
+          const selfStashTxId = await g().createSelfStash({
+            type: "response",
+            partnerAddress: recipientAddress,
+            ourAlias: conversation.myAlias,
+            theirAlias: conversation.theirAlias!,
+            isResponse: true,
+          });
+
+          console.log("Handshake response self-stash created:", selfStashTxId);
+
           const updatedOneOnOneConversations = g().oneOnOneConversations.map(
             (oooc): OneOnOneConversation => {
               if (oooc.conversation.id === conversation.id) {
@@ -1395,7 +1578,12 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                 if (oooc.conversation.theirAlias) {
                   aliases.add(oooc.conversation.theirAlias);
                 }
-                await _fetchHistoricalForConversation(oooc, aliases, myAddress);
+                await _fetchHistoricalForConversation(
+                  oooc,
+                  aliases,
+                  myAddress,
+                  repositories
+                );
               }
             }
           } catch (e) {
@@ -1482,6 +1670,147 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       } catch (error) {
         console.error("Error restoring last opened recipient:", error);
       }
+    },
+    async ingestRawResolvedKasiaTransaction(tx) {
+      // note: ideally we wouldn't have "too much" cross-store dependency
+      // or at least in a determined way that would prevent bi-directional dependencies
+      const unlockedWallet = useWalletStore.getState().unlockedWallet;
+
+      if (!unlockedWallet) {
+        throw new Error(
+          "Cannot process live transaction because wallet isn't initialized."
+        );
+      }
+
+      const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
+        unlockedWallet,
+        unlockedWallet.password
+      );
+
+      const privateKey = privateKeyGenerator.receiveKey(0);
+
+      const decryptedContent = decrypt_message(
+        new EncryptedMessage(tx.parsedPayload.encryptedHex),
+        new PrivateKey(privateKey.toString())
+      );
+      // this hack is necessary because we have inconsistencies between data parsed at historical level
+      // , at live level (here is live level), and when client is the creator of the event
+      // so be "re-build" it like the other places, ideally this shouldn't be necessary
+      let hackedContent = decryptedContent;
+
+      if (tx.parsedPayload.type === "handshake") {
+        // handhshake payload is expected to be utf-8 encoded
+        hackedContent = `${PROTOCOL.prefix.string}${PROTOCOL.headers.HANDSHAKE.string}${decryptedContent}`;
+      } else if (tx.parsedPayload.type === "comm") {
+        // message payload is expected to be hex encoded
+        hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.COMM.hex}${toHex(tx.parsedPayload.alias ?? "UNKNOWN")}:${decryptedContent}`;
+      } else if (tx.parsedPayload.type === "payment") {
+        // payment payload should be the raw decrypted JSON content
+        hackedContent = decryptedContent;
+      } else if (tx.parsedPayload.type === "self_stash") {
+        // self_stash payload is expected to be hex encoded
+        hackedContent = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${tx.parsedPayload.scope ? `${toHex(tx.parsedPayload.scope)}:` : ""}${decryptedContent}`;
+      }
+
+      const kasiaTransaction: KasiaTransaction = {
+        transactionId: tx.id,
+        senderAddress: tx.senderAddressString,
+        recipientAddress: tx.recipientAddressString,
+        createdAt: new Date(Number(tx.header.timestamp)),
+        // TODO: gas only is additional fees and not base fees based on mass?
+        fee: 0, // Number(tx.transaction.gas),
+        content: hackedContent,
+        amount: Number(tx.recipientOutputAmount),
+        payload: tx.transaction.payload,
+      };
+
+      await g().storeKasiaTransactions([kasiaTransaction]);
+    },
+
+    // create a self stash transaction to backup handshake data on-chain
+    async createSelfStash(handshakeData: {
+      type: "initiation" | "response";
+      partnerAddress: string;
+      ourAlias: string;
+      theirAlias?: string;
+      isResponse?: boolean;
+    }): Promise<string> {
+      const walletStore = useWalletStore.getState();
+      const repositories = useDBStore.getState().repositories;
+
+      if (!walletStore.unlockedWallet) {
+        throw new Error("Wallet not unlocked");
+      }
+
+      if (!walletStore.accountService) {
+        throw new Error("Account service not available");
+      }
+
+      // check if user has sufficient funds (0.2 KAS minimum)
+      const minAmount = BigInt(20000000);
+      const currentBalance = walletStore.balance;
+      if (!currentBalance || currentBalance.mature < minAmount) {
+        throw new Error(
+          "Insufficient funds. you need at least 0.2 KAS for self stash."
+        );
+      }
+
+      // get our own address for encryption and transaction
+      const address = WalletStorageService.getPrivateKeyGenerator(
+        walletStore.unlockedWallet,
+        walletStore.unlockedWallet.password
+      )
+        .receiveKey(0)
+        .toAddress(walletStore.selectedNetwork)
+        .toString();
+
+      // create the payload for self stash (extend the standard handshake payload)
+      const basePayload: HandshakePayload = {
+        type: "handshake",
+        alias: handshakeData.ourAlias,
+        timestamp: Date.now(),
+        version: 1,
+        ...(handshakeData.theirAlias && {
+          theirAlias: handshakeData.theirAlias,
+        }),
+        ...(handshakeData.isResponse && { isResponse: true }),
+      };
+
+      // create extended payload for self-stash storage
+      const payload = {
+        ...basePayload,
+        partnerAddress: handshakeData.partnerAddress,
+        recipientAddress: handshakeData.partnerAddress,
+      };
+
+      const encryptedMessage = encrypt_message(
+        address,
+        JSON.stringify(payload)
+      );
+
+      const myPayload = `${PROTOCOL.prefix.hex}${PROTOCOL.headers.SELF_STASH.hex}${toHex("saved_handshake:")}${encryptedMessage.to_hex()}`;
+
+      console.log("creating self stash...");
+
+      // wait for mature UTXOs
+      await walletStore.accountService.waitForMatureUTXO();
+
+      // send the self stash transaction
+      const txId = await walletStore.sendTransaction({
+        payload: myPayload,
+        toAddress: new Address(address),
+        password: walletStore.unlockedWallet.password,
+        customAmount: BigInt(0),
+      });
+
+      // save the self stash record
+      await repositories?.savedHandshakeRepository?.saveSavedHandshake({
+        id: `${walletStore.unlockedWallet.id}_${txId}`,
+        createdAt: new Date(),
+      });
+
+      console.log("self stash created successfully:", txId);
+      return txId;
     },
   };
 });

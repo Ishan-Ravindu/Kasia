@@ -3,5 +3,11 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "log:default",
+    "clipboard-manager:allow-read-text",
+    "biometry:default",
+    "opener:default"
+  ]
 }

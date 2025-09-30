@@ -12,12 +12,16 @@ export type ModalType =
   | "address"
   | "walletInfo"
   | "withdraw"
-  | "backup"
   | "delete"
   | "seed"
   | "settings"
   | "contact-info-modal"
-  | "image";
+  | "image"
+  | "new-chat"
+  | "new-broadcast"
+  | "broadcast-participant-info"
+  | "qr-scanner"
+  | "offchain-handshake";
 type Theme = "light" | "dark" | "system" | "custom";
 
 type UiState = {
@@ -49,13 +53,17 @@ type UiState = {
   oneOnOneConversation: OneOnOneConversation | null;
   setOneOnOneConversation: (oooc: OneOnOneConversation | null) => void;
 
-  // Warn Costy Send Message Modal callback
-  sendMessageCallback: (() => void) | null;
-  setSendMessageCallback: (callback: (() => void) | null) => void;
-
   // image presenter content
   imagePresenterImage: string | null;
   setImagePresenterImage: (image: string | null) => void;
+
+  // QR scanner state
+  qrScannerCallback: ((data: string) => void) | null;
+  setQrScannerCallback: (callback: ((data: string) => void) | null) => void;
+
+  // Delete wallet modal state
+  pendingDeleteWalletId: string | null;
+  setPendingDeleteWalletId: (id: string | null) => void;
 };
 
 // Get initial theme from localStorage or default to system
@@ -204,11 +212,15 @@ export const useUiStore = create<UiState>()((set, get) => ({
   oneOnOneConversation: null,
   setOneOnOneConversation: (c) => set({ oneOnOneConversation: c }),
 
-  // Warn Costy Send Message Modal callback
-  sendMessageCallback: null,
-  setSendMessageCallback: (callback) => set({ sendMessageCallback: callback }),
-
   // image presenter content
   imagePresenterImage: null,
   setImagePresenterImage: (image) => set({ imagePresenterImage: image }),
+
+  // QR scanner state
+  qrScannerCallback: null,
+  setQrScannerCallback: (callback) => set({ qrScannerCallback: callback }),
+
+  // Delete wallet state
+  pendingDeleteWalletId: null,
+  setPendingDeleteWalletId: (id) => set({ pendingDeleteWalletId: id }),
 }));

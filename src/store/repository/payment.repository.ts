@@ -67,15 +67,32 @@ export class PaymentRepository {
     conversationId: string
   ): Promise<Payment[]> {
     return this.db
-      .getAllFromIndex("payments", "by-conversation-id-tenant-id", [
-        conversationId,
+      .getAllFromIndex("payments", "by-tenant-id-conversation-id", [
         this.tenantId,
+        conversationId,
       ])
       .then((dbPayments) => {
         return dbPayments.map((dbPayment) => {
           return this._dbPaymentToPayment(dbPayment);
         });
       });
+  }
+
+  /**
+   * returns null in case there is no payments
+   */
+  async getLastDbPaymentByCreatedAt(): Promise<DbPayment | null> {
+    const cursor = await this.db
+      .transaction("payments", "readonly")
+      .objectStore("payments")
+      .index("by-tenant-id-created-at")
+      .openCursor(IDBKeyRange.upperBound([this.tenantId, new Date()]), "prev");
+
+    if (!cursor) {
+      return null;
+    }
+
+    return cursor.value;
   }
 
   async savePayment(payment: Omit<Payment, "tenantId">): Promise<void> {
@@ -92,6 +109,68 @@ export class PaymentRepository {
   async deletePayment(paymentId: string): Promise<void> {
     await this.db.delete("payments", paymentId);
     return;
+  }
+
+  async saveBulk(payments: Omit<Payment, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("payments", "readwrite");
+    const store = tx.objectStore("payments");
+
+    for (const payment of payments) {
+      // Check if payment already exists
+      const existing = await store.get(
+        `${this.tenantId}_${payment.transactionId}`
+      );
+      if (!existing) {
+        await store.put(
+          this._paymentToDbPayment({
+            ...payment,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("payments", "readwrite");
+    const store = transaction.objectStore("payments");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbPayment = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbPayment.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbPayment,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "payments",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("payments", k)));
   }
 
   private _paymentToDbPayment(payment: Payment): DbPayment {

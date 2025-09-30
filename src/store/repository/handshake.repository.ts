@@ -67,15 +67,32 @@ export class HandshakeRepository {
     conversationId: string
   ): Promise<Handshake[]> {
     return this.db
-      .getAllFromIndex("handshakes", "by-conversation-id-tenant-id", [
-        conversationId,
+      .getAllFromIndex("handshakes", "by-tenant-id-conversation-id", [
         this.tenantId,
+        conversationId,
       ])
       .then((dbHandshakes) => {
         return dbHandshakes.map((dbHandshake) => {
           return this._dbHandshakeToHandshake(dbHandshake);
         });
       });
+  }
+
+  /**
+   * returns null in case there is no handshakes
+   */
+  async getLastDbHandshakesByCreatedAt(): Promise<DbHandshake | null> {
+    const cursor = await this.db
+      .transaction("handshakes", "readonly")
+      .objectStore("handshakes")
+      .index("by-tenant-id-created-at")
+      .openCursor(IDBKeyRange.upperBound([this.tenantId, new Date()]), "prev");
+
+    if (!cursor) {
+      return null;
+    }
+
+    return cursor.value;
   }
 
   async saveHandshake(handshake: Omit<Handshake, "tenantId">): Promise<void> {
@@ -92,6 +109,68 @@ export class HandshakeRepository {
   async deleteHandshake(handshakeId: string): Promise<void> {
     await this.db.delete("handshakes", handshakeId);
     return;
+  }
+
+  async saveBulk(handshakes: Omit<Handshake, "tenantId">[]): Promise<void> {
+    const tx = this.db.transaction("handshakes", "readwrite");
+    const store = tx.objectStore("handshakes");
+
+    for (const handshake of handshakes) {
+      // Check if handshake already exists
+      const existing = await store.get(
+        `${this.tenantId}_${handshake.transactionId}`
+      );
+      if (!existing) {
+        await store.put(
+          this._handshakeToDbHandshake({
+            ...handshake,
+            tenantId: this.tenantId,
+          })
+        );
+      }
+    }
+
+    await tx.done;
+  }
+
+  async reEncrypt(newPassword: string): Promise<void> {
+    const transaction = this.db.transaction("handshakes", "readwrite");
+    const store = transaction.objectStore("handshakes");
+    const index = store.index("by-tenant-id");
+    const cursor = await index.openCursor(IDBKeyRange.only(this.tenantId));
+
+    if (!cursor) {
+      return;
+    }
+
+    do {
+      const dbHandshake = cursor.value;
+      // Decrypt with old password
+      const decryptedData = decryptXChaCha20Poly1305(
+        dbHandshake.encryptedData,
+        this.walletPassword
+      );
+      // Re-encrypt with new password
+      const reEncryptedData = encryptXChaCha20Poly1305(
+        decryptedData,
+        newPassword
+      );
+      // Update in database
+      await cursor.update({
+        ...dbHandshake,
+        encryptedData: reEncryptedData,
+      });
+    } while (await cursor.continue());
+  }
+
+  async deleteTenant(tenantId: string): Promise<void> {
+    const keys = await this.db.getAllKeysFromIndex(
+      "handshakes",
+      "by-tenant-id",
+      tenantId
+    );
+
+    await Promise.all(keys.map((k) => this.db.delete("handshakes", k)));
   }
 
   private _handshakeToDbHandshake(handshake: Handshake): DbHandshake {

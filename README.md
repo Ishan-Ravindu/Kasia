@@ -28,7 +28,7 @@ Follow these steps to run Kasia locally on your machine.
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/K-Kluster/Kasia.git
+   git clone https://github.com/K-Kluster/Kasia.git --recurse-submodules
    cd Kasia
    ```
 
@@ -47,13 +47,22 @@ Follow these steps to run Kasia locally on your machine.
 4. **Install Kaspa WASM Files**
 
    - Download the [latest `kaspa-wasm32-sdk-v1.0.0.zip`](https://github.com/kaspanet/rusty-kaspa/releases) or build the WASM modules yourself.
+
+      :warning: Due to a **needed** feature that still isn't included within the official wasm package, you will need to use [this wasm package instead](https://github.com/IzioDev/rusty-kaspa/releases/tag/v1.0.1-beta1).
+
    - Extract the contents of `kaspa-wasm32-sdk/web/kaspa/*` into the `Kasia/wasm/` directory.
 
-5. **Install Node.js Dependencies**
+5. **Install Node.js Dependencies and vendors**
 
    ```bash
+   npm run submodule:init
    npm install
    ```
+
+### Refresh submodules
+```bash
+git submodule update --init --recursive
+```
 
 ### Running Kasia Locally
 
@@ -77,6 +86,19 @@ VITE_LOG_LEVEL=info
 VITE_INDEXER_MAINNET_URL=
 VITE_INDEXER_TESTNET_URL=
 ```
+
+## Historical Messages
+For UX purposes, Kasia team built [Kasia Indexer](https://github.com/K-Kluster/kasia-indexer), while not required, it offers cross-device synchronization capabilities. In short, it scans the Kaspa network continuously and store the Kasia protocol messages.
+
+For maximum sovergnty, it is recommended to run your own indexer, it has very-few hardware requirements thanks to its well-architectured design, it easily can handle 3,000 transactions per second.
+
+The application itself only use it to retreieve data when a wallet session opens.
+
+## Public Infrastructure
+To allow easier on-boarding, Kluster hosts [Kasia Public Infrastructure](https://github.com/K-Kluster/infrastructure), at the time of writing, it contains:
+* Kaspa nodes
+* Kasia indexers
+* A few other plateform utils
 
 ## Contributing
 

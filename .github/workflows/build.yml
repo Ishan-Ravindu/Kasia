@@ -16,11 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # install rust
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: 1.86.0
+          toolchain: 1.89.0
           target: wasm32-unknown-unknown
           # key based on branch name
           cache-shared-key: cipher-wasm-build-cache-${{ env.SUFFIX }}
@@ -47,6 +49,8 @@ jobs:
     needs: build-cipher-wasm
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Get Cipher Wasm artifact
         id: get-cipher-wasm-artifact
@@ -75,9 +79,9 @@ jobs:
       - name: Download Kaspa WASM Files
         uses: dsaltares/fetch-gh-release-asset@1.1.2
         with:
-          repo: "kaspanet/rusty-kaspa"
-          version: "tags/v1.0.0"
-          file: "kaspa-wasm32-sdk-v1.0.0.zip"
+          repo: "IzioDev/rusty-kaspa"
+          version: "tags/v1.0.1-beta1"
+          file: "kaspa-wasm32-sdk-v1.0.1-beta1.zip"
           target: "kaspa-wasm32-sdk.zip"
 
       - name: Unzip Kaspa WASM Files & Move /web/kaspa to /wasm
@@ -96,7 +100,7 @@ jobs:
       - name: Install dependencies & Build Kasia
         env:
           MODE: ${{ env.SUFFIX }}
-        run: npm install && npm run build:$MODE
+        run: npm run submodule:init && npm install && npm run build:$MODE
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -109,6 +113,8 @@ jobs:
     needs: build-web-app
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -241,8 +247,9 @@ jobs:
     runs-on: macos-13
     needs: build-web-app
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -300,8 +307,9 @@ jobs:
     runs-on: macos-15
     needs: build-web-app
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -359,8 +367,9 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build-web-app
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: install dependencies
         run: |
@@ -429,8 +438,9 @@ jobs:
     runs-on: windows-latest
     needs: build-web-app
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -489,9 +499,9 @@ jobs:
   #   runs-on: macos-14
   #   needs: build-web-app
   #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
   #     - name: Install Node.js
   #       uses: actions/setup-node@v4
   #       with:

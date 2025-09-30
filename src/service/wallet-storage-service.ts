@@ -7,11 +7,7 @@ import {
   XPrv,
 } from "kaspa-wasm";
 import { v4 as uuidv4 } from "uuid";
-import {
-  StoredWallet,
-  UnlockedWallet,
-  WalletDerivationType,
-} from "src/types/wallet.type";
+import { StoredWallet, UnlockedWallet } from "src/types/wallet.type";
 
 export class WalletStorageService {
   private _storageKey: string = "wallets";
@@ -24,7 +20,7 @@ export class WalletStorageService {
   }
 
   static getPrivateKeyGenerator(
-    wallet: Pick<UnlockedWallet, "encryptedXPrv" | "derivationType">,
+    wallet: Pick<UnlockedWallet, "encryptedXPrv">,
     password: string
   ): PrivateKeyGenerator {
     try {
@@ -32,12 +28,7 @@ export class WalletStorageService {
       const seed = decryptXChaCha20Poly1305(wallet.encryptedXPrv, password);
       const xprv = new XPrv(seed);
 
-      // Use derivation type to determine account index
-      return new PrivateKeyGenerator(
-        xprv,
-        false,
-        BigInt(wallet.derivationType === "standard" ? 0 : 1)
-      );
+      return new PrivateKeyGenerator(xprv, false, BigInt(0));
     } catch (error) {
       console.error("Error getting private key generator:", error);
       throw new Error("Invalid password");
@@ -109,23 +100,18 @@ export class WalletStorageService {
     id: string;
     name: string;
     createdAt: string;
-    derivationType?: WalletDerivationType;
   }[] {
     const walletsString = localStorage.getItem(this._storageKey);
     if (!walletsString) return [];
     const wallets = JSON.parse(walletsString) as StoredWallet[];
-    return wallets.map(({ id, name, createdAt, derivationType }) => ({
+    return wallets.map(({ id, name, createdAt }) => ({
       id,
       name,
       createdAt,
-      derivationType: derivationType || "legacy", // Default to legacy for existing wallets
     }));
   }
 
-  async getDecrypted(
-    walletId: string,
-    password: string
-  ): Promise<UnlockedWallet> {
+  getDecrypted(walletId: string, password: string): UnlockedWallet {
     const walletsString = localStorage.getItem(this._storageKey);
     if (!walletsString) throw new Error("No wallets found");
 
@@ -138,23 +124,29 @@ export class WalletStorageService {
 
     try {
       // First decrypt the mnemonic phrase
-      const mnemonic = new Mnemonic(
-        decryptXChaCha20Poly1305(wallet.encryptedPhrase, password)
+      const mnemonicPhrase = decryptXChaCha20Poly1305(
+        wallet.encryptedPhrase,
+        password
       );
+      const mnemonic = new Mnemonic(mnemonicPhrase);
 
-      // Generate the seed and extended private key
-      const seed = mnemonic.toSeed();
+      // Decrypt passphrase if it exists
+      let passphrase = "";
+      if (wallet.encryptedPassphrase) {
+        passphrase = decryptXChaCha20Poly1305(
+          wallet.encryptedPassphrase,
+          password
+        );
+      }
+
+      // Generate the seed with passphrase and extended private key
+      const seed = mnemonic.toSeed(passphrase);
       const extendedKey = new XPrv(seed);
 
-      // Determine derivation type (default to legacy for existing wallets)
-      const derivationType: WalletDerivationType =
-        wallet.derivationType || "legacy";
-
-      // Get the public key generator - use original working approach
-      const publicKeyGenerator = await PublicKeyGenerator.fromMasterXPrv(
+      const publicKeyGenerator = PublicKeyGenerator.fromMasterXPrv(
         extendedKey,
         false,
-        BigInt(derivationType === "standard" ? 0 : 1)
+        BigInt(0)
       );
 
       const encryptedXPrv = encryptXChaCha20Poly1305(seed, password);
@@ -169,8 +161,8 @@ export class WalletStorageService {
         encryptedXPrv: encryptedXPrv,
         publicKeyGenerator,
         password,
-        derivationType,
         receivePublicKey,
+        passphrase: passphrase || undefined,
       };
     } catch (error) {
       console.error("Error decrypting wallet:", error);
@@ -182,7 +174,7 @@ export class WalletStorageService {
     name: string,
     mnemonic: Mnemonic,
     password: string,
-    derivationType: WalletDerivationType = "standard"
+    passphrase?: string
   ): string {
     const walletsString = localStorage.getItem(this._storageKey);
     if (!walletsString) throw new Error("Storage not initialized");
@@ -195,7 +187,9 @@ export class WalletStorageService {
       encryptedPhrase: encryptXChaCha20Poly1305(mnemonic.phrase, password),
       createdAt: new Date().toISOString(),
       accounts: [{ name: "Account 1" }],
-      derivationType, // New wallets default to standard
+      encryptedPassphrase: passphrase
+        ? encryptXChaCha20Poly1305(passphrase, password)
+        : undefined,
     };
 
     wallets.push(newWallet);
@@ -217,46 +211,6 @@ export class WalletStorageService {
     if (!walletsString) return false;
     const wallets = JSON.parse(walletsString) as StoredWallet[];
     return wallets.length > 0;
-  }
-
-  /**
-   * Migrate an existing legacy wallet to standard derivation
-   * This creates a new wallet with standard derivation using the same seed
-   */
-  async migrateLegacyWallet(
-    walletId: string,
-    password: string,
-    newName?: string
-  ): Promise<string> {
-    const walletsString = localStorage.getItem(this._storageKey);
-    if (!walletsString) throw new Error("No wallets found");
-
-    const wallets = JSON.parse(walletsString) as StoredWallet[];
-    const wallet = wallets.find((w) => w.id === walletId);
-
-    if (!wallet) {
-      throw new Error("Wallet not found");
-    }
-
-    if (wallet.derivationType === "standard") {
-      throw new Error("Wallet is already using standard derivation");
-    }
-
-    try {
-      // Decrypt the existing mnemonic
-      const mnemonicPhrase = decryptXChaCha20Poly1305(
-        wallet.encryptedPhrase,
-        password
-      );
-      const mnemonic = new Mnemonic(mnemonicPhrase);
-
-      // Create new wallet with standard derivation
-      const migrationName = newName || `${wallet.name} (Standard)`;
-      return this.create(migrationName, mnemonic, password, "standard");
-    } catch (error) {
-      console.error("Error migrating wallet:", error);
-      throw new Error("Failed to migrate wallet");
-    }
   }
 
   /**
@@ -292,11 +246,25 @@ export class WalletStorageService {
         newPassword
       );
 
-      // Create a copy of wallets and update the encrypted phrase
+      // Handle passphrase re-encryption if it exists
+      let newEncryptedPassphrase = wallet.encryptedPassphrase;
+      if (wallet.encryptedPassphrase) {
+        const passphrase = decryptXChaCha20Poly1305(
+          wallet.encryptedPassphrase,
+          currentPassword
+        );
+        newEncryptedPassphrase = encryptXChaCha20Poly1305(
+          passphrase,
+          newPassword
+        );
+      }
+
+      // Create a copy of wallets and update the encrypted phrase and passphrase
       const updatedWallets = [...wallets];
       updatedWallets[walletIndex] = {
         ...wallet,
         encryptedPhrase: newEncryptedPhrase,
+        encryptedPassphrase: newEncryptedPassphrase,
       };
 
       // Save to localStorage first - if this fails, original state is preserved

@@ -55,14 +55,6 @@ export function isFileContent(content: string): boolean {
   }
 }
 
-export function getFileType(
-  e: KasiaConversationEvent
-): "image" | "file" | null {
-  if (isImageType(e)) return "image";
-  if (isFileType(e)) return "file";
-  return null;
-}
-
 export function getFileTypeFromContent(
   content: string
 ): "image" | "file" | null {

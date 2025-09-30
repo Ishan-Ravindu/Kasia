@@ -1,6 +1,5 @@
 import initKaspaWasm, { initConsolePanicHook } from "kaspa-wasm";
 import initCipherWasm from "cipher";
-import "./utils/debug-commands"; // Import debug commands
 import "./utils/logging";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -41,14 +40,7 @@ export async function boot() {
   });
 
   // lazy load network store and db store after the main app is running
-  const [{ useNetworkStore }, { useDBStore }] = await Promise.all([
-    import("./store/network.store"),
-    import("./store/db.store"),
-  ]);
-
-  // connect to network if not connected
-  const { connect, isConnected } = useNetworkStore.getState();
-  if (!isConnected) connect();
+  const [{ useDBStore }] = await Promise.all([import("./store/db.store")]);
 
   // init db if not initialized
   const { db, initDB } = useDBStore.getState();

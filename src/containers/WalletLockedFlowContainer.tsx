@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { Mnemonic } from "kaspa-wasm";
 import { useWalletStore } from "../store/wallet.store";
 import { useUiStore } from "../store/ui.store";
@@ -12,20 +12,11 @@ import { CreateWallet } from "../components/WalletLockedFlow/Create";
 import { Home } from "../components/WalletLockedFlow/Home";
 import { Import } from "../components/WalletLockedFlow/Import";
 import { Unlock } from "../components/WalletLockedFlow/Unlock";
-import { Migrate } from "../components/WalletLockedFlow/Migrate";
-import { ImportSuccess } from "../components/WalletLockedFlow/ImportSuccess";
 import { SeedPhraseDisplay } from "../components/WalletLockedFlow/SeedDisplay";
+import { toast } from "../utils/toast-helper";
 
 export type Step = {
-  type:
-    | "home"
-    | "create"
-    | "import"
-    | "unlock"
-    | "migrate"
-    | "seed"
-    | "success"
-    | "unlocked";
+  type: "home" | "create" | "import" | "unlock" | "seed" | "unlocked";
   mnemonic?: Mnemonic;
   name?: string;
   walletId?: string;
@@ -36,6 +27,7 @@ type WalletLockedFlowContainerProps = {
   selectedNetwork: NetworkType;
   onNetworkChange: (network: NetworkType) => void;
   isConnected: boolean;
+  isConnecting: boolean;
 };
 
 export const WalletLockedFlowContainer = ({
@@ -43,10 +35,14 @@ export const WalletLockedFlowContainer = ({
   selectedNetwork,
   onNetworkChange,
   isConnected,
+  isConnecting,
 }: WalletLockedFlowContainerProps) => {
   const navigate = useNavigate();
   const { wallet } = useParams<{ wallet: string }>();
   const openModal = useUiStore((s) => s.openModal);
+  const setPendingDeleteWalletId = useUiStore(
+    (s) => s.setPendingDeleteWalletId
+  );
 
   const isMobile = useIsMobile();
 
@@ -61,12 +57,18 @@ export const WalletLockedFlowContainer = ({
     unlockedWallet,
     loadWallets,
     selectWallet,
-    deleteWallet,
   } = useWalletStore();
 
   useEffect(() => {
     loadWallets();
   }, [loadWallets]);
+
+  // select wallet from URL parameter when component mounts, needed if user routes to unlock screen
+  useEffect(() => {
+    if (wallet && !selectedWalletId) {
+      selectWallet(wallet);
+    }
+  }, [wallet, selectedWalletId, selectWallet]);
 
   // ref for scroll up when step changes, like a page reset
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,18 +95,14 @@ export const WalletLockedFlowContainer = ({
       case "unlock":
         navigate(`/wallet/unlock/${walletId ?? ""}`);
         break;
-      case "migrate":
-        navigate(`/wallet/migrate/${walletId ?? ""}`);
-        break;
       default:
         return;
     }
   };
 
   const onDeleteWallet = (walletId: string) => {
-    if (window.confirm("Are you sure you want to delete this wallet?")) {
-      deleteWallet(walletId);
-    }
+    setPendingDeleteWalletId(walletId);
+    openModal("delete");
   };
 
   const onSelectWallet = (wallet: Wallet) => {
@@ -117,25 +115,30 @@ export const WalletLockedFlowContainer = ({
   };
 
   const onImportSuccess = () => {
-    setStep({ type: "success" });
+    onStepChange("home");
+    // delay toast so that toast isn't cleared
+    setTimeout(() => {
+      toast.success("Wallet Successfully Imported");
+    }, 100);
   };
 
   const onUnlockSuccess = (walletId: string) => {
     onStepChange("unlocked", walletId);
   };
 
-  const onMigrateSuccess = () => {
-    navigate("/");
-  };
+  const style = window.getComputedStyle(document.body);
+  console.log(
+    `SAT: ${style.getPropertyValue("--sat")}, ${style.getPropertyValue("--sab")}, ${style.getPropertyValue("--kb")}`
+  );
 
   const wrapperClass = clsx(
     "w-full bg-secondary-bg overflow-x-hidden",
     isMobile
       ? [
-          "fixed inset-0 w-full max-h-screen overflow-y-auto flex flex-col p-4",
+          "fixed top-safe bottom-safe w-full max-h-screen overflow-y-auto flex flex-col p-4",
           (step.type === "home" && wallets.length <= 2) ||
-          step.type === "success" ||
-          step.type === "create"
+          step.type === "create" ||
+          step.type === "unlock"
             ? "justify-center"
             : "justify-start",
         ]
@@ -153,6 +156,7 @@ export const WalletLockedFlowContainer = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
           onSelectWallet={onSelectWallet}
           onDeleteWallet={onDeleteWallet}
           onStepChange={onStepChange}
@@ -185,19 +189,6 @@ export const WalletLockedFlowContainer = ({
         />
       )}
 
-      {step.type === "success" && (
-        <ImportSuccess onBack={() => onStepChange("home")} />
-      )}
-
-      {step.type === "migrate" && (
-        <Migrate
-          walletId={step.walletId}
-          wallets={wallets}
-          onSuccess={onMigrateSuccess}
-          onBack={() => onStepChange("home")}
-        />
-      )}
-
       {step.type === "unlock" && (
         <Unlock
           selectedWalletId={selectedWalletId}
@@ -205,6 +196,7 @@ export const WalletLockedFlowContainer = ({
           selectedNetwork={selectedNetwork}
           onNetworkChange={onNetworkChange}
           isConnected={isConnected}
+          isConnecting={isConnecting}
           onSuccess={onUnlockSuccess}
           onBack={() => onStepChange("home")}
         />
