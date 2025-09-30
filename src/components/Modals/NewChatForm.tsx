@@ -88,11 +88,14 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
     }
   }, [recipientInputValue]);
 
-  const useRecipientInputRef = (node: HTMLTextAreaElement | null) => {
-    if (node) {
-      node.focus();
+  const recipientInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus the address input on mount only (not ever render)
+  useEffect(() => {
+    if (recipientInputRef.current) {
+      recipientInputRef.current.focus();
     }
-  };
+  }, []);
 
   // Handle escape key to close
   useEffect(() => {
@@ -436,8 +439,8 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
           </label>
           <div className="relative">
             <Textarea
-              ref={useRecipientInputRef}
-              className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-24 text-sm text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
+              ref={recipientInputRef}
+              className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-24 text-base text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
               rows={3}
               id="recipientAddress"
               value={recipientInputValue}
@@ -519,7 +522,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
             Handshake Amount (KAS)
           </label>
           <input
-            className="border-primary-border focus:ring-kas-secondary/80 bg-input-bg mb-2 box-border flex h-10 w-full items-center rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
+            className="border-primary-border focus:ring-kas-secondary/80 bg-input-bg mb-2 box-border flex h-10 w-full items-center rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
             type="text"
             id="handshakeAmount"
             value={handshakeAmount}

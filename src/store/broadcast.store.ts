@@ -86,6 +86,8 @@ interface BroadcastState {
   setSelectedParticipant: (
     participant: { address: string; nickname?: string } | null
   ) => void;
+
+  shouldProcessBroadcasts: () => boolean;
 }
 
 export const useBroadcastStore = create<BroadcastState>((set, get) => ({
@@ -364,5 +366,11 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     participant: { address: string; nickname?: string } | null
   ) => {
     set({ selectedParticipant: participant });
+  },
+
+  shouldProcessBroadcasts: () => {
+    const isBroadcastEnabled =
+      useFeatureFlagsStore.getState().flags[FeatureFlags.BROADCAST];
+    return isBroadcastEnabled && get().channels.length > 0;
   },
 }));

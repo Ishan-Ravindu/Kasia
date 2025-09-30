@@ -119,20 +119,22 @@ export const SidebarSection: FC<SidebarSectionProps> = ({
                 </button>
               )}
             </div>
-            {broadcastEnabled && !showSearch && (
-              <ModeSelector
-                onModeChange={onModeChange}
+            <div className="flex gap-2">
+              {broadcastEnabled && !showSearch && (
+                <ModeSelector
+                  onModeChange={onModeChange}
+                  isBroadcastMode={isBroadcastMode}
+                  shouldShow={broadcastEnabled && !showSearch}
+                />
+              )}
+              <HoldablePlusButton
+                broadcastEnabled={broadcastEnabled}
                 isBroadcastMode={isBroadcastMode}
-                shouldShow={broadcastEnabled && !showSearch}
+                onNewChat={handleNewChat}
+                onOffChainHandshake={handleOffChainHandshake}
+                onNewBroadcast={handleNewBroadcast}
               />
-            )}
-            <HoldablePlusButton
-              broadcastEnabled={broadcastEnabled}
-              isBroadcastMode={isBroadcastMode}
-              onNewChat={handleNewChat}
-              onOffChainHandshake={handleOffChainHandshake}
-              onNewBroadcast={handleNewBroadcast}
-            />
+            </div>
           </div>
         ) : (
           /* Plus button when collapsed */

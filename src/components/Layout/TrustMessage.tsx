@@ -27,7 +27,7 @@ export const TrustMessage: FC = () => {
     <div className="mb-2 sm:mb-5">
       {/* trust message section */}
       <div
-        className="border-kas-secondary from-kas-secondary/20 to-kas-secondary/5 mt-6 cursor-pointer rounded-2xl border bg-gradient-to-r p-2"
+        className="border-kas-secondary from-kas-secondary/20 to-kas-secondary/5 mt-6 cursor-pointer rounded-2xl border bg-gradient-to-r p-1 sm:p-2"
         onClick={() => setOpenTrust((v) => !v)}
       >
         <div
@@ -68,7 +68,7 @@ export const TrustMessage: FC = () => {
 
       {/* why kaspa wallet section */}
       <div
-        className="border-primary-border bg-primary-bg mt-3 cursor-pointer rounded-2xl border p-2"
+        className="border-primary-border bg-primary-bg mt-3 cursor-pointer rounded-2xl border p-1 sm:p-2"
         onClick={() => setOpenWhy((v) => !v)}
       >
         <div className="flex w-full items-center justify-center gap-2 py-1">
@@ -87,7 +87,7 @@ export const TrustMessage: FC = () => {
         {/* Collapsible Content */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            openWhy ? "mt-2 max-h-fit opacity-100" : "max-h-0 opacity-0"
+            openWhy ? "mt-2 max-h-40 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <p className="break-word w-full text-center text-sm leading-relaxed text-[var(--text-secondary)]">

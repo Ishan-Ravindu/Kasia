@@ -9,7 +9,8 @@
     "log:default",
     "clipboard-manager:allow-read-text",
     "biometry:default",
-    "barcode-scanner:default"
+    "barcode-scanner:default",
+    "opener:default"
   ],
   "platforms": ["iOS", "android"]
 }

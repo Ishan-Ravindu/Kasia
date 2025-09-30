@@ -38,7 +38,7 @@ export const HoldablePlusButton: FC<HoldablePlusButtonProps> = ({
 
   return (
     <HoldToAction
-      holdDuration={1200}
+      holdDuration={1000}
       animationDelay={200}
       onShortPress={handleShortPress}
       onLongPress={handleLongPress}

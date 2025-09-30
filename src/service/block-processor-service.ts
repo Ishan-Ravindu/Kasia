@@ -308,10 +308,7 @@ export class BlockProcessorService extends EventEmitter<{
    */
   private shouldProcessBroadcasts(): boolean {
     try {
-      const broadcastStore = useBroadcastStore.getState();
-      return (
-        broadcastStore.isBroadcastMode && broadcastStore.channels.length > 0
-      );
+      return useBroadcastStore.getState().shouldProcessBroadcasts();
     } catch (error) {
       console.error("Error checking broadcast status:", error);
       return false;

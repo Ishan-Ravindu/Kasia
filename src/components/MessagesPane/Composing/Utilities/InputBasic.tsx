@@ -95,7 +95,7 @@ export const InputBasic = forwardRef<HTMLTextAreaElement, InputBasicProps>(
         maxLength={MAX_CHAT_INPUT_CHAR + 1}
         className={clsx(
           className ||
-            "peer bg-primary-bg box-border flex-1 resize-none rounded-3xl py-3 pr-20 pl-4 text-sm text-[var(--text-primary)]",
+            "peer bg-primary-bg box-border flex-1 resize-none rounded-3xl py-3 pr-20 pl-4 text-base text-[var(--text-primary)] sm:text-sm",
           showScroll ? "overflow-y-auto" : "overflow-y-hidden",
           onDragOver ? "border-kas-secondary border" : "outline-none"
         )}
