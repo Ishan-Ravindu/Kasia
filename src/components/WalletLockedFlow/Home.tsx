@@ -68,7 +68,7 @@ export const Home = ({
             onKeyDown={(e) =>
               (e.key === "Enter" || e.key === " ") && onSelectWallet(w)
             }
-            className="hover:border-kas-secondary border-primary-border group focus-visible:ring-kas-secondary relative flex min-h-14 cursor-pointer flex-col items-center gap-2 rounded-xl border bg-[var(--primary-bg)] p-3 pr-16 text-center transition-all duration-200 outline-none hover:bg-[var(--primary-bg)]/50 hover:shadow-sm focus-visible:ring-2 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between sm:p-4 sm:pr-20 sm:text-left"
+            className="hover:border-kas-secondary border-primary-border group focus-visible:ring-kas-secondary relative flex min-h-14 cursor-pointer flex-col items-center gap-2 rounded-xl border bg-[var(--primary-bg)] px-16 py-3 text-center transition-all duration-200 outline-none hover:bg-[var(--primary-bg)]/50 hover:shadow-sm focus-visible:ring-2 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between sm:p-4 sm:pr-20 sm:text-left"
           >
             <div className="flex w-full flex-col items-center gap-1 select-none sm:flex-1 sm:items-start">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">

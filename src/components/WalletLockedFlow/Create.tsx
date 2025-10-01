@@ -20,6 +20,7 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
   const [seedPhraseLength, setSeedPhraseLength] = useState<12 | 24>(24);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [nameLength, setNameLength] = useState(0);
 
   const passwordRef = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -83,6 +84,11 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
     if (error) setError(null);
   };
 
+  const handleNameChange = () => {
+    handleInputChange();
+    setNameLength(nameRef.current?.value.length || 0);
+  };
+
   return (
     <>
       <h2 className="mb-3 text-center text-lg font-bold">Create New Wallet</h2>
@@ -91,13 +97,21 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
         <label className="mb-3 block text-base font-semibold">
           Wallet Name
         </label>
-        <input
-          ref={nameRef}
-          type="text"
-          placeholder="My Wallet"
-          onChange={handleInputChange}
-          className="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
-        />
+        <div>
+          <input
+            ref={nameRef}
+            type="text"
+            placeholder="My Wallet"
+            maxLength={25}
+            onChange={handleNameChange}
+            className="border-primary-border w-full rounded-3xl border bg-[var(--input-bg)] p-2.5 px-4 text-base transition-all duration-200 focus:!border-[var(--color-kas-secondary)] focus:outline-none"
+          />
+          <div className="me-2 mt-1 flex justify-end">
+            <span className="text-xs text-[var(--text-secondary)] opacity-60">
+              {nameLength}/25
+            </span>
+          </div>
+        </div>
       </div>
 
       <RadioGroup
