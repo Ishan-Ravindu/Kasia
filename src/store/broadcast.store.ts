@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useDBStore } from "./db.store";
 import { BroadcastChannel } from "./repository/broadcast-channel.repository";
 import { v4 } from "uuid";
+import { useFeatureFlagsStore, FeatureFlags } from "./featureflag.store";
 
 export type BroadcastMessage = {
   id: string;
