@@ -73,7 +73,7 @@ export const BroadcastDisplay: FC<BroadcastDisplayProps> = ({
       {/* Avatar for incoming messages */}
       {!isOutgoing && (
         <div
-          className="relative top-1 mr-2 mb-1.5 flex-shrink-0 cursor-pointer self-end transition-transform hover:scale-105"
+          className="relative top-1 mr-2 flex-shrink-0 cursor-pointer self-end transition-transform hover:scale-105"
           onClick={handleAvatarClick}
           title="Click to view participant info"
         >

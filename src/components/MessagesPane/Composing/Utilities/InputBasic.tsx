@@ -1,5 +1,6 @@
 import { useEffect, useState, forwardRef } from "react";
 import clsx from "clsx";
+import { useIsMobile } from "../../../../hooks/useIsMobile";
 import {
   MESSAGE_COMPOSER_MIN_HEIGHT,
   MESSAGE_COMPOSER_MAX_HEIGHT,
@@ -40,6 +41,7 @@ export const InputBasic = forwardRef<HTMLTextAreaElement, InputBasicProps>(
       MESSAGE_COMPOSER_MIN_HEIGHT
     );
     const [showScroll, setShowScroll] = useState(false);
+    const isMobile = useIsMobile();
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       onChange(e.target.value);
@@ -76,7 +78,7 @@ export const InputBasic = forwardRef<HTMLTextAreaElement, InputBasicProps>(
     }, [value, ref]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey && !isMobile) {
         e.preventDefault();
         onSend?.();
       }

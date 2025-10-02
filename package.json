@@ -20,7 +20,7 @@
     "submodule:init": "npm install --prefix vendors/tauri-plugin-biometry && npm run build --prefix vendors/tauri-plugin-biometry",
     "prepare": "node .husky/install.mjs && npm run generate:openapi",
     "test:browser": "vitest --config=vitest.browser.config.ts",
-    "test": "vitest"
+    "test": "vitest --run"
   },
   "dependencies": {
     "@headlessui/react": "2.2.1",
