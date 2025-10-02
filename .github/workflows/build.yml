@@ -148,6 +148,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: "android-app-${{ env.SUFFIX }}"
 
       - name: setup Android signing
         run: |
@@ -291,6 +292,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: "macos-intel-app-${{ env.SUFFIX }}"
 
       # install @tauri-apps/cli@latest
       - name: Install Tauri CLI
@@ -353,6 +355,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: "macos-arm-app-${{ env.SUFFIX }}"
 
       # install @tauri-apps/cli@latest
       - name: Install Tauri CLI
@@ -420,6 +423,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: "linux-arm-app-${{ env.SUFFIX }}"
 
       # install @tauri-apps/cli@latest
       - name: Install Tauri CLI
@@ -493,6 +497,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: "linux-amd-app-${{ env.SUFFIX }}"
 
       # install @tauri-apps/cli@latest
       - name: Install Tauri CLI
@@ -561,6 +566,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          key: "windows-app-${{ env.SUFFIX }}"
 
       # install @tauri-apps/cli@latest
       - name: Install Tauri CLI
