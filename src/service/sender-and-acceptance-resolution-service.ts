@@ -159,19 +159,18 @@ export class SenderAndAcceptanceResolutionService extends EventEmitter<LiveServi
                 txid: txId,
                 acceptingBlockDaaScore: blockResponse.block.header.daaScore,
               })
-              .catch((err) => {
-                console.log(
-                  `resolving ${txId}, ${acceptingBlock} resolution failed with error`,
-                  err
-                );
+              .catch(() => {
                 return null;
               });
 
             if (returnAddressResponse === null && devMode) {
-              console.log(`resolving ${txId}, Try Failed for ${txId}`, {
-                blockResponse,
-                acceptingBlock,
-              });
+              console.warn(
+                `resolving ${txId}, this try failed, trying again...`,
+                {
+                  blockResponse,
+                  acceptingBlock,
+                }
+              );
               continue;
             }
 
