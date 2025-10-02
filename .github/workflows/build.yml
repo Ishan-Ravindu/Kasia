@@ -370,7 +370,7 @@ jobs:
           retention-days: 1
 
   build-linux-arm-app:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm
     needs: build-web-app
     steps:
       - uses: actions/checkout@v4
