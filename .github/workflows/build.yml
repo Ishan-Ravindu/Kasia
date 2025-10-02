@@ -442,7 +442,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kasia-${{ env.SUFFIX }}-linux-amd
+          name: kasia-${{ env.SUFFIX }}-linux-arm
           path: ./tmp/
           retention-days: 1
 
