@@ -91,7 +91,7 @@ export const CreateWallet = ({ onSuccess, onBack }: CreateWalletProps) => {
 
   return (
     <>
-      <h2 className="mb-3 text-center text-lg font-bold">Create New Wallet</h2>
+      <h2 className="mb-3 text-center text-lg font-bold">Create Wallet</h2>
 
       <div className="my-1">
         <label className="mb-3 block text-base font-semibold">
