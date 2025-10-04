@@ -247,7 +247,7 @@ export const DirectsSection: FC<{
       {boxState === "filtered" && oneOnOneConversation && (
         /* A CONVERSATION IS OPEN */
         <>
-          <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4">
+          <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4 sm:justify-start">
             {/* mobile back button */}
             <div className="flex items-center">
               <button
@@ -275,15 +275,16 @@ export const DirectsSection: FC<{
                     </div>
                   </div>
                 )}
-                <ContactMenu
-                  oneOnOneConversation={oneOnOneConversation}
-                  openedRecipient={openedRecipient}
-                  messageStore={messageStore}
-                  openModal={openModal}
-                  setOneOnOneConversation={setOneOnOneConversation}
-                />
               </h3>
             </div>
+
+            <ContactMenu
+              oneOnOneConversation={oneOnOneConversation}
+              openedRecipient={openedRecipient}
+              messageStore={messageStore}
+              openModal={openModal}
+              setOneOnOneConversation={setOneOnOneConversation}
+            />
           </div>
 
           <div
