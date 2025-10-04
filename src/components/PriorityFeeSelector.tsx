@@ -185,8 +185,6 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
     if (settings.isPersistent) {
       savePersistentSettings(newFee, true, bucket.label);
     }
-
-    setIsModalOpen(false);
   };
 
   const handleCustomAmountChange = useCallback((value: string) => {
@@ -382,31 +380,42 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
               )}
 
               {/* Remember choice option */}
-              <div className="my-4 flex items-center gap-2">
-                <Switch
-                  checked={settings.isPersistent}
-                  onChange={togglePersistence}
-                  className={clsx(
-                    "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
-                    {
-                      "bg-kas-secondary": settings.isPersistent,
-                      "bg-gray-300": !settings.isPersistent,
-                    }
-                  )}
-                >
-                  <span
+              <div className="my-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={settings.isPersistent}
+                    onChange={togglePersistence}
                     className={clsx(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
                       {
-                        "translate-x-6": settings.isPersistent,
-                        "translate-x-1": !settings.isPersistent,
+                        "bg-kas-secondary": settings.isPersistent,
+                        "bg-gray-300": !settings.isPersistent,
                       }
                     )}
-                  />
-                </Switch>
-                <label className="text-sm text-[var(--text-secondary)]">
-                  Remember my choice
-                </label>
+                  >
+                    <span
+                      className={clsx(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        {
+                          "translate-x-6": settings.isPersistent,
+                          "translate-x-1": !settings.isPersistent,
+                        }
+                      )}
+                    />
+                  </Switch>
+                  <label className="text-sm text-[var(--text-secondary)]">
+                    Remember my choice
+                  </label>
+                </div>
+                <div className="w-1/4">
+                  <Button
+                    variant="secondary"
+                    className="w-full px-3! py-1! sm:py-2!"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
