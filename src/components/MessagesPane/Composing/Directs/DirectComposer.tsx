@@ -171,7 +171,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
       onDrop={handleDrop}
     >
       <FeeDisplay
-        recipient={recipient}
         draft={draft}
         attachment={attachment}
         feeState={feeState}

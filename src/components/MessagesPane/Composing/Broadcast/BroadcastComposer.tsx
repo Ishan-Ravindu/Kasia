@@ -61,13 +61,11 @@ export const BroadcastComposer = ({ channelName }: { channelName: string }) => {
   return (
     <div className="border-primary-border bg-secondary-bg relative flex-col gap-8 border-t">
       <FeeDisplay
-        recipient={undefined}
         draft={draft}
         attachment={undefined}
         feeState={feeState}
         priority={priority}
         onPriorityChange={setPriority}
-        isBroadcast={true}
       />
       <div className="relative mx-2 my-2 rounded-lg p-1 pb-3 sm:pb-0">
         <div className="relative flex items-center">
