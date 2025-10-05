@@ -36,7 +36,7 @@ export const ContactMenu: React.FC<ContactMenuProps> = ({
             <UserCog className="size-6 sm:size-5" />
           </PopoverButton>
           <PopoverPanel
-            anchor="bottom end"
+            anchor="bottom start"
             className="absolute right-0 z-10 mt-2 w-48 rounded bg-[var(--primary-bg)] shadow-2xl ring-1 shadow-(color:--button-primary)/30 ring-[var(--primary-border)]"
           >
             <div className="flex flex-col">

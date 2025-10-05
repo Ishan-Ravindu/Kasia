@@ -247,7 +247,7 @@ export const DirectsSection: FC<{
       {boxState === "filtered" && oneOnOneConversation && (
         /* A CONVERSATION IS OPEN */
         <>
-          <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4 sm:justify-start">
+          <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4">
             {/* mobile back button */}
             <div className="flex items-center">
               <button
@@ -255,13 +255,19 @@ export const DirectsSection: FC<{
                   setMobileView("contacts");
                   messageStore.setOpenedRecipient(null);
                 }}
-                className="mr-2 cursor-pointer p-1 sm:hidden"
+                className="mr-1 cursor-pointer p-1 sm:hidden"
                 aria-label="Back to contacts"
               >
                 <ChevronLeft className="size-6" />
               </button>
-
-              <h3 className="flex items-center gap-2 truncate text-base font-semibold">
+              <ContactMenu
+                oneOnOneConversation={oneOnOneConversation}
+                openedRecipient={openedRecipient}
+                messageStore={messageStore}
+                openModal={openModal}
+                setOneOnOneConversation={setOneOnOneConversation}
+              />
+              <h3 className="ms-1 flex items-center truncate text-base font-semibold">
                 {oneOnOneConversation.contact.name ? (
                   <span title={oneOnOneConversation.contact.name}>
                     {isMobile
@@ -277,14 +283,6 @@ export const DirectsSection: FC<{
                 )}
               </h3>
             </div>
-
-            <ContactMenu
-              oneOnOneConversation={oneOnOneConversation}
-              openedRecipient={openedRecipient}
-              messageStore={messageStore}
-              openModal={openModal}
-              setOneOnOneConversation={setOneOnOneConversation}
-            />
           </div>
 
           <div
