@@ -332,7 +332,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
                     "flex w-full cursor-pointer items-center justify-between rounded-lg border p-2 px-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
                     settings.selectedBucket === bucket.label
                       ? "border-[var(--kas-secondary)] bg-[var(--primary-bg)]/80"
-                      : "border-[var(--border-color)] bg-[var(--primary-bg)]"
+                      : "border-[var(--secondary-border)] bg-[var(--primary-bg)]"
                   )}
                 >
                   <div className="flex flex-col text-start">
@@ -343,15 +343,15 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
                       {bucket.description}
                     </div>
                     {bucket.estimatedSeconds && (
-                      <div className="mt-1 text-xs text-[var(--text-secondary)]">
-                        {formatTime(bucket.estimatedSeconds)}
+                      <div className="mt-1 text-xs font-semibold text-[var(--text-secondary)]">
+                        {formatTime(bucket.estimatedSeconds)} wait
                       </div>
                     )}
                   </div>
                   <div className="text-sm whitespace-nowrap text-[var(--accent-green)]">
                     {bucket.feerate === 1
                       ? "Base fee"
-                      : `${bucket.feerate}x fee rate`}
+                      : `${bucket.feerate?.toFixed(2)}x fee rate`}
                   </div>
                 </button>
               ))}
