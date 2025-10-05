@@ -131,6 +131,7 @@ export interface PriorityFeeConfig {
   amount: bigint;
   source: FeeSource;
   feerate?: number; // Store the fee rate used for calculation
+  estimatedSeconds?: number; // Estimated wait time for the selected fee bucket
 }
 
 export interface FeeState {

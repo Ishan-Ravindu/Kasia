@@ -64,6 +64,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
           amount: BigInt(parsed.fee.amount ?? "0"),
           source: parsed.fee.source,
           feerate: parsed.fee.feerate,
+          estimatedSeconds: parsed.fee.estimatedSeconds,
         },
         isPersistent: parsed.isPersistent,
         selectedBucket: parsed.selectedBucket,
@@ -90,10 +91,19 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
           parsedSettings.selectedBucket === "Custom"
             ? undefined
             : parsedSettings.fee.feerate,
+        estimatedSeconds:
+          parsedSettings.fee.estimatedSeconds ||
+          feeEstimate?.estimate?.lowBuckets?.[0]?.estimatedSeconds,
       });
     } else {
       // Initialize with Low bucket (0 fee) as default
-      const defaultFee = { amount: BigInt(0), source: FeeSource.SenderPays };
+      const defaultFee: PriorityFeeConfig = {
+        amount: BigInt(0),
+        source: FeeSource.SenderPays,
+        feerate: feeEstimate?.estimate?.lowBuckets?.[0]?.feerate || 1,
+        estimatedSeconds:
+          feeEstimate?.estimate?.lowBuckets?.[0]?.estimatedSeconds,
+      };
       setSettings((prev) => ({
         ...prev,
         fee: defaultFee,
@@ -167,6 +177,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
       amount: BigInt(0), // Let WASM calculate the amount
       source: FeeSource.SenderPays,
       feerate: bucket.feerate,
+      estimatedSeconds: bucket.estimatedSeconds,
     };
 
     console.log(
@@ -252,6 +263,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
           amount: fee.amount.toString(),
           source: fee.source,
           feerate: fee.feerate,
+          estimatedSeconds: fee.estimatedSeconds,
         },
         isPersistent,
         selectedBucket,

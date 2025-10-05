@@ -5,6 +5,7 @@ import { PriorityFeeConfig } from "../../../../types/all";
 import { Attachment } from "../../../../store/message-composer.store";
 import { FeeState } from "../../../../types/all";
 import { useWalletStore } from "../../../../store/wallet.store";
+import { WaitDisplay } from "./WaitDisplay";
 
 // fee levels for color coding
 // need to extract this and make it setable from the settings
@@ -62,6 +63,7 @@ export const FeeDisplay = ({
 
   return (
     <div className="absolute -top-7.5 right-4 flex items-center gap-2">
+      <WaitDisplay estimatedSeconds={priority.estimatedSeconds} />
       <div
         className={clsx(
           "inline-block rounded-md border bg-[var(--secondary-bg)]/20 px-3 py-1 text-right text-xs transition-opacity duration-300 ease-out",
@@ -82,7 +84,6 @@ export const FeeDisplay = ({
                 ? "Fee estimation failed"
                 : "Calculating fee…"}
       </div>
-
       <PriorityFeeSelector
         currentFee={priority}
         onFeeChange={onPriorityChange}
