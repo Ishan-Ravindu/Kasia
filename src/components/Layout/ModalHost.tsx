@@ -16,6 +16,7 @@ import { QrScannerModal } from "../Modals/QrScannerModal";
 import { OffChainHandshakeModal } from "../Modals/OffChainHandshakeModal";
 import { DeleteWalletModal } from "../Modals/DeleteWalletModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
+import { KASPA_DONATION_ADDRESS } from "../../config/constants";
 
 // This component subscribes to modal state and renders the appropriate modal
 // based on the current state. It's React Compiler friendly because it has
@@ -35,6 +36,16 @@ export const ModalHost = () => {
 
   return (
     <>
+      {/* Donation Modal */}
+      {modals.donation && (
+        <Modal onClose={() => closeModal("donation")}>
+          <CopyableValueWithQR
+            value={KASPA_DONATION_ADDRESS}
+            label={"Kasia Dev-fund:"}
+            qrTitle="Thanks for Supporting Us!"
+          />
+        </Modal>
+      )}
       {/* Address Modal */}
       {modals.address && (
         <Modal onClose={() => closeModal("address")}>
