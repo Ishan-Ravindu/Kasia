@@ -2,6 +2,8 @@
 .cargo
 wasm/*
 
+prv_README.md
+
 # Logs
 logs
 *.log
