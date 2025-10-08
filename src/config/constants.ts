@@ -1,8 +1,7 @@
 import { FeeBucket } from "../types/all";
 
 export const KASPA_DONATION_ADDRESS =
-  "kaspa:precqv0krj3r6uyyfa36ga7s0u9jct0v4wg8ctsfde2gkrsgwgw8jgxfzfc98"; // currently a placeholder for kaspa devfund
-
+  "kaspa:prx5q93j3m96htms5s4rkhk3awkf86jrrkcl2ssgsqdx4thyqcfmgjpgq2rj9"; // kasias generated multi-sig address
 export const ONE_MINUTE_IN_MS = 60 * 1000;
 
 export const FEE_ESTIMATE_POLLING_INTERVAL_IN_MS = 3 * 1000;
