@@ -110,6 +110,23 @@ We welcome contributions from everyone! If you're interested in contributing to 
 - **Discord**: Join our community on [Discord](https://discord.gg/ssB46MXzRU)
 - **X (Twitter)**: Follow us on [X](https://x.com/kasiamessaging)
 
+## Donations
+
+Kasia is a Kluster's initiave operated by four individuals at the moment:
+- [Ernie](https://github.com/HocusLocusTee)
+- [AuzGhosty](https://github.com/AuzGhosty)
+- [KaspaSilver](https://github.com/KaspaSilver)
+- [IzioDev](https://github.com/IzioDev)
+
+Each one of these members constitued a multisig wallet with a 3/4 signature rule.
+This means funds cannot move if there is no supermojority (75%) that agrees on the movement.
+
+Infrastructure costs are published on Kluster's Discord on a monthly basis (invoices given), currently approximating $80 per month.
+In addition to that, we've bought an Apple developer environment (~$550) to support the upcoming iOS version.
+
+Currently, all of the costs are supported by Kluster's members. If you appreciate this initiative and you want to help it, please consider donating to this address:
+* `kaspa:prx5q93j3m96htms5s4rkhk3awkf86jrrkcl2ssgsqdx4thyqcfmgjpgq2rj9`
+
 ## License
 
 This project is licensed under the ISC License. See the [LICENSE](LICENSE) file for details.
