@@ -98,6 +98,7 @@ export const BroadcastComposer = ({ channelName }: { channelName: string }) => {
                   aria-label="Send Broadcast"
                 >
                   <SendHorizonal className="size-6" />
+                  <span className="absolute h-full w-full p-5 pointer-fine:hidden" />
                 </button>
               </div>
             </div>

@@ -248,6 +248,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
                   aria-label="Send"
                 >
                   <SendHorizonal className="size-6" />
+                  <span className="absolute h-full w-full p-5 pointer-fine:hidden" />
                 </button>
                 {cameraEnabled && (
                   <button
