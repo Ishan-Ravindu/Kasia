@@ -119,7 +119,7 @@ Kasia is a Kluster's initiave operated by four individuals at the moment:
 - [IzioDev](https://github.com/IzioDev)
 
 Each one of these members constitued a multisig wallet with a 3/4 signature rule.
-This means funds cannot move if there is no supermojority (75%) that agrees on the movement.
+This means funds cannot move if there is no supermajority (75%) that agrees on the movement.
 
 Infrastructure costs are published on Kluster's Discord on a monthly basis (invoices given), currently approximating $80 per month.
 In addition to that, we've bought an Apple developer environment (~$550) to support the upcoming iOS version.
