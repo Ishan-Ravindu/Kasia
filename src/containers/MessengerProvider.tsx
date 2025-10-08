@@ -220,47 +220,45 @@ export const MessengerProvider: FC = () => {
   return (
     <>
       {/* Main Message Section*/}
-      <div className="bg-primary-bg flex items-center">
-        <div className="flex h-[100dvh] w-full overflow-hidden sm:h-[calc(100dvh-69px)]">
-          {isWalletReady &&
-          messageStore.isLoaded &&
-          walletStore.isAccountServiceRunning ? (
-            <>
-              <SidebarSection
-                onContactClicked={onContactClicked}
-                onModeChange={onModeChange}
-                openedRecipient={messageStore.openedRecipient}
-                walletAddress={walletStore.address?.toString()}
-                mobileView={mobileView}
-                contactsCollapsed={contactsCollapsed}
-                setContactsCollapsed={setContactsCollapsed}
-                setMobileView={(view) => {
-                  setMobileView(view);
-                  // when switching to contacts view on mobile, navigate back to the appropriate base route
-                  if (isMobile && view === "contacts") {
-                    if (isCurrentlyInBroadcastMode) {
-                      navigate(`/${walletId}/broadcasts`);
-                    } else {
-                      navigate(`/${walletId}/directs`);
-                    }
+      <div className="bg-primary-bg flex h-[100dvh] overflow-hidden sm:h-[calc(100vh-69px)] pointer-coarse:h-[calc(100dvh-var(--kb,0px))]">
+        {isWalletReady &&
+        messageStore.isLoaded &&
+        walletStore.isAccountServiceRunning ? (
+          <>
+            <SidebarSection
+              onContactClicked={onContactClicked}
+              onModeChange={onModeChange}
+              openedRecipient={messageStore.openedRecipient}
+              walletAddress={walletStore.address?.toString()}
+              mobileView={mobileView}
+              contactsCollapsed={contactsCollapsed}
+              setContactsCollapsed={setContactsCollapsed}
+              setMobileView={(view) => {
+                setMobileView(view);
+                // when switching to contacts view on mobile, navigate back to the appropriate base route
+                if (isMobile && view === "contacts") {
+                  if (isCurrentlyInBroadcastMode) {
+                    navigate(`/${walletId}/broadcasts`);
+                  } else {
+                    navigate(`/${walletId}/directs`);
                   }
-                }}
-              />
-              <Outlet />
-            </>
-          ) : isWalletReady ? (
-            <LoadingMessages />
-          ) : (
-            <div className="flex w-full flex-col items-center justify-center">
-              <div className="text-center">
-                <p className="mb-2 text-lg font-semibold">Wallet not ready</p>
-                <p className="text-text-primary text-sm">
-                  Please unlock your wallet first
-                </p>
-              </div>
+                }
+              }}
+            />
+            <Outlet />
+          </>
+        ) : isWalletReady ? (
+          <LoadingMessages />
+        ) : (
+          <div className="flex w-full flex-col items-center justify-center">
+            <div className="text-center">
+              <p className="mb-2 text-lg font-semibold">Wallet not ready</p>
+              <p className="text-text-primary text-sm">
+                Please unlock your wallet first
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
       {/* global error section */}
       <ErrorCard error={errorMessage} onDismiss={() => setErrorMessage(null)} />

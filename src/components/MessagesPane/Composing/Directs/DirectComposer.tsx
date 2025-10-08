@@ -20,6 +20,7 @@ import { useFeeEstimate } from "../../../../hooks/MessageComposer/useFeeEstimate
 import { toast } from "../../../../utils/toast-helper";
 import { MAX_CHAT_INPUT_CHAR } from "../../../../config/constants";
 import { cameraPermissionService } from "../../../../service/camera-permission-service";
+import { useIsMobile } from "../../../../hooks/useIsMobile";
 import {
   useFeatureFlagsStore,
   FeatureFlags,
@@ -38,6 +39,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const isMobile = useIsMobile();
 
   const feeState = useFeeEstimate({
     toSelf: true,
@@ -169,7 +171,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
       onDrop={handleDrop}
     >
       <FeeDisplay
-        recipient={recipient}
         draft={draft}
         attachment={attachment}
         feeState={feeState}
@@ -226,7 +227,9 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
             placeholder={
               canCompose
                 ? "Type your message..."
-                : "Accept or send handshake to chat..."
+                : isMobile
+                  ? "Handshake required..."
+                  : "Accept or send handshake to chat..."
             }
             disabled={sendState.status === "loading" || !canCompose}
           />
@@ -245,6 +248,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
                   aria-label="Send"
                 >
                   <SendHorizonal className="size-6" />
+                  <span className="absolute h-full w-full p-5 pointer-fine:hidden" />
                 </button>
                 {cameraEnabled && (
                   <button

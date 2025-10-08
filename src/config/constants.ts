@@ -1,8 +1,10 @@
 import { FeeBucket } from "../types/all";
 
+export const KASPA_DONATION_ADDRESS =
+  "kaspa:prx5q93j3m96htms5s4rkhk3awkf86jrrkcl2ssgsqdx4thyqcfmgjpgq2rj9"; // kasias generated multi-sig address
 export const ONE_MINUTE_IN_MS = 60 * 1000;
 
-export const FEE_ESTIMATE_POLLING_INTERVAL_IN_MS = 2 * ONE_MINUTE_IN_MS;
+export const FEE_ESTIMATE_POLLING_INTERVAL_IN_MS = 3 * 1000;
 
 export const ALIAS_LENGTH = 6; // 6 bytes = 12 hex characters
 

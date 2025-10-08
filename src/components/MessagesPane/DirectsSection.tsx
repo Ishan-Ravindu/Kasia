@@ -255,13 +255,19 @@ export const DirectsSection: FC<{
                   setMobileView("contacts");
                   messageStore.setOpenedRecipient(null);
                 }}
-                className="mr-2 cursor-pointer p-1 sm:hidden"
+                className="mr-1 cursor-pointer p-1 sm:hidden"
                 aria-label="Back to contacts"
               >
                 <ChevronLeft className="size-6" />
               </button>
-
-              <h3 className="flex items-center gap-2 truncate text-base font-semibold">
+              <ContactMenu
+                oneOnOneConversation={oneOnOneConversation}
+                openedRecipient={openedRecipient}
+                messageStore={messageStore}
+                openModal={openModal}
+                setOneOnOneConversation={setOneOnOneConversation}
+              />
+              <h3 className="ms-1 flex items-center truncate text-base font-semibold">
                 {oneOnOneConversation.contact.name ? (
                   <span title={oneOnOneConversation.contact.name}>
                     {isMobile
@@ -275,13 +281,6 @@ export const DirectsSection: FC<{
                     </div>
                   </div>
                 )}
-                <ContactMenu
-                  oneOnOneConversation={oneOnOneConversation}
-                  openedRecipient={openedRecipient}
-                  messageStore={messageStore}
-                  openModal={openModal}
-                  setOneOnOneConversation={setOneOnOneConversation}
-                />
               </h3>
             </div>
           </div>

@@ -68,8 +68,13 @@ export const Home = ({
             onKeyDown={(e) =>
               (e.key === "Enter" || e.key === " ") && onSelectWallet(w)
             }
-            className="hover:border-kas-secondary border-primary-border group focus-visible:ring-kas-secondary relative flex min-h-14 cursor-pointer flex-col items-center gap-2 rounded-xl border bg-[var(--primary-bg)] px-16 py-3 text-center transition-all duration-200 outline-none hover:bg-[var(--primary-bg)]/50 hover:shadow-sm focus-visible:ring-2 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between sm:p-4 sm:pr-20 sm:text-left"
+            className="hover:border-kas-secondary border-primary-border group focus-visible:ring-kas-secondary relative flex min-h-14 cursor-pointer flex-col items-center gap-2 rounded-xl border bg-[var(--primary-bg)] px-16 py-3 text-center transition-all duration-200 outline-none hover:bg-[var(--primary-bg)]/50 hover:shadow-sm focus-visible:ring-2 active:rounded-4xl sm:flex-row sm:items-center sm:justify-between sm:p-4 sm:pr-20 sm:pl-4 sm:text-left"
           >
+            {/* chevron on the left for visual balance */}
+            <div className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 sm:hidden">
+              <ChevronRight className="size-6 text-[var(--text-secondary)] opacity-40" />
+            </div>
+
             <div className="flex w-full flex-col items-center gap-1 select-none sm:flex-1 sm:items-start">
               <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <span className="max-w-full truncate font-semibold text-[var(--text-primary)] sm:max-w-lg">
@@ -116,7 +121,7 @@ export const Home = ({
       </div>
       <div className="mt-8 flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
         <Button variant="primary" onClick={() => onStepChange("create")}>
-          Create New Wallet
+          Create Wallet
         </Button>
         <Button variant="secondary" onClick={() => onStepChange("import")}>
           Import Wallet

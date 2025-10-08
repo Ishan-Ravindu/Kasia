@@ -11,6 +11,7 @@ import { deleteDB } from "idb";
 import { useDBStore } from "../../store/db.store";
 import { useOrchestrator } from "../../hooks/useOrchestrator";
 import { AppVersion } from "../App/AppVersion";
+import { Donations } from "../Common/Donations";
 
 export const LockedSettingsModal: React.FC = () => {
   const networkStore = useNetworkStore();
@@ -104,6 +105,7 @@ export const LockedSettingsModal: React.FC = () => {
 
   return (
     <div className="w-full max-w-[600px]">
+      <Donations closeModalKey="settings" />
       <div className="mb-6 flex w-full justify-center md:hidden">
         <ThemeToggle />
       </div>

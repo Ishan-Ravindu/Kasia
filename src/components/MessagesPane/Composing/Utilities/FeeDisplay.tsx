@@ -5,6 +5,7 @@ import { PriorityFeeConfig } from "../../../../types/all";
 import { Attachment } from "../../../../store/message-composer.store";
 import { FeeState } from "../../../../types/all";
 import { useWalletStore } from "../../../../store/wallet.store";
+import { WaitDisplay } from "./WaitDisplay";
 
 // fee levels for color coding
 // need to extract this and make it setable from the settings
@@ -36,29 +37,24 @@ function getFeeClasses(fee: number) {
 }
 
 interface FeeDisplayProps {
-  recipient?: string;
   draft?: string;
   attachment?: Attachment | null;
   feeState: FeeState;
   priority: PriorityFeeConfig;
   onPriorityChange: (priority: PriorityFeeConfig) => void;
-  isBroadcast?: boolean;
 }
 
 // this displayes the fee above the message box and colors it!
 export const FeeDisplay = ({
-  recipient,
   draft,
   attachment,
   feeState,
   priority,
   onPriorityChange,
-  isBroadcast = false,
 }: FeeDisplayProps) => {
   const balance = useWalletStore((state) => state.balance);
-
-  // show fee display when we have either a recipient (for direct messages) or a draft/attachment (for broadcasts)
-  if (!draft || (!isBroadcast && !recipient && !attachment)) {
+  // show fee display when we have content to send: draft or attachment
+  if (!draft && !attachment) {
     return null;
   }
 
@@ -67,6 +63,7 @@ export const FeeDisplay = ({
 
   return (
     <div className="absolute -top-7.5 right-4 flex items-center gap-2">
+      <WaitDisplay estimatedSeconds={priority.estimatedSeconds} />
       <div
         className={clsx(
           "inline-block rounded-md border bg-[var(--secondary-bg)]/20 px-3 py-1 text-right text-xs transition-opacity duration-300 ease-out",
@@ -87,7 +84,6 @@ export const FeeDisplay = ({
                 ? "Fee estimation failed"
                 : "Calculating fee…"}
       </div>
-
       <PriorityFeeSelector
         currentFee={priority}
         onFeeChange={onPriorityChange}

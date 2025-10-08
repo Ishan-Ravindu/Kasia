@@ -1,5 +1,6 @@
 import { FC } from "react";
 import { ThemeToggle } from "../Common/ThemeToggle";
+import { useNavigate } from "react-router";
 
 type Props = {
   isWalletReady: boolean;
@@ -8,9 +9,13 @@ type Props = {
 };
 
 export const Header: FC<Props> = () => {
+  const navigate = useNavigate();
   return (
     <div className="border-primary-border flex items-center justify-between border-b bg-[var(--secondary-bg)] px-8 py-1 text-center select-none">
-      <div className="flex items-center gap-2">
+      <div
+        onClick={() => navigate(`/.`)}
+        className="flex cursor-pointer items-center gap-2"
+      >
         <img
           src="/kasia-logo.png"
           alt="Kasia Logo"

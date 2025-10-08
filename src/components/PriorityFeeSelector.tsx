@@ -64,6 +64,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
           amount: BigInt(parsed.fee.amount ?? "0"),
           source: parsed.fee.source,
           feerate: parsed.fee.feerate,
+          estimatedSeconds: parsed.fee.estimatedSeconds,
         },
         isPersistent: parsed.isPersistent,
         selectedBucket: parsed.selectedBucket,
@@ -90,10 +91,19 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
           parsedSettings.selectedBucket === "Custom"
             ? undefined
             : parsedSettings.fee.feerate,
+        estimatedSeconds:
+          parsedSettings.fee.estimatedSeconds ||
+          feeEstimate?.estimate?.lowBuckets?.[0]?.estimatedSeconds,
       });
     } else {
       // Initialize with Low bucket (0 fee) as default
-      const defaultFee = { amount: BigInt(0), source: FeeSource.SenderPays };
+      const defaultFee: PriorityFeeConfig = {
+        amount: BigInt(0),
+        source: FeeSource.SenderPays,
+        feerate: feeEstimate?.estimate?.lowBuckets?.[0]?.feerate || 1,
+        estimatedSeconds:
+          feeEstimate?.estimate?.lowBuckets?.[0]?.estimatedSeconds,
+      };
       setSettings((prev) => ({
         ...prev,
         fee: defaultFee,
@@ -167,6 +177,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
       amount: BigInt(0), // Let WASM calculate the amount
       source: FeeSource.SenderPays,
       feerate: bucket.feerate,
+      estimatedSeconds: bucket.estimatedSeconds,
     };
 
     console.log(
@@ -185,8 +196,6 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
     if (settings.isPersistent) {
       savePersistentSettings(newFee, true, bucket.label);
     }
-
-    setIsModalOpen(false);
   };
 
   const handleCustomAmountChange = useCallback((value: string) => {
@@ -254,6 +263,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
           amount: fee.amount.toString(),
           source: fee.source,
           feerate: fee.feerate,
+          estimatedSeconds: fee.estimatedSeconds,
         },
         isPersistent,
         selectedBucket,
@@ -334,7 +344,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
                     "flex w-full cursor-pointer items-center justify-between rounded-lg border p-2 px-4 transition-all duration-200 hover:bg-[var(--primary-bg)]/50 active:rounded-4xl",
                     settings.selectedBucket === bucket.label
                       ? "border-[var(--kas-secondary)] bg-[var(--primary-bg)]/80"
-                      : "border-[var(--border-color)] bg-[var(--primary-bg)]"
+                      : "border-[var(--secondary-border)] bg-[var(--primary-bg)]"
                   )}
                 >
                   <div className="flex flex-col text-start">
@@ -345,15 +355,15 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
                       {bucket.description}
                     </div>
                     {bucket.estimatedSeconds && (
-                      <div className="mt-1 text-xs text-[var(--text-secondary)]">
-                        {formatTime(bucket.estimatedSeconds)}
+                      <div className="mt-1 text-xs font-semibold text-[var(--text-secondary)]">
+                        {formatTime(bucket.estimatedSeconds)} wait
                       </div>
                     )}
                   </div>
                   <div className="text-sm whitespace-nowrap text-[var(--accent-green)]">
                     {bucket.feerate === 1
                       ? "Base fee"
-                      : `${bucket.feerate}x fee rate`}
+                      : `${bucket.feerate?.toFixed(2)}x fee rate`}
                   </div>
                 </button>
               ))}
@@ -382,31 +392,42 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
               )}
 
               {/* Remember choice option */}
-              <div className="my-4 flex items-center gap-2">
-                <Switch
-                  checked={settings.isPersistent}
-                  onChange={togglePersistence}
-                  className={clsx(
-                    "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
-                    {
-                      "bg-kas-secondary": settings.isPersistent,
-                      "bg-gray-300": !settings.isPersistent,
-                    }
-                  )}
-                >
-                  <span
+              <div className="my-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={settings.isPersistent}
+                    onChange={togglePersistence}
                     className={clsx(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
                       {
-                        "translate-x-6": settings.isPersistent,
-                        "translate-x-1": !settings.isPersistent,
+                        "bg-kas-secondary": settings.isPersistent,
+                        "bg-gray-300": !settings.isPersistent,
                       }
                     )}
-                  />
-                </Switch>
-                <label className="text-sm text-[var(--text-secondary)]">
-                  Remember my choice
-                </label>
+                  >
+                    <span
+                      className={clsx(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        {
+                          "translate-x-6": settings.isPersistent,
+                          "translate-x-1": !settings.isPersistent,
+                        }
+                      )}
+                    />
+                  </Switch>
+                  <label className="text-sm text-[var(--text-secondary)]">
+                    Remember my choice
+                  </label>
+                </div>
+                <div className="w-1/4">
+                  <Button
+                    variant="secondary"
+                    className="w-full px-3! py-1! sm:py-2!"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
