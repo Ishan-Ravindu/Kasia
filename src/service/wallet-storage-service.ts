@@ -35,67 +35,6 @@ export class WalletStorageService {
     }
   }
 
-  /**
-   * Helper function to get bytes from a private key. Will try several common methods
-   * found in different wallet implementations to extract the raw bytes.
-   *
-   * @param privateKey - The private key object to extract bytes from
-   * @returns Uint8Array of the private key bytes, or null if no method succeeded
-   */
-  static getPrivateKeyBytes(privateKey: unknown): Uint8Array | null {
-    try {
-      if (!(typeof privateKey === "object") || privateKey === null) {
-        return null;
-      }
-      // Try method 1: secret_bytes (used by k256 library)
-      if (
-        "secret_bytes" in privateKey &&
-        typeof privateKey.secret_bytes === "function"
-      ) {
-        return privateKey.secret_bytes();
-      }
-
-      // Try method 2: to_bytes (common in some wallet implementations)
-      if (
-        "to_bytes" in privateKey &&
-        typeof privateKey.to_bytes === "function"
-      ) {
-        return privateKey.to_bytes();
-      }
-
-      // Try method 3: bytes (seen in some implementations)
-      if ("bytes" in privateKey && typeof privateKey.bytes === "function") {
-        return privateKey.bytes();
-      }
-
-      // Try method 4: serialized bytes
-      if (
-        "serialize" in privateKey &&
-        typeof privateKey.serialize === "function"
-      ) {
-        return privateKey.serialize();
-      }
-
-      // If all else fails but we have a toString method that gives hex,
-      // try to convert it to bytes
-      if (typeof privateKey.toString === "function") {
-        const hexString = privateKey.toString();
-        if (hexString && hexString.match(/^[0-9a-fA-F]+$/)) {
-          return new Uint8Array(
-            hexString
-              .match(/.{1,2}/g)
-              ?.map((byte: string) => parseInt(byte, 16)) || []
-          );
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error getting private key bytes:", error);
-      return null;
-    }
-  }
-
   getWalletList(): {
     id: string;
     name: string;
