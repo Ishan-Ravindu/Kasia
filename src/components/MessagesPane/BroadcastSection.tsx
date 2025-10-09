@@ -89,7 +89,7 @@ export const BroadcastSection: FC<{
     >
       {/* Channel header */}
       <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4">
-        <div className="flex items-center">
+        <div className="flex min-w-0 flex-1 items-center">
           <button
             onClick={() => {
               setMobileView("contacts");
@@ -99,7 +99,10 @@ export const BroadcastSection: FC<{
           >
             <ChevronLeft className="size-6" />
           </button>
-          <h3 className="truncate text-base font-semibold">
+          <h3
+            className="truncate text-base font-semibold"
+            title={`# ${selectedChannel?.channelName}`}
+          >
             # {selectedChannel?.channelName}
           </h3>
         </div>
