@@ -3,6 +3,7 @@ import { useDBStore } from "./db.store";
 import { BroadcastChannel } from "./repository/broadcast-channel.repository";
 import { v4 } from "uuid";
 import { useFeatureFlagsStore, FeatureFlags } from "./featureflag.store";
+import { validateAndNormalizeChannelName } from "../utils/channel-validator";
 
 export type BroadcastMessage = {
   id: string;
@@ -84,8 +85,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
     try {
       const repositories = useDBStore.getState().repositories;
 
-      const normalizedName = normalizeChannel(channelName);
-      if (!normalizedName) throw new Error("Invalid channel name");
+      const normalizedName = validateAndNormalizeChannelName(channelName);
 
       // check if channel already exists
       const existingChannel = get().channels.find(
@@ -116,8 +116,7 @@ export const useBroadcastStore = create<BroadcastState>((set, get) => ({
   deleteChannel: async (channelName: string) => {
     try {
       const repositories = useDBStore.getState().repositories;
-      const normalizedName = normalizeChannel(channelName);
-      if (!normalizedName) throw new Error("Invalid channel name");
+      const normalizedName = validateAndNormalizeChannelName(channelName);
 
       await repositories.broadcastChannelRepository.deleteBroadcastChannelByName(
         normalizedName

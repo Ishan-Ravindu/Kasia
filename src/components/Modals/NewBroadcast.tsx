@@ -3,8 +3,8 @@ import { Button } from "../Common/Button";
 import { useBroadcastStore } from "../../store/broadcast.store";
 import { toast } from "../../utils/toast-helper";
 import clsx from "clsx";
-
-const MAX_BROADCAST_LENGTH = 20;
+import { MAX_BROADCAST_CHANNEL_NAME } from "../../config/constants";
+import { validateChannelName } from "../../utils/channel-validator";
 
 interface NewBroadcast {
   onClose: () => void;
@@ -39,22 +39,10 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
     await handleAdd();
   };
 
-  const validateInput = (value: string): string | null => {
-    if (!value.trim()) {
-      return "Channel name cannot be empty";
-    }
-    if (value.length > MAX_BROADCAST_LENGTH) {
-      return `Channel name cannot exceed ${MAX_BROADCAST_LENGTH} characters`;
-    }
-    if (value.includes(" ")) {
-      return "Channel name cannot contain spaces";
-    }
-    return null;
-  };
   const handleAdd = async () => {
-    const validationError = validateInput(inputValue);
-    if (validationError) {
-      setError(validationError);
+    const validation = validateChannelName(inputValue);
+    if (!validation.isValid) {
+      setError(validation.error || "Invalid channel name");
       return;
     }
 
@@ -75,11 +63,7 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
     }
   };
 
-  const isInputValid =
-    !error &&
-    inputValue.trim().length > 0 &&
-    inputValue.length <= MAX_BROADCAST_LENGTH &&
-    !inputValue.includes(" ");
+  const isInputValid = validateChannelName(inputValue).isValid && !error;
   return (
     <div className="w-full">
       <div className="mb-4">
@@ -97,11 +81,11 @@ export const NewBroadcast: React.FC<NewBroadcast> = ({ onClose }) => {
                 value={inputValue}
                 onChange={handleInputChange}
                 placeholder="Name your channel to tune in to (e.g. general)"
-                maxLength={MAX_BROADCAST_LENGTH}
+                maxLength={MAX_BROADCAST_CHANNEL_NAME}
                 className="border-primary-border bg-primary-bg w-full cursor-text items-center rounded-lg border px-3 py-2 transition-colors focus:ring-2 focus:ring-[var(--kas-primary)] focus:outline-none"
               />
               <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                {inputValue.length}/{MAX_BROADCAST_LENGTH} characters
+                {inputValue.length}/{MAX_BROADCAST_CHANNEL_NAME} characters
               </p>
             </div>
 

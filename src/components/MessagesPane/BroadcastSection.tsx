@@ -89,7 +89,7 @@ export const BroadcastSection: FC<{
     >
       {/* Channel header */}
       <div className="flex h-[60px] items-center justify-between bg-[var(--secondary-bg)] px-4">
-        <div className="flex items-center">
+        <div className="flex min-w-0 flex-1 items-center">
           <button
             onClick={() => {
               setMobileView("contacts");
@@ -99,13 +99,18 @@ export const BroadcastSection: FC<{
           >
             <ChevronLeft className="size-6" />
           </button>
-          <h3 className="truncate text-base font-semibold">
+          <h3
+            className="truncate text-base font-semibold"
+            title={`# ${selectedChannel?.channelName}`}
+          >
             # {selectedChannel?.channelName}
           </h3>
         </div>
-        <div className="text-accent-yellow flex items-center gap-0.5 text-right sm:gap-1">
-          <span className="text-xs sm:text-sm">Broadcasts are Unencrypted</span>
-          <AlertTriangle className="ms-2 size-6 sm:ms-4 sm:size-7" />
+        <div className="text-accent-yellow flex items-center gap-2 text-right">
+          <span className="text-sm font-semibold sm:text-base">
+            Unencrypted
+          </span>
+          <AlertTriangle className="size-6 flex-shrink-0 sm:size-7" />
         </div>
       </div>
 
