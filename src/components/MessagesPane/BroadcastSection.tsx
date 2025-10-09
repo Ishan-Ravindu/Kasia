@@ -106,9 +106,11 @@ export const BroadcastSection: FC<{
             # {selectedChannel?.channelName}
           </h3>
         </div>
-        <div className="text-accent-yellow flex items-center gap-0.5 text-right sm:gap-1">
-          <span className="text-xs sm:text-sm">Broadcasts are Unencrypted</span>
-          <AlertTriangle className="ms-2 size-6 sm:ms-4 sm:size-7" />
+        <div className="text-accent-yellow flex items-center gap-2 text-right">
+          <span className="text-sm font-semibold sm:text-base">
+            Unencrypted
+          </span>
+          <AlertTriangle className="size-6 flex-shrink-0 sm:size-7" />
         </div>
       </div>
 
