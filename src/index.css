@@ -115,6 +115,18 @@ input[type="password"]::-webkit-reveal-button {
   }
 }
 
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(40%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @layer utilities {
   /* extra helper classes to account for mobile safe areas */
   .p-safe {

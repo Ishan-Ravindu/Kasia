@@ -9,12 +9,7 @@ export type Toast = {
   message: string;
 };
 
-const DEFAULT_TIMEOUTS: Record<ToastType, number> = {
-  success: 5000,
-  error: 10000,
-  info: 5000,
-  warning: 5000,
-};
+const DEFAULT_TIMEOUT: number = 5000;
 
 type ToastStore = {
   toasts: Toast[];
@@ -36,9 +31,10 @@ export const useToastStore = create<ToastStore>((set) => ({
   add: (type, message, timeout) => {
     const id = generateId();
     const newToast = { id, type, message };
-    const effectiveTimeout = timeout ?? DEFAULT_TIMEOUTS[type];
+    const effectiveTimeout = timeout ?? DEFAULT_TIMEOUT;
 
-    set((state) => ({ toasts: [...state.toasts, newToast] }));
+    // add new toast at the front
+    set((state) => ({ toasts: [newToast, ...state.toasts] }));
 
     // store the timeout ID so we can cancel it later
     const timeoutId = setTimeout(() => {
