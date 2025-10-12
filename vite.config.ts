@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig, PluginOption } from "vite";
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import { sri } from "vite-plugin-sri3";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -19,26 +19,21 @@ const config = defineConfig({
     // mock kaspa wasm and cipher globally
     setupFiles: ["src/vitest.setup.ts"],
   },
-  plugins: [
-    react({
-      babel: {
-        plugins: [
-          [
-            "babel-plugin-react-compiler",
-            {
-              panicThreshold: "none",
-            },
-          ],
-        ],
-      },
-    }),
-  ],
+  plugins: [react({})],
   server: {
     port: 3000,
     host: host || "0.0.0.0",
     strictPort: true,
     watch: {
-      ignored: ["**/*.test*"],
+      ignored: [
+        "**/*.test*",
+        "**/dist/**",
+        "**/.cache/**",
+        "**/coverage/**",
+        "**/*.log",
+        "**/vendors/**",
+        "**/src-tauri/**",
+      ],
     },
   },
   build: {
@@ -48,6 +43,18 @@ const config = defineConfig({
   esbuild: {
     keepNames: true,
   },
+  optimizeDeps: {
+    entries: ["src/main.tsx"],
+    include: [
+      "react",
+      "react-dom",
+      "react-router",
+      "zustand",
+      "@tauri-apps/api",
+    ],
+    exclude: ["../wasm/kaspa.js", "../cipher-wasm/cipher.js"],
+  },
+  css: { devSourcemap: false },
 });
 
 const webPlugins: PluginOption[] = [
@@ -79,6 +86,7 @@ const webPlugins: PluginOption[] = [
       // 14 mb
       maximumFileSizeToCacheInBytes: 14000000,
     },
+    devOptions: { enabled: false },
   }),
 ];
 
