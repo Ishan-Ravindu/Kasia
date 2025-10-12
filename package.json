@@ -56,7 +56,6 @@
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.4",
     "@types/uuid": "^10.0.0",
-    "@vitejs/plugin-react": "^4.5.1",
     "@vitejs/plugin-react-swc": "^4.1.0",
     "@vitest/browser": "^3.2.4",
     "autoprefixer": "^10.4.21",
