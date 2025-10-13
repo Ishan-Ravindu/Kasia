@@ -194,7 +194,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
                     leaveFrom="opacity-100 translate-y-0"
                     leaveTo="opacity-0 translate-y-1"
                   >
-                    <PopoverPanel className="bg-secondary-bg absolute bottom-full left-0 mb-2 flex flex-col gap-2 rounded p-2 shadow-lg">
+                    <PopoverPanel className="bg-secondary-bg absolute bottom-full left-0 z-30 mb-2 flex flex-col gap-2 rounded p-2 shadow-lg">
                       <button
                         onClick={() => {
                           openFileDialog();
