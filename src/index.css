@@ -68,6 +68,20 @@
   --color-kas-primary: var(--kas-primary);
   --color-kas-secondary: var(--kas-secondary);
   --color-text-warning: var(--text-warning);
+
+  --animate-slide: slideInFromRight 0.5s ease-out;
+
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(40%);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 }
 
 /* we need this to assist with splash > loaded app transition. Its our css limit */
@@ -112,18 +126,6 @@ input[type="password"]::-webkit-reveal-button {
 
   to {
     opacity: 1;
-  }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(40%);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
   }
 }
 

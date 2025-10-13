@@ -68,9 +68,7 @@ export function ToastContainer() {
               remove(toast.id);
             }}
             className={clsx(
-              "absolute right-0 flex w-[90vw] items-center gap-2 overflow-hidden rounded-xl px-4 py-3 text-sm wrap-anywhere shadow-lg transition-transform duration-300 sm:w-96",
-              // slide in animation
-              "animate-[slideInFromRight_0.3s_ease-out]",
+              "animate-slide absolute right-0 flex w-[90vw] items-center gap-2 overflow-hidden rounded-xl px-4 py-3 text-sm wrap-anywhere shadow-lg transition-transform duration-300 sm:w-96",
               // toast colors
               getToastTypeClasses(toast.type),
               // since we only show 3 toasts, disable click on the rest
