@@ -29,11 +29,6 @@ export const RootLayout: FC = () => {
     navigate("/");
   };
 
-  // when navigation changes, remove ALL toast notifications
-  useEffect(() => {
-    toast.removeAll();
-  }, [location]);
-
   return (
     <>
       <ToastContainer />

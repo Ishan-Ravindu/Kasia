@@ -47,9 +47,7 @@ export const ModeSelector: FC<ModeSelectorProps> = ({
       const selectedMode = modes.find((mode) => mode.value === newMode);
 
       onModeChange(newMode);
-      setTimeout(() => {
-        toast.info(`Switched to ${selectedMode?.displayableString}`);
-      }, 100);
+      toast.info(`Switched to ${selectedMode?.displayableString}`);
     };
 
     return (
