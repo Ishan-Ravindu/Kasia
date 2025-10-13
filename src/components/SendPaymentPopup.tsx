@@ -11,6 +11,7 @@ import { toast } from "../utils/toast-helper";
 import { KasiaTransaction } from "../types/all";
 import { PROTOCOL } from "../config/protocol";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { XIcon } from "lucide-react";
 
 export const SendPaymentPopup: FC<{
   address: string;
@@ -262,6 +263,14 @@ export const SendPaymentPopup: FC<{
               : "absolute bottom-full left-0 z-50 mt-3 mb-20 w-full min-w-[320px] translate-y-2/5 sm:translate-y-1/2"
           )}
         >
+          <button
+            className={!isMobile ? "hidden" : "absolute top-2 right-2"}
+            onClick={() => setPanelOpen((open) => !open)}
+          >
+            <XIcon className="cursor-pointer" />
+            <span className="-inset-3pointer-fine:hidden absolute" />
+          </button>
+
           <div className="mb-3 flex items-center justify-between">
             <h4 className="text-sm font-medium text-[var(--text-primary)]">
               Send Payment

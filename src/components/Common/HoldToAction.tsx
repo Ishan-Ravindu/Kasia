@@ -132,11 +132,7 @@ export const HoldToAction: FC<HoldToActionProps> = ({
       releaseEvent.stopPropagation();
 
       // only trigger short press if animation never started and not completed
-      if (
-        !completedRef.current &&
-        !animationStartedRef.current &&
-        animationDelay > 0
-      ) {
+      if (!completedRef.current && !animationStartedRef.current) {
         onShortPress?.();
       }
 
