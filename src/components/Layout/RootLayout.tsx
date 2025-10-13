@@ -1,5 +1,5 @@
-import { FC, useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router";
+import { FC } from "react";
+import { Outlet, useNavigate } from "react-router";
 import { useWalletStore } from "../../store/wallet.store";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { Header } from "../Layout/Header";
@@ -7,7 +7,6 @@ import { SlideOutMenu } from "../Layout/SlideOutMenu";
 
 import { ToastContainer } from "../Common/ToastContainer";
 import { useUiStore } from "../../store/ui.store";
-import { toast } from "../../utils/toast-helper";
 import { ResizableAppContainer } from "./ResizableAppContainer";
 import { ModalHost } from "./ModalHost";
 
@@ -19,7 +18,6 @@ export const RootLayout: FC = () => {
   const isMobile = useIsMobile();
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleCloseWallet = () => {
     // close settings panel

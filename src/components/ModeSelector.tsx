@@ -47,7 +47,7 @@ export const ModeSelector: FC<ModeSelectorProps> = ({
       const selectedMode = modes.find((mode) => mode.value === newMode);
 
       onModeChange(newMode);
-      toast.info(`Switched to ${selectedMode?.displayableString}`);
+      toast.info(`Switched to ${selectedMode?.displayableString}`, 1200);
     };
 
     return (
