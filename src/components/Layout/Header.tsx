@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { ThemeToggle } from "../Common/ThemeToggle";
 import { useNavigate } from "react-router";
+import { ConnectionIndicator } from "../Common/ConnectionIndicator";
 
 type Props = {
   isWalletReady: boolean;
@@ -27,6 +28,7 @@ export const Header: FC<Props> = () => {
       </div>
 
       <div className="flex items-center gap-4">
+        <ConnectionIndicator />
         <ThemeToggle />
       </div>
     </div>
