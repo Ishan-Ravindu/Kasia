@@ -14,6 +14,7 @@ import {
 } from "../store/repository/conversation.repository";
 import { Contact } from "../store/repository/contact.repository";
 import { Handshake } from "../store/repository/handshake.repository";
+import { useBlocklistStore } from "../store/blocklist.store";
 
 export class ConversationManagerService {
   private static readonly STORAGE_KEY_PREFIX = "encrypted_conversations";
@@ -168,6 +169,15 @@ export class ConversationManagerService {
     payload: HandshakePayload
   ): Promise<unknown> {
     try {
+      // check if sender is blocked before processing handshake
+      const blocklistStore = useBlocklistStore.getState();
+      if (blocklistStore.isBlocked(senderAddress)) {
+        console.log(
+          `Conversation Manager - Rejecting handshake from blocked address: ${senderAddress}`
+        );
+        return; // don't process handshakes from blocked addresses
+      }
+
       // STEP 1 – look up strictly by sender address only
       const existingConversationAndContactByAddress =
         this.getConversationWithContactByAddress(senderAddress);
@@ -435,6 +445,13 @@ export class ConversationManagerService {
     recipientAddress: string,
     initiatedByMe: boolean
   ): Promise<{ conversation: Conversation; contact: Contact }> {
+    // prevent creating conversations with blocked addresses
+    if (this.isAddressBlocked(recipientAddress)) {
+      throw new Error(
+        `Cannot create conversation with blocked address: ${recipientAddress}`
+      );
+    }
+
     const contact = await this.repositories.contactRepository
       .getContactByKaspaAddress(recipientAddress)
       .catch(async (error) => {
@@ -482,6 +499,13 @@ export class ConversationManagerService {
     payload: SavedHandshakePayload,
     transactionId: string
   ): Promise<{ conversation: Conversation; contact: Contact }> {
+    // check if address is blocked before processing
+    if (this.isAddressBlocked(payload.recipientAddress)) {
+      throw new Error(
+        `Cannot hydrate blocked address: ${payload.recipientAddress}`
+      );
+    }
+
     const contact = await this.repositories.contactRepository
       .getContactByKaspaAddress(payload.recipientAddress)
       .catch(async (error) => {
@@ -580,11 +604,15 @@ export class ConversationManagerService {
   }
 
   private isValidKaspaAddress(address: string): boolean {
-    // Check for both mainnet and testnet address formats
+    // check for both mainnet and testnet address formats
     return (
       (address.startsWith("kaspa:") || address.startsWith("kaspatest:")) &&
       address.length > 10
     );
+  }
+
+  private isAddressBlocked(address: string): boolean {
+    return useBlocklistStore.getState().isBlocked(address);
   }
 
   /**
@@ -595,6 +623,12 @@ export class ConversationManagerService {
     payload: HandshakePayload,
     senderAddress: string
   ) {
+    // ignore handshakes from blocked addresses
+    if (this.isAddressBlocked(senderAddress)) {
+      console.log(`Ignoring handshake from blocked address: ${senderAddress}`);
+      return;
+    }
+
     const isMyNewAliasValid = isAlias(payload.theirAlias);
 
     const myAlias = this.generateUniqueAlias();
@@ -778,7 +812,14 @@ export class ConversationManagerService {
     ourAliasForPartner: string,
     theirAliasForUs: string
   ): Promise<{ conversationId: string; contactId: string }> {
-    // Check if contact already exists - for offline handshakes, we should only create new contacts
+    // prevent creating offline handshakes with blocked addresses
+    if (this.isAddressBlocked(partnerAddress)) {
+      throw new Error(
+        `Cannot create handshake with blocked address: ${partnerAddress}`
+      );
+    }
+
+    // check if contact already exists - for offline handshakes, we should only create new contacts
     let contact: Contact;
     try {
       await this.repositories.contactRepository.getContactByKaspaAddress(
@@ -787,7 +828,7 @@ export class ConversationManagerService {
       throw new Error(`Cannot create handshake. Contact already exists.`);
     } catch (error) {
       if (error instanceof DBNotFoundException) {
-        // Contact doesn't exist, create a new one
+        // contact doesn't exist, create a new one
         const newContact = {
           id: uuidv4(),
           kaspaAddress: partnerAddress,

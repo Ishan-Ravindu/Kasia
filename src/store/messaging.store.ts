@@ -49,6 +49,7 @@ import {
   importData,
 } from "../service/import-export-service";
 import { useNetworkStore } from "./network.store";
+import { useBlocklistStore } from "./blocklist.store";
 import { historicalLoader_loadSendAndReceivedHandshake } from "../utils/historical-loader";
 
 interface MessagingState {
@@ -446,6 +447,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
     },
     hydrateOneonOneConversations: async () => {
       const repositories = useDBStore.getState().repositories;
+      const blocklistStore = useBlocklistStore.getState();
 
       const conversationWithContacts =
         g().conversationManager?.getAllConversationsWithContact();
@@ -454,18 +456,25 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         return;
       }
 
-      const oneOnOneConversationPromises = conversationWithContacts.map(
-        async ({
-          contact,
-          conversation,
-        }): Promise<OneOnOneConversation | null> => {
-          const events = await repositories.getKasiaEventsByConversationId(
-            conversation.id
-          );
-
-          return { conversation, contact, events };
-        }
+      // filter out blocked contacts before hydrating
+      const unBlockedConversationWithContacts = conversationWithContacts.filter(
+        ({ contact }) =>
+          !blocklistStore.blockedAddresses.has(contact.kaspaAddress)
       );
+
+      const oneOnOneConversationPromises =
+        unBlockedConversationWithContacts.map(
+          async ({
+            contact,
+            conversation,
+          }): Promise<OneOnOneConversation | null> => {
+            const events = await repositories.getKasiaEventsByConversationId(
+              conversation.id
+            );
+
+            return { conversation, contact, events };
+          }
+        );
       const oneOnOneConversations = await Promise.all(
         oneOnOneConversationPromises
       );
@@ -519,6 +528,15 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
           const participantAddress = isFromMe
             ? transaction.recipientAddress
             : transaction.senderAddress;
+
+          // check if participant is blocked - skip processing
+          const blocklistStore = useBlocklistStore.getState();
+          if (blocklistStore.blockedAddresses.has(participantAddress)) {
+            console.log(
+              `Skipping transaction from blocked address: ${participantAddress}`
+            );
+            continue;
+          }
 
           if (
             await repositories.doesKasiaEventExistsById(
@@ -953,6 +971,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         repositories.handshakeRepository.deleteTenant(walletTenant),
         repositories.messageRepository.deleteTenant(walletTenant),
         repositories.savedHandshakeRepository.deleteTenant(walletTenant),
+        repositories.blockedAddressRepository.deleteTenant(walletTenant),
       ]);
 
       // 3. Reset metadata
@@ -964,6 +983,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         openedRecipient: null,
         isCreatingNewChat: false,
       });
+
+      useBlocklistStore.getState().reset();
 
       // 5. Clear and reinitialize conversation manager
       const manager = g().conversationManager;
@@ -1002,6 +1023,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       await g()?.conversationManager?.loadConversations();
       await g().hydrateOneonOneConversations();
+
+      await useBlocklistStore.getState().loadBlockedAddresses();
     },
     conversationManager: null,
     initiateHandshake: async (
