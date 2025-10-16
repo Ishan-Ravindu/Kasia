@@ -82,6 +82,18 @@
       transform: translateX(0);
     }
   }
+
+  --animate-fade-out-5s: fadeOut5s 5s ease-in-out forwards;
+
+  @keyframes fadeOut5s {
+    from {
+      opacity: 1;
+    }
+
+    to {
+      opacity: 0;
+    }
+  }
 }
 
 /* we need this to assist with splash > loaded app transition. Its our css limit */

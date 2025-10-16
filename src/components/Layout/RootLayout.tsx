@@ -9,6 +9,7 @@ import { ToastContainer } from "../Common/ToastContainer";
 import { useUiStore } from "../../store/ui.store";
 import { ResizableAppContainer } from "./ResizableAppContainer";
 import { ModalHost } from "./ModalHost";
+import { ConnectionIndicator } from "../Common/ConnectionIndicator";
 
 export const RootLayout: FC = () => {
   const walletStore = useWalletStore();
@@ -43,11 +44,16 @@ export const RootLayout: FC = () => {
 
         {/* mobile drawer */}
         {isMobile && (
-          <SlideOutMenu
-            isWalletReady={isWalletReady}
-            address={walletStore.address?.toString()}
-            onCloseWallet={handleCloseWallet}
-          />
+          <>
+            <div className="absolute top-4 left-1/2 z-100 -translate-x-1/2">
+              <ConnectionIndicator />
+            </div>
+            <SlideOutMenu
+              isWalletReady={isWalletReady}
+              address={walletStore.address?.toString()}
+              onCloseWallet={handleCloseWallet}
+            />
+          </>
         )}
 
         <Outlet />
