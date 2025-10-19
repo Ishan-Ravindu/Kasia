@@ -6,7 +6,6 @@ import { Button } from "../Common/Button";
 import { useUiStore } from "../../store/ui.store";
 import { ThemeToggle } from "../Common/ThemeToggle";
 import { Shield, ArrowLeft, Coffee, Check } from "lucide-react";
-import { Checkbox } from "@headlessui/react";
 import { devMode } from "../../config/dev-mode";
 import { deleteDB } from "idb";
 import { useDBStore } from "../../store/db.store";
@@ -316,19 +315,22 @@ export const LockedSettingsModal: React.FC = () => {
           </div>
 
           <div className="my-2 flex items-center gap-2">
-            <label className="flex cursor-pointer items-center gap-2">
-              <Checkbox
+            <label
+              htmlFor="indexer-disabled-checkbox"
+              className="flex cursor-pointer items-center gap-2"
+            >
+              <input
+                id="indexer-disabled-checkbox"
+                type="checkbox"
                 checked={indexerDisabled}
-                onChange={handleIndexerDisabledChange}
-                className="group data-[checked]:bg-kas-secondary data-[checked]:border-kas-secondary border-secondary-border size-4 cursor-pointer rounded border bg-[var(--input-bg)]"
-              >
-                <Check
-                  className="opacity-0 group-data-[checked]:opacity-100"
-                  size={12}
-                  color="white"
-                />
-              </Checkbox>
-              <span className="text-sm">
+                onChange={(e) => handleIndexerDisabledChange(e.target.checked)}
+                className="border-secondary-border checked:bg-kas-secondary checked:border-kas-secondary focus:ring-kas-secondary/50 relative size-4 cursor-pointer appearance-none rounded border bg-[var(--input-bg)] focus:ring-2 focus:outline-none"
+              />
+              <Check
+                className={`absolute mt-0.5 ml-0.5 size-3 text-[var(--text-secondary)] transition-opacity ${indexerDisabled ? "opacity-100" : "opacity-0"}`}
+                size={12}
+              />
+              <span className="text-sm select-none">
                 Disable indexer (prevents loading historical data)
               </span>
             </label>
