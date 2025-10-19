@@ -1,5 +1,7 @@
 const INDEXER_DISABLED_KEY = "kasia_indexer_disabled";
 const INDEXER_URL_KEY = "kasia_indexer_url";
+const INDEXER_CONNECTION_MODE_KEY = "kasia_indexer_connection_mode";
+const NODE_CONNECTION_MODE_KEY = "kasia_node_connection_mode";
 
 // gets whether the indexer is disabled.
 // checks localStorage. Defaults to false (enabled) if no value is set.
@@ -25,4 +27,37 @@ export function setIndexerUrl(url: string | null): void {
   } else {
     localStorage.removeItem(INDEXER_URL_KEY);
   }
+}
+
+// gets the indexer connection mode from localStorage.
+// defaults to "auto" if no value is set.
+export function getIndexerConnectionMode(): "auto" | "manual" {
+  const localStorageValue = localStorage.getItem(INDEXER_CONNECTION_MODE_KEY);
+  return localStorageValue === "manual" ? "manual" : "auto";
+}
+
+// sets the indexer connection mode in localStorage.
+export function setIndexerConnectionMode(mode: "auto" | "manual"): void {
+  localStorage.setItem(INDEXER_CONNECTION_MODE_KEY, mode);
+}
+
+// gets the node connection mode from localStorage.
+// defaults to "auto" if no value is set.
+export function getNodeConnectionMode(): "auto" | "manual" {
+  const localStorageValue = localStorage.getItem(NODE_CONNECTION_MODE_KEY);
+  return localStorageValue === "manual" ? "manual" : "auto";
+}
+
+// sets the node connection mode in localStorage.
+export function setNodeConnectionMode(mode: "auto" | "manual"): void {
+  localStorage.setItem(NODE_CONNECTION_MODE_KEY, mode);
+}
+
+// checks if any connection settings have been overridden from defaults
+export function hasOverriddenSettings(): boolean {
+  return (
+    getNodeConnectionMode() === "manual" ||
+    getIndexerConnectionMode() === "manual" ||
+    isIndexerDisabled()
+  );
 }

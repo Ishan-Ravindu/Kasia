@@ -18,6 +18,10 @@ import {
   setIndexerDisabled,
   getIndexerUrl,
   setIndexerUrl,
+  getIndexerConnectionMode,
+  setIndexerConnectionMode,
+  getNodeConnectionMode,
+  setNodeConnectionMode,
 } from "../../utils/indexer-settings";
 
 export const LockedSettingsModal: React.FC = () => {
@@ -50,11 +54,21 @@ export const LockedSettingsModal: React.FC = () => {
   const [showDevSettings, setShowDevSettings] = useState(false);
 
   // connection modes
-  const [nodeConnectionMode, setNodeConnectionMode] = useState<ConnectionMode>(
-    networkStore.nodeUrl ? "manual" : "auto"
-  );
-  const [indexerConnectionMode, setIndexerConnectionMode] =
-    useState<ConnectionMode>(getIndexerUrl() ? "manual" : "auto");
+  const [nodeConnectionMode, setNodeConnectionModeState] =
+    useState<ConnectionMode>(getNodeConnectionMode());
+  const [indexerConnectionMode, setIndexerConnectionModeState] =
+    useState<ConnectionMode>(getIndexerConnectionMode());
+
+  // wrapper functions that update both state and localStorage
+  const updateNodeConnectionMode = (mode: ConnectionMode) => {
+    setNodeConnectionModeState(mode);
+    setNodeConnectionMode(mode);
+  };
+
+  const updateIndexerConnectionMode = (mode: ConnectionMode) => {
+    setIndexerConnectionModeState(mode);
+    setIndexerConnectionMode(mode);
+  };
 
   const [indexerUrl, setIndexerUrlState] = useState(getIndexerUrl() || "");
 
@@ -69,6 +83,11 @@ export const LockedSettingsModal: React.FC = () => {
   const handleIndexerDisabledChange = (disabled: boolean) => {
     setIndexerDisabled(disabled);
     setIndexerDisabledState(disabled);
+
+    // when disabling indexer, automatically switch to AUTO mode
+    if (disabled) {
+      updateIndexerConnectionMode("auto");
+    }
   };
 
   const handleIndexerUrlSave = () => {
@@ -147,7 +166,7 @@ export const LockedSettingsModal: React.FC = () => {
               <div className="text-left">
                 <div className="text-sm font-medium">Node Settings</div>
                 <div className="text-muted-foreground text-xs">
-                  Configure custom node URLs for networks
+                  Configure custom node URLs for kaspa network connection
                 </div>
               </div>
             </button>
@@ -214,24 +233,24 @@ export const LockedSettingsModal: React.FC = () => {
               <div className="flex justify-center gap-2">
                 <button
                   onClick={() => {
-                    setNodeConnectionMode("auto");
+                    updateNodeConnectionMode("auto");
                     setNodeUrl("");
                     networkStore.setNodeUrl(null);
                   }}
                   className={`cursor-pointer rounded-lg border px-4 py-2 transition-all duration-200 ${
                     nodeConnectionMode === "auto"
                       ? "bg-kas-secondary border-kas-secondary text-[var(--text-primary)] shadow-md"
-                      : "border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
+                      : "border-secondary-border bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
                   }`}
                 >
                   Auto
                 </button>
                 <button
-                  onClick={() => setNodeConnectionMode("manual")}
+                  onClick={() => updateNodeConnectionMode("manual")}
                   className={`cursor-pointer rounded-lg border px-4 py-2 transition-all duration-200 ${
                     nodeConnectionMode === "manual"
                       ? "bg-kas-secondary border-kas-secondary text-[var(--text-primary)] shadow-md"
-                      : "border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
+                      : "border-secondary-border bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
                   }`}
                 >
                   Manual
@@ -297,20 +316,21 @@ export const LockedSettingsModal: React.FC = () => {
           </div>
 
           <div className="my-2 flex items-center gap-2">
-            <Checkbox
-              id="indexer-disabled"
-              checked={indexerDisabled}
-              onChange={handleIndexerDisabledChange}
-              className="group data-[checked]:bg-kas-secondary data-[checked]:border-kas-secondary size-4 cursor-pointer rounded border border-[var(--border-color)] bg-[var(--input-bg)]"
-            >
-              <Check
-                className="opacity-0 group-data-[checked]:opacity-100"
-                size={12}
-                color="white"
-              />
-            </Checkbox>
-            <label htmlFor="indexer-disabled" className="text-sm">
-              Disable indexer (prevents loading historical data)
+            <label className="flex cursor-pointer items-center gap-2">
+              <Checkbox
+                checked={indexerDisabled}
+                onChange={handleIndexerDisabledChange}
+                className="group data-[checked]:bg-kas-secondary data-[checked]:border-kas-secondary border-secondary-border size-4 cursor-pointer rounded border bg-[var(--input-bg)]"
+              >
+                <Check
+                  className="opacity-0 group-data-[checked]:opacity-100"
+                  size={12}
+                  color="white"
+                />
+              </Checkbox>
+              <span className="text-sm">
+                Disable indexer (prevents loading historical data)
+              </span>
             </label>
           </div>
 
@@ -322,7 +342,7 @@ export const LockedSettingsModal: React.FC = () => {
                   disabled={indexerDisabled}
                   onClick={() => {
                     if (!indexerDisabled) {
-                      setIndexerConnectionMode("auto");
+                      updateIndexerConnectionMode("auto");
                       setIndexerUrl("");
                       setIndexerUrl(null);
                     }
@@ -334,7 +354,7 @@ export const LockedSettingsModal: React.FC = () => {
                   } ${
                     indexerConnectionMode === "auto"
                       ? "bg-kas-secondary border-kas-secondary text-[var(--text-primary)] shadow-md"
-                      : "border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
+                      : "border-secondary-border bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
                   }`}
                 >
                   Auto
@@ -343,7 +363,7 @@ export const LockedSettingsModal: React.FC = () => {
                   disabled={indexerDisabled}
                   onClick={() => {
                     if (!indexerDisabled) {
-                      setIndexerConnectionMode("manual");
+                      updateIndexerConnectionMode("manual");
                     }
                   }}
                   className={`rounded-lg border px-4 py-2 transition-all duration-200 ${
@@ -353,7 +373,7 @@ export const LockedSettingsModal: React.FC = () => {
                   } ${
                     indexerConnectionMode === "manual"
                       ? "bg-kas-secondary border-kas-secondary text-[var(--text-primary)] shadow-md"
-                      : "border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
+                      : "border-secondary-border bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
                   }`}
                 >
                   Manual
