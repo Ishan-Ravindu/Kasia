@@ -471,9 +471,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const oneOnOneConversations = await Promise.all(
         oneOnOneConversationPromises
       );
-      console.trace("oooc hydrated", {
-        oneOnOneConversations,
-      });
       const filteredConversations = oneOnOneConversations.filter(
         (c) => c !== null
       );
@@ -959,14 +956,17 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         repositories.savedHandshakeRepository.deleteTenant(walletTenant),
       ]);
 
-      // 3. Reset all UI state immediately
+      // 3. Reset metadata
+      repositories.metadataRepository.erase();
+
+      // 4. Reset all UI state immediately
       set({
         oneOnOneConversations: [],
         openedRecipient: null,
         isCreatingNewChat: false,
       });
 
-      // 4. Clear and reinitialize conversation manager
+      // 5. Clear and reinitialize conversation manager
       const manager = g().conversationManager;
       if (manager) {
         // Reinitialize fresh conversation manager

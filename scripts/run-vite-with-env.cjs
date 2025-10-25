@@ -39,7 +39,7 @@ let fullCommand = "";
 
 switch (command) {
   case "dev":
-    fullCommand = `vite --debug ${viteCommand}`;
+    fullCommand = `vite ${viteCommand}`;
     break;
   case "build:production":
     fullCommand = `tsc -b && vite build ${viteCommand}`;
