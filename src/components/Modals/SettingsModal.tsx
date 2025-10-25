@@ -43,6 +43,7 @@ import { PasswordField } from "../Common/PasswordField";
 import { HoldToDelete } from "../Common/HoldToDelete";
 import { AppVersion } from "../App/AppVersion";
 import { toast } from "../../utils/toast-helper";
+import { Donations } from "../Common/Donations";
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -394,6 +395,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           "h-[600px] w-full max-w-3xl": !isMobile,
         })}
       >
+        <Donations onClick={onClose} position="bottom-left" />
         <div
           className={clsx("flex h-full", {
             "flex-col": isMobile,
@@ -954,6 +956,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === "extras" && (
               <div className="mt-3 space-y-6 sm:mt-0">
                 <h3 className="mb-4 text-lg font-medium">Extra</h3>
+
                 <div className="space-y-2">
                   {/* Warning */}
                   <WarningBlock title="Warning">

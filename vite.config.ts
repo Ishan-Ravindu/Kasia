@@ -85,6 +85,34 @@ const webPlugins: PluginOption[] = [
     workbox: {
       // 14 mb
       maximumFileSizeToCacheInBytes: 14000000,
+      cleanupOutdatedCaches: true,
+      skipWaiting: true,
+      clientsClaim: true,
+      runtimeCaching: [
+        // Navigations (index.html)
+        {
+          urlPattern: ({ request, sameOrigin }) =>
+            sameOrigin && request.mode === "navigate",
+          handler: "NetworkFirst",
+          options: {
+            cacheName: "html-pages",
+            networkTimeoutSeconds: 5,
+          },
+        },
+        // JS/CSS/Workers
+        {
+          urlPattern: ({ request }) =>
+            ["script", "style", "worker"].includes(request.destination),
+          handler: "StaleWhileRevalidate",
+          options: { cacheName: "assets" },
+        },
+        // Images
+        {
+          urlPattern: ({ request }) => request.destination === "image",
+          handler: "StaleWhileRevalidate",
+          options: { cacheName: "images" },
+        },
+      ],
     },
     devOptions: { enabled: false },
   }),

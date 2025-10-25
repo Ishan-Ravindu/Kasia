@@ -4,6 +4,7 @@ import { RefreshCcw, User, ArrowLeft, Wallet, X } from "lucide-react";
 import { Settings } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { SettingsModal } from "../Modals/SettingsModal";
+import { ConnectionIndicator } from "../Common/ConnectionIndicator";
 
 type SlideOutMenuProps = {
   address?: string;

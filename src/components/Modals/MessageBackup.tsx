@@ -3,14 +3,16 @@ import { useWalletStore } from "../../store/wallet.store";
 import { useMessagingStore } from "../../store/messaging.store";
 import { Button } from "../Common/Button";
 import clsx from "clsx";
+import { toast } from "../../utils/toast-helper";
 
 export const MessageBackup: React.FC = () => {
   const walletStore = useWalletStore();
   const messageStore = useMessagingStore();
 
   const onExportMessages = useCallback(async () => {
+    toast.info("Starting Message Export...");
     if (!walletStore.unlockedWallet?.password) {
-      alert("Please unlock your wallet first");
+      toast.error("Wallet not unlocked");
       return;
     }
 
@@ -42,15 +44,17 @@ export const MessageBackup: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      alert("Messages exported successfully!");
+      toast.success("Messages exported successfully!");
     } catch (error) {
-      console.error("Error exporting messages:", error);
-      alert("Failed to export messages");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export messages"
+      );
     }
   }, [messageStore, walletStore.unlockedWallet]);
 
   const onImportMessages = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
+      toast.info("Starting Message Import...");
       const file = event.target.files?.[0];
       if (!file) return;
 
@@ -64,10 +68,9 @@ export const MessageBackup: React.FC = () => {
           walletStore.unlockedWallet,
           walletStore.unlockedWallet.password
         );
-        alert("Messages imported successfully!");
+        toast.success("Messages imported successfully!");
       } catch (error: unknown) {
-        console.error("Error importing messages:", error);
-        alert(
+        toast.error(
           error instanceof Error ? error.message : "Failed to import messages"
         );
       }
