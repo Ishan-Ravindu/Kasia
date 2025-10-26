@@ -1,5 +1,7 @@
 # Kasia: Secure, Decentralized, and Fast Messaging
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/K-Kluster/Kasia)
+
 <div align="center">
   <img src="public/kasia-logo-512.png" alt="Kasia Logo" width="200"/>
 </div>
