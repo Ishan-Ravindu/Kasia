@@ -144,7 +144,7 @@ export const LockedSettingsModal: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[600px]">
+    <div className="w-full">
       {/* Main settings list - shown when no section is expanded */}
       {!showNodeSettings && !showIndexerSettings && !showDevSettings ? (
         <>
