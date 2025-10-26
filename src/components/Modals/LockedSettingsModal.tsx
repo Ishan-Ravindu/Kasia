@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NetworkSelector } from "../NetworkSelector";
 import { useNetworkStore } from "../../store/network.store";
 import { NetworkType, ConnectionMode } from "../../types/all";
 import { Button } from "../Common/Button";
 import { useUiStore } from "../../store/ui.store";
 import { ThemeToggle } from "../Common/ThemeToggle";
-import { Shield, ArrowLeft, Coffee, Check } from "lucide-react";
+import { Shield, ArrowLeft, Coffee, Check, RefreshCcw } from "lucide-react";
 import { devMode } from "../../config/dev-mode";
 import { deleteDB } from "idb";
 import { useDBStore } from "../../store/db.store";
 import { useOrchestrator } from "../../hooks/useOrchestrator";
 import { AppVersion } from "../App/AppVersion";
 import { Donations } from "../Common/Donations";
+import { toast } from "../../utils/toast-helper";
+import { checkIndexerHealth } from "../../utils/indexer-validation";
+import { client as indexerClient } from "../../service/indexer/generated/client.gen";
 import {
   isIndexerDisabled,
   setIndexerDisabled,
@@ -21,6 +24,7 @@ import {
   setIndexerConnectionMode,
   getNodeConnectionMode,
   setNodeConnectionMode,
+  getEffectiveIndexerUrl,
 } from "../../utils/indexer-settings";
 
 export const LockedSettingsModal: React.FC = () => {
@@ -70,6 +74,15 @@ export const LockedSettingsModal: React.FC = () => {
   };
 
   const [indexerUrl, setIndexerUrlState] = useState(getIndexerUrl() || "");
+  const [testIndexerStatus, setTestIndexerStatus] = useState<
+    "idle" | "testing" | "success" | "error"
+  >("idle");
+
+  const [isSavingIndexer, setIsSavingIndexer] = useState(false);
+
+  useEffect(() => {
+    setTestIndexerStatus("idle");
+  }, [indexerConnectionMode]);
 
   const deleteIndexDB = async () => {
     if (dbStore.db) {
@@ -89,18 +102,75 @@ export const LockedSettingsModal: React.FC = () => {
     }
   };
 
-  const handleIndexerUrlSave = () => {
-    if (indexerConnectionMode === "auto") {
-      setIndexerUrl(null);
-    } else {
-      setIndexerUrl(indexerUrl || null);
+  const handleIndexerUrlSave = async () => {
+    // its gonna contain something, so just basic validation for now
+    if (!indexerUrl || indexerUrl.length <= 5) {
+      toast.error("Not valid url");
+      return;
     }
-    setShowIndexerSettings(false);
+
+    setIsSavingIndexer(true);
+    try {
+      const status = await checkIndexerHealth(indexerUrl);
+      if (status === "success") {
+        setIndexerUrl(indexerUrl || null);
+        setIndexerConnectionMode("manual");
+
+        // Reconfigure indexer client immediately with new settings
+        const network = selectedNetwork === "mainnet" ? "mainnet" : "testnet";
+        indexerClient.setConfig({
+          baseUrl: getEffectiveIndexerUrl(network),
+        });
+
+        setShowIndexerSettings(false);
+        toast.success("Indexer URL saved successfully");
+      } else {
+        toast.error("Indexer validation failed");
+      }
+    } catch (error) {
+      toast.error(
+        `Failed to validate indexer URL: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } finally {
+      setIsSavingIndexer(false);
+    }
   };
 
   const handleIndexerUrlCancel = () => {
     setIndexerUrlState(getIndexerUrl() || "");
+    setIndexerConnectionModeState(getIndexerConnectionMode());
     setShowIndexerSettings(false);
+  };
+
+  const testIndexer = async () => {
+    setTestIndexerStatus("testing");
+
+    try {
+      const urlToTest =
+        indexerConnectionMode === "auto"
+          ? import.meta.env.VITE_INDEXER_MAINNET_URL ||
+            import.meta.env.VITE_INDEXER_TESTNET_URL
+          : indexerUrl;
+
+      if (!urlToTest) {
+        setTestIndexerStatus("error");
+        return;
+      }
+
+      const status = await checkIndexerHealth(urlToTest);
+      if (status === "success") {
+        setTestIndexerStatus("success");
+        toast.success("Indexer is active and processing blocks");
+      } else if (status === "reachable") {
+        setTestIndexerStatus("success");
+        toast.warning("Indexer is reachable but not processing blocks");
+      } else {
+        setTestIndexerStatus("error");
+        toast.error("Indexer validation failed");
+      }
+    } catch {
+      setTestIndexerStatus("error");
+    }
   };
 
   const connectWithErrorWrapper = async (
@@ -365,7 +435,7 @@ export const LockedSettingsModal: React.FC = () => {
                   disabled={indexerDisabled}
                   onClick={() => {
                     if (!indexerDisabled) {
-                      updateIndexerConnectionMode("manual");
+                      setIndexerConnectionModeState("manual");
                     }
                   }}
                   className={`rounded-lg border px-4 py-2 transition-all duration-200 ${
@@ -383,6 +453,31 @@ export const LockedSettingsModal: React.FC = () => {
               </div>
             </div>
 
+            {/* Test Indexer Connection Button */}
+            {!indexerDisabled && (
+              <div className="flex justify-center">
+                <button
+                  onClick={testIndexer}
+                  disabled={testIndexerStatus === "testing"}
+                  className={`rounded-lg border px-4 py-2 font-medium transition-all duration-200 ${
+                    testIndexerStatus === "testing"
+                      ? "cursor-wait border-[var(--accent-yellow)] bg-[var(--accent-yellow)] text-[var(--text-primary)]"
+                      : testIndexerStatus === "success"
+                        ? "border-[var(--accent-green)] bg-[var(--accent-green)] text-[var(--text-primary)]"
+                        : testIndexerStatus === "error"
+                          ? "border-[var(--accent-red)] bg-[var(--accent-red)] text-[var(--text-primary)]"
+                          : "border-secondary-border bg-[var(--input-bg)] text-[var(--text-primary)] hover:scale-105 hover:shadow-sm active:scale-90 active:opacity-80"
+                  } ${indexerDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+                >
+                  {testIndexerStatus === "testing"
+                    ? "Testing..."
+                    : testIndexerStatus === "success"
+                      ? "Success"
+                      : "Test Connection"}
+                </button>
+              </div>
+            )}
+
             {indexerConnectionMode === "manual" && (
               <>
                 <label htmlFor="indexer-url" className="block">
@@ -392,7 +487,10 @@ export const LockedSettingsModal: React.FC = () => {
                   type="text"
                   id="indexer-url"
                   value={indexerUrl}
-                  onChange={(e) => setIndexerUrlState(e.target.value)}
+                  onChange={(e) => {
+                    setIndexerUrlState(e.target.value);
+                    setTestIndexerStatus("idle");
+                  }}
                   className="w-full flex-grow rounded-3xl border border-[var(--border-color)] bg-[var(--input-bg)] p-2 text-[var(--text-primary)]"
                   placeholder="https://your-indexer-url.com"
                 />
@@ -401,8 +499,18 @@ export const LockedSettingsModal: React.FC = () => {
 
             {indexerConnectionMode === "manual" && (
               <div className="flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
-                <Button onClick={handleIndexerUrlSave} variant="primary">
-                  Save
+                <Button
+                  onClick={handleIndexerUrlSave}
+                  variant="primary"
+                  disabled={isSavingIndexer}
+                >
+                  {isSavingIndexer ? (
+                    <div className="flex justify-center">
+                      <RefreshCcw className="size-5 animate-spin" />
+                    </div>
+                  ) : (
+                    "Save"
+                  )}
                 </Button>
                 <Button onClick={handleIndexerUrlCancel} variant="secondary">
                   Cancel
