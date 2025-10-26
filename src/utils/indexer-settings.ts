@@ -53,11 +53,19 @@ export function setNodeConnectionMode(mode: "auto" | "manual"): void {
   localStorage.setItem(NODE_CONNECTION_MODE_KEY, mode);
 }
 
-// checks if any connection settings have been overridden from defaults
-export function hasOverriddenSettings(): boolean {
-  return (
-    getNodeConnectionMode() === "manual" ||
-    getIndexerConnectionMode() === "manual" ||
-    isIndexerDisabled()
-  );
+export function getEffectiveIndexerUrl(network: "mainnet" | "testnet"): string {
+  const connectionMode = getIndexerConnectionMode();
+  const customUrl = getIndexerUrl();
+
+  if (connectionMode === "manual" && customUrl) {
+    return customUrl;
+  }
+
+  if (connectionMode === "manual" && !customUrl) {
+    setIndexerConnectionMode("auto");
+  }
+
+  return network === "mainnet"
+    ? import.meta.env.VITE_INDEXER_MAINNET_URL
+    : import.meta.env.VITE_INDEXER_TESTNET_URL;
 }
