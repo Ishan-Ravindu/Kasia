@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "../Common/modal";
 import { Loader2, Image as ImageIcon } from "lucide-react";
 import {
@@ -42,51 +42,55 @@ export const ImageCompressionModal = ({
   }, [file]);
 
   // Process image whenever settings change
-  const processImage = useCallback(async () => {
+  useEffect(() => {
     if (!file) return;
 
-    setIsProcessing(true);
-    setError(null);
+    const currentFile = file; // Capture file in local scope for type safety
 
-    try {
-      const compressOptions: CompressImageOptions = {
-        maxWidth: maxDimension,
-        maxHeight: maxDimension,
-        minWidth: 150,
-        minHeight: 150,
-        maxQuality: compressionQuality,
-        minQuality: Math.max(0.3, compressionQuality - 0.2),
-        maxAttempts: 20,
-      };
+    async function processImage() {
+      setIsProcessing(true);
+      setError(null);
 
-      const result = await prepareFileForUpload(
-        file,
-        MAX_PAYLOAD_SIZE,
-        compressOptions
-      );
+      try {
+        const compressOptions: CompressImageOptions = {
+          maxWidth: maxDimension,
+          maxHeight: maxDimension,
+          minWidth: 150,
+          minHeight: 150,
+          maxQuality: compressionQuality,
+          minQuality: Math.max(0.3, compressionQuality - 0.2),
+          maxAttempts: 20,
+        };
 
-      if (result.error) {
-        setError(result.error);
+        const result = await prepareFileForUpload(
+          currentFile,
+          MAX_PAYLOAD_SIZE,
+          compressOptions
+        );
+
+        if (result.error) {
+          setError(result.error);
+          setProcessedResult(null);
+        } else if (result.fileMessage && result.file) {
+          const size = new Blob([result.fileMessage]).size;
+          setProcessedResult({
+            fileMessage: result.fileMessage,
+            file: result.file,
+            size,
+          });
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to process image"
+        );
         setProcessedResult(null);
-      } else if (result.fileMessage && result.file) {
-        const size = new Blob([result.fileMessage]).size;
-        setProcessedResult({
-          fileMessage: result.fileMessage,
-          file: result.file,
-          size,
-        });
+      } finally {
+        setIsProcessing(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process image");
-      setProcessedResult(null);
-    } finally {
-      setIsProcessing(false);
     }
-  }, [file, compressionQuality, maxDimension]);
 
-  useEffect(() => {
     processImage();
-  }, [processImage]);
+  }, [file, compressionQuality, maxDimension]);
 
   if (!file) return null;
 
