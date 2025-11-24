@@ -812,10 +812,6 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
     // Build the full protocol string with all components
     const protocolString = `ciph_msg:1:comm:${sendMessage.theirAlias}:${base64String}`;
-    console.log(
-      "[AccountService] Sending message with targetAlias:",
-      sendMessage.theirAlias
-    );
     const payloadBytes = getEncoder().encode(protocolString);
 
     const payload = payloadBytes;
