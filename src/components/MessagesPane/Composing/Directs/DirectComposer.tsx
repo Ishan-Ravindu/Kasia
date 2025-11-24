@@ -174,6 +174,12 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
 
   const onSend = async () => {
     if (!guardReady() || !conversation || !canCompose) return;
+    console.log("[DirectComposer] Sending with:", {
+      myAlias: conversation.myAlias,
+      theirAlias: conversation.theirAlias,
+      status: conversation.status,
+      initiatedByMe: conversation.initiatedByMe,
+    });
     await send(conversation.myAlias);
   };
 

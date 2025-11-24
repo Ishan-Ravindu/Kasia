@@ -148,6 +148,17 @@ export class BlockProcessorService extends EventEmitter<{
         targetAlias &&
         this.monitoredConversations.has(targetAlias);
 
+      // Debug logging for ALL messages
+      if (messageType === PROTOCOL.headers.COMM.type) {
+        console.log("[BlockProcessor] COMM message received:", {
+          txId,
+          targetAlias,
+          isForUs: isCommForUs,
+          monitoredAliases: Array.from(this.monitoredConversations),
+          fromAddress: resolvedSenderAddress,
+        });
+      }
+
       const isSelfStash = messageType === PROTOCOL.headers.SELF_STASH.type;
 
       // self stash not from me, abort

@@ -64,7 +64,18 @@ export class ConversationManagerService {
       // note: this isn't optimized, we're loading contacts here while it could have been cached earlier and centralized
       const contacts = await this.repositories.contactRepository.getContacts();
 
-      // Load conversations for current wallet
+      console.log(
+        "[ConversationManager] loadConversations - Total conversations in DB:",
+        conversations.length
+      );
+
+      // Group conversations by contact address to handle duplicates properly
+      const conversationsByAddress = new Map<
+        string,
+        Array<{ conversation: Conversation; contact: Contact }>
+      >();
+
+      // First pass: group by address
       conversations.forEach((conversation) => {
         const contact = contacts.find((c) => c.id === conversation.contactId);
 
@@ -77,20 +88,87 @@ export class ConversationManagerService {
           contact.kaspaAddress &&
           this.isValidKaspaAddress(contact.kaspaAddress)
         ) {
-          this.conversationWithContactByConversationId.set(conversation.id, {
-            conversation,
-            contact,
-          });
-          this.addressToConversation.set(contact.kaspaAddress, conversation.id);
-          this.aliasToConversation.set(conversation.myAlias, conversation.id);
-          if (conversation.theirAlias) {
-            this.aliasToConversation.set(
-              conversation.theirAlias,
-              conversation.id
-            );
-          }
+          const existing =
+            conversationsByAddress.get(contact.kaspaAddress) || [];
+          existing.push({ conversation, contact });
+          conversationsByAddress.set(contact.kaspaAddress, existing);
         }
       });
+
+      // Second pass: for each address, pick the best conversation
+      conversationsByAddress.forEach((convos, address) => {
+        if (convos.length > 1) {
+          console.warn(
+            "[ConversationManager] DUPLICATE CONVERSATIONS for address:",
+            {
+              address,
+              count: convos.length,
+              conversations: convos.map((c) => ({
+                id: c.conversation.id,
+                myAlias: c.conversation.myAlias,
+                theirAlias: c.conversation.theirAlias,
+                status: c.conversation.status,
+                lastActivity: c.conversation.lastActivityAt,
+              })),
+            }
+          );
+        }
+
+        // Prefer: active > pending, then most recent activity
+        const bestConvo = convos.sort((a, b) => {
+          // Active status takes priority
+          if (
+            a.conversation.status === "active" &&
+            b.conversation.status !== "active"
+          )
+            return -1;
+          if (
+            b.conversation.status === "active" &&
+            a.conversation.status !== "active"
+          )
+            return 1;
+
+          // Then by most recent activity
+          return (
+            b.conversation.lastActivityAt.getTime() -
+            a.conversation.lastActivityAt.getTime()
+          );
+        })[0];
+
+        const { conversation, contact } = bestConvo;
+
+        if (convos.length > 1) {
+          console.log("[ConversationManager] Selected conversation:", {
+            address,
+            selectedId: conversation.id,
+            myAlias: conversation.myAlias,
+            theirAlias: conversation.theirAlias,
+            status: conversation.status,
+          });
+        }
+
+        this.conversationWithContactByConversationId.set(conversation.id, {
+          conversation,
+          contact,
+        });
+        this.addressToConversation.set(contact.kaspaAddress, conversation.id);
+        this.aliasToConversation.set(conversation.myAlias, conversation.id);
+        if (conversation.theirAlias) {
+          this.aliasToConversation.set(
+            conversation.theirAlias,
+            conversation.id
+          );
+        }
+      });
+
+      console.log(
+        "[ConversationManager] loadConversations complete - Active mappings:",
+        {
+          totalConversations: this.conversationWithContactByConversationId.size,
+          addressMappings: this.addressToConversation.size,
+          aliasMappings: this.aliasToConversation.size,
+        }
+      );
     } catch (error) {
       console.error("Failed to load conversations from storage:", error);
     }
@@ -169,8 +247,48 @@ export class ConversationManagerService {
   ): Promise<unknown> {
     try {
       // STEP 1 – look up strictly by sender address only
-      const existingConversationAndContactByAddress =
+      // CRITICAL: Check database first to prevent duplicate conversations across windows/sessions
+      let existingConversationAndContactByAddress =
         this.getConversationWithContactByAddress(senderAddress);
+
+      // If not in memory, check database before creating new conversation
+      if (!existingConversationAndContactByAddress) {
+        try {
+          const contact =
+            await this.repositories.contactRepository.getContactByKaspaAddress(
+              senderAddress
+            );
+          const conversations =
+            await this.repositories.conversationRepository.getConversations();
+          const existingConversation = conversations.find(
+            (c) => c.contactId === contact.id
+          );
+
+          if (existingConversation) {
+            console.log(
+              "[ConversationManager] Found existing conversation in DB for handshake:",
+              {
+                address: senderAddress,
+                conversationId: existingConversation.id,
+                myAlias: existingConversation.myAlias,
+                theirAlias: existingConversation.theirAlias,
+              }
+            );
+            // Load it into memory
+            this.inMemorySyncronization(existingConversation, contact);
+            existingConversationAndContactByAddress = {
+              conversation: existingConversation,
+              contact,
+            };
+          }
+        } catch {
+          // Contact or conversation doesn't exist in DB, will create new one below
+          console.log(
+            "[ConversationManager] No existing conversation in DB for:",
+            senderAddress
+          );
+        }
+      }
 
       console.log("conversation manager - processing handshake", { payload });
 
@@ -675,6 +793,21 @@ export class ConversationManagerService {
             conversationAndContact.conversation.initiatedByMe)
       )
       .forEach((conversationAndContact) => {
+        const { conversation, contact } = conversationAndContact;
+        console.log(
+          "[ConversationManager] getMonitoredConversations - Conversation:",
+          {
+            myAlias: conversation.myAlias,
+            theirAlias: conversation.theirAlias,
+            status: conversation.status,
+            initiatedByMe: conversation.initiatedByMe,
+            address: contact.kaspaAddress,
+            willMonitor: conversation.theirAlias
+              ? conversation.theirAlias
+              : "NONE - theirAlias is null!",
+          }
+        );
+
         if (conversationAndContact.conversation.theirAlias) {
           monitored.push({
             alias: conversationAndContact.conversation.theirAlias,
@@ -683,6 +816,10 @@ export class ConversationManagerService {
         }
       });
 
+    console.log(
+      "[ConversationManager] Total monitored aliases:",
+      monitored.map((m) => m.alias)
+    );
     return monitored;
   }
 
