@@ -51,7 +51,7 @@ export const ImagePresenter = () => {
       />
       <button
         onClick={handleDownload}
-        className="flex items-center gap-2 rounded-lg bg-[var(--button-primary)] px-4 py-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--button-primary)]/80 active:scale-95"
+        className="flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--button-primary)] px-4 py-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--button-primary)]/80 active:scale-95"
       >
         <Download className="h-4 w-4" />
         Download Image
