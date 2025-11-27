@@ -58,11 +58,11 @@ export const useMessengerRouting = () => {
     if (contactAddress && contactAddress !== messageStore.openedRecipient) {
       messageStore.setOpenedRecipient(contactAddress);
 
-      // save to localstorage for persistence (store contactid, not address)
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress && contactId) {
+      // save to localstorage for persistence using wallet id (not address for privacy)
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId && contactId) {
         localStorage.setItem(
-          `kasia_last_opened_contact_id_${walletAddress}`,
+          `kasia_last_opened_contact_${unlockedWalletId}`,
           contactId
         );
       }
@@ -74,7 +74,7 @@ export const useMessengerRouting = () => {
     contactId,
     messageStore.openedRecipient,
     messageStore,
-    walletStore.address,
+    walletStore.unlockedWallet?.id,
   ]);
 
   // effect to sync selected channel with url

@@ -37,11 +37,7 @@ import { Payment } from "./repository/payment.repository";
 import { Message } from "./repository/message.repository";
 import { Handshake } from "./repository/handshake.repository";
 import { HistoricalSyncer } from "../service/historical-syncer";
-import {
-  ContextualMessageResponse,
-  HandshakeResponse,
-  SelfStashResponse,
-} from "../service/indexer/generated";
+import { ContextualMessageResponse } from "../service/indexer/generated";
 import { tryParseBase64AsHexToHex } from "../utils/payload-encoding";
 import { hexToString } from "../utils/format";
 import { RawResolvedKasiaTransaction } from "../service/block-processor-service";
@@ -117,9 +113,6 @@ interface MessagingState {
   // Nickname management
   setContactNickname: (address: string, nickname?: string) => Promise<void>;
   removeContactNickname: (address: string) => Promise<void>;
-
-  // Last opened recipient management
-  restoreLastOpenedRecipient: (walletAddress: string) => void;
 
   // self stash management
   createSelfStash: (handshakeData: {
@@ -939,9 +932,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         .receiveAddress(network, 0)
         .toString();
 
-      // 1. Clear last opened recipient for this wallet
-      const lastOpenedRecipientKey = `kasia_last_opened_recipient_${receiveAddress}`;
-      localStorage.removeItem(lastOpenedRecipientKey);
+      // 1. Clear last opened contact for this wallet
+      localStorage.removeItem(`kasia_last_opened_contact_${walletTenant}`);
 
       // 2. Remove all IndexDB related to this tenant
       const repositories = useDBStore.getState().repositories;
@@ -977,22 +969,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
     },
     setOpenedRecipient(contact) {
       set({ openedRecipient: contact });
-
-      // Save or clear the last opened recipient to localStorage for persistence
-      const walletStore = useWalletStore.getState();
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
-        if (contact) {
-          localStorage.setItem(
-            `kasia_last_opened_recipient_${walletAddress}`,
-            contact
-          );
-        } else {
-          localStorage.removeItem(
-            `kasia_last_opened_recipient_${walletAddress}`
-          );
-        }
-      }
+      // note: localStorage persistence is now handled by useMessengerRouting
+      // using wallet id instead of address for privacy (no breadcrumbs)
     },
     exportMessages: async (wallet, password) => {
       const backup = await exportData(useDBStore.getState().repositories);
@@ -1376,39 +1354,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       return g().setContactNickname(address, undefined);
     },
 
-    // Last opened recipient management
-    restoreLastOpenedRecipient: (walletAddress: string) => {
-      try {
-        const lastOpenedRecipient = localStorage.getItem(
-          `kasia_last_opened_recipient_${walletAddress}`
-        );
-
-        const state = g();
-
-        if (lastOpenedRecipient) {
-          // Check if the contact still exists in the current contacts list
-          const contactExists = state.oneOnOneConversations.some(
-            (oooc) => oooc.contact.kaspaAddress === lastOpenedRecipient
-          );
-
-          if (contactExists) {
-            set({ openedRecipient: lastOpenedRecipient });
-            return;
-          } else {
-            // Contact no longer exists, clear the stored value
-            localStorage.removeItem(
-              `kasia_last_opened_recipient_${walletAddress}`
-            );
-          }
-        }
-
-        // Fallback: select the first available contact
-        const firstContact = state.oneOnOneConversations[0]?.contact;
-        set({ openedRecipient: firstContact.kaspaAddress });
-      } catch (error) {
-        console.error("Error restoring last opened recipient:", error);
-      }
-    },
     async ingestRawResolvedKasiaTransaction(tx) {
       // note: ideally we wouldn't have "too much" cross-store dependency
       // or at least in a determined way that would prevent bi-directional dependencies
