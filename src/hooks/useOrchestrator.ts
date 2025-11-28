@@ -9,7 +9,6 @@ import { UnlockedWallet } from "../types/wallet.type";
 import { useLiveStore } from "../store/live.store";
 import { useBroadcastStore } from "../store/broadcast.store";
 import { useFeatureFlagsStore, FeatureFlags } from "../store/featureflag.store";
-import { cleanupLegacyLocalStorage } from "../utils/storage-cleanup";
 
 export type ConnectOpts = {
   networkType?: NetworkType;
@@ -115,9 +114,6 @@ export const useOrchestrator = () => {
     const receivedAddressString = unlockedWallet.receivePublicKey
       .toAddress(networkStore.network)
       .toString();
-
-    // clean up legacy localStorage keys that stored wallet addresses
-    cleanupLegacyLocalStorage();
 
     // Clear old conversations and related state before loading new wallet data to prevent flash
     useMessagingStore.setState({

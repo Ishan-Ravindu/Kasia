@@ -147,6 +147,7 @@ export class WalletStorageService {
     // clean up messaging-related localStorage keys
     localStorage.removeItem(`kasia_last_opened_contact_${walletId}`);
     localStorage.removeItem(`kasia_last_opened_channel_${walletId}`);
+    localStorage.removeItem(`metadata_${walletId}`);
   }
 
   isInitialized() {

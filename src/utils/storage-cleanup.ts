@@ -28,6 +28,10 @@ export function cleanupLegacyLocalStorage(): void {
   totalCleaned += removeKeysByPattern("kasia_last_opened_contact_id_");
   totalCleaned += removeKeysByPattern("kasia_last_opened_channel_id_");
 
+  // clean up legacy encrypted conversations and messages keys
+  totalCleaned += removeKeysByPattern("encrypted_conversations_kaspa");
+  totalCleaned += removeKeysByPattern("kaspa_messages_by_wallet");
+
   if (totalCleaned > 0) {
     console.log(`Cleaned up ${totalCleaned} legacy localStorage keys.`);
   }
