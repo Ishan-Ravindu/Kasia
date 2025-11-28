@@ -2,24 +2,33 @@
 // this can be removed at some point in the future
 // this was added in v6.3
 
-export function cleanupLegacyContactStorage(walletAddress: string): void {
-  const keysToRemove = [
-    `kasia_last_opened_recipient_${walletAddress}`,
-    `kasia_last_opened_contact_id_${walletAddress}`,
-    `kasia_last_opened_channel_id_${walletAddress}`,
-  ];
+function removeKeysByPattern(pattern: string): number {
+  let removedCount = 0;
 
-  let cleanedCount = 0;
-  for (const key of keysToRemove) {
-    if (localStorage.getItem(key) !== null) {
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key && key.includes(pattern)) {
       localStorage.removeItem(key);
-      cleanedCount++;
+      removedCount++;
     }
   }
 
-  if (cleanedCount > 0) {
-    console.log(
-      `Cleaned up ${cleanedCount} legacy localStorage keys for wallet.`
-    );
+  return removedCount;
+}
+
+// cleans up legacy contact storage and migration keys
+export function cleanupLegacyLocalStorage(): void {
+  let totalCleaned = 0;
+
+  // clean up migration storage keys
+  totalCleaned += removeKeysByPattern("_migrate_storage_v2");
+
+  // clean up legacy contact storage keys (remove all matching patterns)
+  totalCleaned += removeKeysByPattern("kasia_last_opened_recipient_");
+  totalCleaned += removeKeysByPattern("kasia_last_opened_contact_id_");
+  totalCleaned += removeKeysByPattern("kasia_last_opened_channel_id_");
+
+  if (totalCleaned > 0) {
+    console.log(`Cleaned up ${totalCleaned} legacy localStorage keys.`);
   }
 }
