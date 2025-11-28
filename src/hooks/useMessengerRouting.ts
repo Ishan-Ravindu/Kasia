@@ -141,15 +141,15 @@ export const useMessengerRouting = () => {
   // effect to save selected channel id to localstorage for persistence
   useEffect(() => {
     if (channelId && selectedChannelName) {
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId) {
         localStorage.setItem(
-          `kasia_last_opened_channel_id_${walletAddress}`,
+          `kasia_last_opened_channel_${unlockedWalletId}`,
           channelId
         );
       }
     }
-  }, [channelId, selectedChannelName, walletStore.address]);
+  }, [channelId, selectedChannelName, walletStore.unlockedWallet?.id]);
 
   const onContactClicked = (contact: Contact) => {
     if (!walletStore.address) {

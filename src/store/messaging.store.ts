@@ -969,8 +969,6 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
     },
     setOpenedRecipient(contact) {
       set({ openedRecipient: contact });
-      // note: localStorage persistence is now handled by useMessengerRouting
-      // using wallet id instead of address for privacy (no breadcrumbs)
     },
     exportMessages: async (wallet, password) => {
       const backup = await exportData(useDBStore.getState().repositories);

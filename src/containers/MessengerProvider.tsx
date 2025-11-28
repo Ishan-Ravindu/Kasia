@@ -119,12 +119,12 @@ export const MessengerProvider: FC = () => {
       isCurrentlyInBroadcastMode &&
       useBroadcastStore.getState().channels.length > 0
     ) {
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId) {
         try {
           // get the last opened channel id from localstorage
           const lastOpenedChannelId = localStorage.getItem(
-            `kasia_last_opened_channel_id_${walletAddress}`
+            `kasia_last_opened_channel_${unlockedWalletId}`
           );
 
           if (lastOpenedChannelId) {
@@ -162,7 +162,7 @@ export const MessengerProvider: FC = () => {
     channelId,
     isCurrentlyInBroadcastMode,
     walletStore.isAccountServiceRunning,
-    walletStore.address,
+    walletStore.unlockedWallet?.id,
     isMobile,
     navigate,
     walletId,

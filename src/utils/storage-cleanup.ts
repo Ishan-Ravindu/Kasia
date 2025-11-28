@@ -6,6 +6,7 @@ export function cleanupLegacyContactStorage(walletAddress: string): void {
   const keysToRemove = [
     `kasia_last_opened_recipient_${walletAddress}`,
     `kasia_last_opened_contact_id_${walletAddress}`,
+    `kasia_last_opened_channel_id_${walletAddress}`,
   ];
 
   let cleanedCount = 0;
