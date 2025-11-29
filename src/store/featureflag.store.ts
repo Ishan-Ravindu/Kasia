@@ -1,11 +1,18 @@
 import { create } from "zustand";
-import { Coins, LucideIcon, Radio, Camera } from "lucide-react";
+import {
+  Coins,
+  LucideIcon,
+  Radio,
+  Camera,
+  MessageSquareText,
+} from "lucide-react";
 import { cameraPermissionService } from "../service/camera-permission-service";
 
 export enum FeatureFlags {
   BROADCAST = "broadcast",
   CUSTOM_FEE = "customfee",
   ENABLED_CAMERA = "enabledcamera",
+  MARKDOWN = "markdown",
 }
 
 export type FeatureFlagsTable = Record<FeatureFlags, boolean>;
@@ -14,6 +21,7 @@ const defaultFeatureFlagsTable: FeatureFlagsTable = {
   [FeatureFlags.BROADCAST]: false,
   [FeatureFlags.CUSTOM_FEE]: false,
   [FeatureFlags.ENABLED_CAMERA]: false,
+  [FeatureFlags.MARKDOWN]: false,
 };
 
 export interface FeatureDescription {
@@ -41,6 +49,11 @@ const featureFlips: FeatureFlips = {
     label: "Broadcasts - Beta Version",
     desc: `Unencrypted open messages.\nLive messages only, no storage.\nReminder: Broadcasts are unencrypted.`,
     icon: Radio,
+  },
+  [FeatureFlags.MARKDOWN]: {
+    label: "Markdown Messages",
+    desc: `Enable markdown formatting for all messages sent.`,
+    icon: MessageSquareText,
   },
 };
 
