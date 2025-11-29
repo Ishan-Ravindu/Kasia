@@ -52,7 +52,7 @@ const featureFlips: FeatureFlips = {
   },
   [FeatureFlags.MARKDOWN]: {
     label: "Markdown Messages",
-    desc: `Enable markdown formatting for all messages sent.`,
+    desc: `Enable markdown formatting for all messages.\nReminder: Messages will cost slightly more due to markdown formatting`,
     icon: MessageSquareText,
   },
 };

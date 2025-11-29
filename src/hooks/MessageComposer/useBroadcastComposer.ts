@@ -41,8 +41,7 @@ export const useBroadcastComposer = (channelName?: string) => {
     try {
       setSendState({ status: "loading" });
 
-      // prepend markdown prefix if markdown is enabled
-      const messageToSend = markdownEnabled ? MARKDOWN_PREFIX + draft : draft;
+      const messageToSend = draft;
 
       const txId = await walletStore.sendBroadcastWithContext({
         message: messageToSend,

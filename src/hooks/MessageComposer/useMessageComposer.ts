@@ -1,10 +1,6 @@
 import { useComposerStore } from "../../store/message-composer.store";
 import { useWalletStore } from "../../store/wallet.store";
 import { useMessagingStore } from "../../store/messaging.store";
-import {
-  useFeatureFlagsStore,
-  FeatureFlags,
-} from "../../store/featureflag.store";
 import { MARKDOWN_PREFIX } from "../../config/constants";
 import { Address } from "kaspa-wasm";
 import { toast } from "../../utils/toast-helper";
@@ -24,8 +20,6 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
     setAttachment,
     clearDraft,
   } = useComposerStore();
-  const { flags } = useFeatureFlagsStore();
-  const markdownEnabled = flags[FeatureFlags.MARKDOWN];
   const draft = useComposerStore((s) =>
     recipient ? s.drafts[recipient] || "" : ""
   );
@@ -90,11 +84,6 @@ export const useMessageComposer = (feeState: FeeState, recipient?: string) => {
     try {
       let messageToSend = draft;
       let fileDataForStorage: FileData | null = null;
-
-      // prepend markdown prefix if markdown is enabled and there's text content
-      if (markdownEnabled && draft && !attachment) {
-        messageToSend = MARKDOWN_PREFIX + draft;
-      }
 
       if (attachment) {
         messageToSend = attachment.content; // always send attachment payload
