@@ -1,6 +1,9 @@
 import { FC, useState, useRef, useEffect } from "react";
 import clsx from "clsx";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { parseMessageForDisplay } from "../../../../utils/message-format";
+import { MARKDOWN_PREFIX } from "../../../../config/constants";
 
 type MessageContentProps = {
   content: string;
@@ -39,9 +42,21 @@ export const MessageContent: FC<MessageContentProps> = ({
     );
   }
 
-  // render plain text with newlines as <br /> and \\n as literal text
+  // render content (markdown or plain text) with expand/collapse functionality
   if (typeof content === "string") {
-    const parsedContent = parseMessageForDisplay(content);
+    // check if content starts with markdown flag and process content
+    const isMarkdown = content.startsWith(MARKDOWN_PREFIX);
+    const displayContent = isMarkdown
+      ? content.slice(MARKDOWN_PREFIX.length)
+      : content;
+
+    const renderedContent = isMarkdown ? (
+      <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+        {displayContent}
+      </ReactMarkdown>
+    ) : (
+      parseMessageForDisplay(displayContent)
+    );
 
     return (
       <div>
@@ -61,7 +76,7 @@ export const MessageContent: FC<MessageContentProps> = ({
                 : "none",
           }}
         >
-          {parsedContent}
+          {renderedContent}
         </div>
 
         {shouldCollapse && (
