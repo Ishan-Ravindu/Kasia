@@ -4,7 +4,6 @@ import {
   useComposerStore,
 } from "../../store/message-composer.store";
 import { useWalletStore } from "../../store/wallet.store";
-import { useBroadcastStore } from "../../store/broadcast.store"; // Add this import
 import { Address } from "kaspa-wasm";
 import { FeeState } from "../../types/all";
 
@@ -38,9 +37,14 @@ export const useFeeEstimate = ({
     balance,
   } = useWalletStore();
 
+  const matureBalance = balance?.mature;
+  const addressString = address?.toString();
+  const isBroadcast = broadcastOptions?.isBroadcast ?? false;
+  const broadcastChannelName = broadcastOptions?.channelName ?? "";
+
   useEffect(() => {
     // when toSelf is true, we need user's address; otherwise we need recipient
-    const targetAddress = toSelf ? address?.toString() : recipient;
+    const targetAddress = toSelf ? addressString : recipient;
 
     if (
       !targetAddress ||
@@ -53,13 +57,13 @@ export const useFeeEstimate = ({
     }
 
     // For broadcasts, we need channel options
-    if (broadcastOptions?.isBroadcast && !broadcastOptions.channelName) {
+    if (isBroadcast && !broadcastChannelName) {
       setFeeState({ status: "idle" });
       return;
     }
 
     // check if we have funds available
-    if (!balance || balance.mature === 0n) {
+    if (!matureBalance || matureBalance === 0n) {
       setFeeState({
         status: "error",
         error: new Error("No funds available for fee estimation"),
@@ -86,11 +90,11 @@ export const useFeeEstimate = ({
       // use attachment content if available, otherwise use draft text
       const messageContent = attachment ? attachment.content : draft || "";
 
-      const estimatePromise = broadcastOptions?.isBroadcast
+      const estimatePromise = isBroadcast
         ? estimateSendBroadcastFees(
             messageContent,
             parsedAddress,
-            broadcastOptions.channelName,
+            broadcastChannelName,
             priority
           )
         : estimateSendMessageFees(messageContent, parsedAddress, priority);
@@ -117,16 +121,17 @@ export const useFeeEstimate = ({
   }, [
     toSelf,
     recipient,
-    address,
+    addressString,
     draft,
     attachment,
-    broadcastOptions,
+    isBroadcast,
+    broadcastChannelName,
     priority,
     sendStatus,
     unlockedWallet,
     estimateSendMessageFees,
     estimateSendBroadcastFees,
-    balance,
+    matureBalance,
   ]);
 
   return feeState;
