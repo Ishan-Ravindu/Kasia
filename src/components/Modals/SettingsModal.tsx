@@ -982,61 +982,180 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === "extras" && (
               <div className="mt-3 space-y-6 sm:mt-0">
                 <h3 className="mb-4 text-lg font-medium">Features</h3>
+                <div className="mt-3 space-y-6 overflow-hidden sm:mt-0">
+                  <h3 className="mb-4 text-lg font-medium">Extra</h3>
 
-                <div className="space-y-2">
-                  {/* Warning */}
-                  <WarningBlock title="Warning">
-                    Some of these features are in beta or expose you to external
-                    content
-                  </WarningBlock>
-                  {Object.entries(flips).map(([flagKey, item]) => (
-                    <div
-                      key={flagKey}
-                      onClick={() =>
-                        setFlag(
-                          flagKey as FeatureFlags,
-                          !flags[flagKey as FeatureFlags]
-                        )
-                      }
-                      className="border-primary-border bg-primary-bg hover:bg-primary-bg/50 my-2 cursor-pointer rounded-2xl border p-4 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="mb-1 text-sm font-semibold">
-                            {item.label}
+                  <div className="space-y-2">
+                    {/* Warning */}
+                    <WarningBlock title="Warning">
+                      Some of these features are in beta or expose you to
+                      external content
+                    </WarningBlock>
+                    {Object.entries(flips).map(([flagKey, item]) => (
+                      <div
+                        key={flagKey}
+                        onClick={() =>
+                          setFlag(
+                            flagKey as FeatureFlags,
+                            !flags[flagKey as FeatureFlags]
+                          )
+                        }
+                        className="border-primary-border bg-primary-bg hover:bg-primary-bg/50 my-2 cursor-pointer rounded-2xl border p-4 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="mb-1 text-sm font-semibold">
+                              {item.label}
+                            </div>
+                            <div className="text-xs whitespace-pre-line">
+                              {item.desc}
+                            </div>
                           </div>
-                          <div className="text-xs whitespace-pre-line">
-                            {item.desc}
-                          </div>
-                        </div>
-                        <Switch
-                          checked={flags[flagKey as FeatureFlags] || false}
-                          onChange={(enabled) =>
-                            setFlag(flagKey as FeatureFlags, enabled)
-                          }
-                          className={clsx(
-                            "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
-                            {
-                              "bg-kas-secondary":
-                                flags[flagKey as FeatureFlags],
-                              "bg-gray-300": !flags[flagKey as FeatureFlags],
+                          <Switch
+                            checked={flags[flagKey as FeatureFlags] || false}
+                            onChange={(enabled) =>
+                              setFlag(flagKey as FeatureFlags, enabled)
                             }
-                          )}
-                        >
-                          <span
                             className={clsx(
-                              "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                              "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
                               {
-                                "translate-x-6": flags[flagKey as FeatureFlags],
-                                "translate-x-1":
-                                  !flags[flagKey as FeatureFlags],
+                                "bg-kas-secondary":
+                                  flags[flagKey as FeatureFlags],
+                                "bg-gray-300": !flags[flagKey as FeatureFlags],
                               }
                             )}
-                          />
-                        </Switch>
+                          >
+                            <span
+                              className={clsx(
+                                "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                {
+                                  "translate-x-6":
+                                    flags[flagKey as FeatureFlags],
+                                  "translate-x-1":
+                                    !flags[flagKey as FeatureFlags],
+                                }
+                              )}
+                            />
+                          </Switch>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  {Object.entries(flips)
+                    .filter(([, item]) => !item.parent) // only render parent flags at top level
+                    .map(([flagKey, item]) => {
+                      const isEnabled = flags[flagKey as FeatureFlags];
+
+                      // find child flags for this parent
+                      const childFlags = Object.entries(flips).filter(
+                        ([, childItem]) => childItem.parent === flagKey
+                      );
+
+                      return (
+                        <div key={flagKey} className="my-2">
+                          {/* Parent Flag */}
+                          <div
+                            onClick={() =>
+                              setFlag(flagKey as FeatureFlags, !isEnabled)
+                            }
+                            className="border-primary-border bg-primary-bg hover:bg-primary-bg/50 cursor-pointer rounded-2xl border p-4 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="mb-1 text-sm font-semibold">
+                                  {item.label}
+                                </div>
+                                <div className="text-muted-foreground text-xs whitespace-pre-line">
+                                  {item.desc}
+                                </div>
+                              </div>
+                              <Switch
+                                checked={isEnabled}
+                                onChange={(enabled) =>
+                                  setFlag(flagKey as FeatureFlags, enabled)
+                                }
+                                className={clsx(
+                                  "relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors",
+                                  {
+                                    "bg-kas-secondary": isEnabled,
+                                    "bg-gray-300": !isEnabled,
+                                  }
+                                )}
+                              >
+                                <span
+                                  className={clsx(
+                                    "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                    {
+                                      "translate-x-6": isEnabled,
+                                      "translate-x-1": !isEnabled,
+                                    }
+                                  )}
+                                />
+                              </Switch>
+                            </div>
+                          </div>
+
+                          {/* Child flags - only show when parent is enabled */}
+                          {isEnabled && childFlags.length > 0 && (
+                            <div className="mt-2 space-y-2 pl-4">
+                              {childFlags.map(([childKey, childItem]) => {
+                                const isChildEnabled =
+                                  flags[childKey as FeatureFlags];
+                                return (
+                                  <div
+                                    key={childKey}
+                                    onClick={() =>
+                                      setFlag(
+                                        childKey as FeatureFlags,
+                                        !isChildEnabled
+                                      )
+                                    }
+                                    className="border-primary-border bg-primary-bg/80 hover:bg-primary-bg/60 cursor-pointer rounded-xl border p-3 transition-colors"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <div className="text-sm font-medium">
+                                          {childItem.label}
+                                        </div>
+                                        <div className="text-muted-foreground text-xs whitespace-pre-line">
+                                          {childItem.desc}
+                                        </div>
+                                      </div>
+                                      <Switch
+                                        checked={isChildEnabled}
+                                        onChange={(enabled) =>
+                                          setFlag(
+                                            childKey as FeatureFlags,
+                                            enabled
+                                          )
+                                        }
+                                        className={clsx(
+                                          "relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full transition-colors",
+                                          {
+                                            "bg-kas-secondary": isChildEnabled,
+                                            "bg-gray-300": !isChildEnabled,
+                                          }
+                                        )}
+                                      >
+                                        <span
+                                          className={clsx(
+                                            "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
+                                            {
+                                              "translate-x-5": isChildEnabled,
+                                              "translate-x-1": !isChildEnabled,
+                                            }
+                                          )}
+                                        />
+                                      </Switch>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}
