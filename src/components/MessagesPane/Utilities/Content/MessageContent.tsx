@@ -1,16 +1,8 @@
 import { FC, useState, useRef, useEffect } from "react";
 import clsx from "clsx";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import remarkBreaks from "remark-breaks";
 import { parseMessageForDisplay } from "../../../../utils/message-format";
 import { MARKDOWN_PREFIX } from "../../../../config/constants";
-
-// extend default schema to ensure br tags are allowed
-const sanitizeSchema = {
-  ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames || []), "br"],
-};
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 type MessageContentProps = {
   content: string;
@@ -49,7 +41,7 @@ export const MessageContent: FC<MessageContentProps> = ({
     );
   }
 
-  // render content (markdown or plain text) with expand/collapse functionality
+  // render content (markdown or plain text)
   if (typeof content === "string") {
     // check if content starts with markdown flag and process content
     const isMarkdown = content.startsWith(MARKDOWN_PREFIX);
@@ -57,15 +49,11 @@ export const MessageContent: FC<MessageContentProps> = ({
       ? content.slice(MARKDOWN_PREFIX.length)
       : content;
 
+    // preserve multiple consecutive newlines by adding nbsp between consecutive newlines only
+    const formattedContent = displayContent.replace(/\n\n/g, "\n&nbsp;\n");
+
     const renderedContent = isMarkdown ? (
-      <div className="prose-sm [&_blockquote]:border-l-2 [&_blockquote]:border-current [&_blockquote]:pl-2 [&_blockquote]:opacity-80 [&_code]:rounded [&_code]:bg-black/10 [&_code]:px-1 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:text-lg [&_h2]:font-bold [&_h3]:text-base [&_h3]:font-bold [&_h4]:font-bold [&_ol]:list-decimal [&_ol]:pl-4 [&_pre]:rounded [&_pre]:bg-black/10 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-4">
-        <ReactMarkdown
-          remarkPlugins={[remarkBreaks]}
-          rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
-        >
-          {displayContent}
-        </ReactMarkdown>
-      </div>
+      <MarkdownRenderer content={formattedContent} />
     ) : (
       parseMessageForDisplay(displayContent)
     );
