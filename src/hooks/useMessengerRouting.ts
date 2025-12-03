@@ -15,12 +15,8 @@ export const useMessengerRouting = () => {
 
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
-  const {
-    isBroadcastMode,
-    selectedChannelName,
-    setSelectedChannel,
-    setIsBroadcastMode,
-  } = useBroadcastStore();
+  const { selectedChannelName, setSelectedChannel, setIsBroadcastMode } =
+    useBroadcastStore();
 
   // determine if we're in broadcast mode based on url
   const isCurrentlyInBroadcastMode = location.pathname.includes("/broadcasts");
@@ -46,12 +42,9 @@ export const useMessengerRouting = () => {
   // get the actual channel name from the url parameter
   const channelName = channelId ? getChannelNameFromId(channelId) : null;
 
-  // effect to sync broadcast mode with url
   useEffect(() => {
-    if (isCurrentlyInBroadcastMode !== isBroadcastMode) {
-      setIsBroadcastMode(isCurrentlyInBroadcastMode);
-    }
-  }, [isCurrentlyInBroadcastMode, isBroadcastMode, setIsBroadcastMode]);
+    setIsBroadcastMode(isCurrentlyInBroadcastMode);
+  }, [isCurrentlyInBroadcastMode, setIsBroadcastMode]);
 
   // effect to sync selected contact with url and save to localstorage
   useEffect(() => {
@@ -162,11 +155,11 @@ export const useMessengerRouting = () => {
   };
 
   const onModeChange = (isBroadcastMode: boolean) => {
+    setIsBroadcastMode(isBroadcastMode);
+
     if (isBroadcastMode) {
-      // navigate to broadcast mode
       navigate(`/${walletId}/broadcasts`);
     } else {
-      // navigate to direct messages mode
       navigate(`/${walletId}/directs`);
     }
   };
