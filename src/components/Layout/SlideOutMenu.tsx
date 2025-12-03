@@ -1,9 +1,17 @@
 import { FC, useState, useEffect } from "react";
 import clsx from "clsx";
-import { RefreshCcw, User, ArrowLeft, Wallet, X } from "lucide-react";
+import {
+  RefreshCcw,
+  User,
+  ArrowLeft,
+  Wallet,
+  X,
+  DatabaseZap,
+} from "lucide-react";
 import { Settings } from "lucide-react";
 import { useUiStore } from "../../store/ui.store";
 import { SettingsModal } from "../Modals/SettingsModal";
+import { isIndexerDisabled } from "../../utils/indexer-settings";
 import { ConnectionIndicator } from "../Common/ConnectionIndicator";
 
 type SlideOutMenuProps = {
@@ -73,8 +81,13 @@ export const SlideOutMenu: FC<SlideOutMenuProps> = ({
               alt="Kasia Logo"
               className="h-[50px] w-[50px] object-contain"
             />
-            <div className="text-lg font-semibold text-[var(--text-primary)]">
-              Kasia
+            <div className="flex items-center gap-3">
+              <div className="text-lg font-semibold text-[var(--text-primary)]">
+                Kasia
+              </div>
+              {isIndexerDisabled() && (
+                <DatabaseZap className="size-5 text-[var(--accent-red)]" />
+              )}
             </div>
           </div>
           <button

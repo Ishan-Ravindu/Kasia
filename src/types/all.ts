@@ -161,3 +161,5 @@ export type OneOnOneConversation = {
 };
 
 export type KasiaConversationEvent = Message | Payment | Handshake;
+
+export type ConnectionMode = "manual" | "auto";

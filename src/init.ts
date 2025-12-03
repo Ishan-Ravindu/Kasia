@@ -7,7 +7,6 @@ import {
   unmountSplashScreen,
 } from "./components/Layout/Splash.ts";
 import "./index.css";
-import { client as indexerClient } from "./service/indexer/generated/client.gen";
 
 let root: Root;
 let splashElement: HTMLElement;
@@ -31,13 +30,6 @@ export async function boot() {
   // lazy load main
   const { loadApplication } = await import("./main");
   await loadApplication(root);
-
-  indexerClient.setConfig({
-    baseUrl:
-      import.meta.env.VITE_DEFAULT_KASPA_NETWORK === "mainnet"
-        ? import.meta.env.VITE_INDEXER_MAINNET_URL
-        : import.meta.env.VITE_INDEXER_TESTNET_URL,
-  });
 
   // lazy load network store and db store after the main app is running
   const [{ useDBStore }] = await Promise.all([import("./store/db.store")]);

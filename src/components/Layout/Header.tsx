@@ -1,6 +1,8 @@
 import { FC } from "react";
 import { ThemeToggle } from "../Common/ThemeToggle";
 import { useNavigate } from "react-router";
+import { DatabaseZap } from "lucide-react";
+import { isIndexerDisabled } from "../../utils/indexer-settings";
 import { ConnectionIndicator } from "../Common/ConnectionIndicator";
 
 type Props = {
@@ -29,6 +31,9 @@ export const Header: FC<Props> = () => {
 
       <div className="flex items-center gap-4">
         <ConnectionIndicator />
+        {isIndexerDisabled() && (
+          <DatabaseZap className="size-5 text-[var(--accent-red)]/80" />
+        )}
         <ThemeToggle />
       </div>
     </div>
