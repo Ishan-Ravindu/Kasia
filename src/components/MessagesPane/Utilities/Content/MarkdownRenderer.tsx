@@ -1,6 +1,8 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
+// NOTE: In its current vanilla form, our use of react-markdown is safe from XSS attack
+// If adding more plugins or raw HTML support, add rehype-sanitize or find a way to sanitize properly
 
 interface MarkdownRendererProps {
   content: string;
