@@ -2,6 +2,7 @@ import { IBlockAdded, ITransaction, RpcClient } from "kaspa-wasm";
 import { BlockAddedData, Header } from "../types/all";
 import { SenderAndAcceptanceResolutionService } from "./sender-and-acceptance-resolution-service";
 import { useMessagingStore } from "../store/messaging.store";
+import { useWalletStore } from "../store/wallet.store";
 import {
   isKasiaTransaction,
   ParsedKaspaMessagePayload,
@@ -104,13 +105,41 @@ export class BlockProcessorService extends EventEmitter<{
       // mark as processed optimistically
       this.processedTransactionIds.add(txId);
 
+      /*
+       * Temp hacky solution to mark out pending messages as confirmed
+       * This is planned to be unified with a single pending set so we can
+       * align with broadcast message update below
+       * We should wait until kaspa core finally implements vccv2, taking them ages
+       */
+
       if (
         await useDBStore.getState().repositories.doesKasiaEventExistsById(txId)
       ) {
-        console.log(`Transaction ${txId} already processed`);
+        // try to flip pending direct message to confirmed (even if already stored)
+        const unlockedWallet = useWalletStore.getState().unlockedWallet;
+        const repositories = useDBStore.getState().repositories;
+        if (unlockedWallet && repositories) {
+          const messageId = `${unlockedWallet.id}_${txId}`;
+          try {
+            const existingMessage =
+              await repositories.messageRepository.getMessage(messageId);
+            if (existingMessage.status === "pending") {
+              await useMessagingStore
+                .getState()
+                .updateMessageStatus(
+                  txId,
+                  "confirmed",
+                  repositories,
+                  existingMessage
+                );
+            }
+          } catch {
+            console.log("Error updating direct status to 'confirmed'");
+          }
+        }
         return;
       }
-
+      //TO DO: Payments as well
       /*
        * Temp hacky solution to mark out pending broadcasts as confirmed
        * This is planned to be unified with a single pending set so we can extend

@@ -125,6 +125,14 @@ interface MessagingState {
 
   // Hydration
   hydrateOneonOneConversations: () => Promise<void>;
+
+  // Message status management
+  updateMessageStatus: (
+    transactionId: string,
+    status: "pending" | "confirmed" | "failed",
+    repositories: Repositories,
+    existingMessage: Message
+  ) => Promise<void>;
 }
 
 export const useMessagingStore = create<MessagingState>((set, g) => {
@@ -821,6 +829,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               transaction.content.indexOf(":") + 1
             );
 
+            const isFromMeMessage =
+              transaction.senderAddress === address.toString();
             const message: Message = {
               __type: "message",
               amount: transaction.amount,
@@ -828,11 +838,13 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               conversationId: existingConversationWithContact.conversation.id,
               content: decryptedContent ?? "",
               createdAt: transaction.createdAt,
-              fromMe: transaction.senderAddress === address.toString(),
+              fromMe: isFromMeMessage,
               id: `${unlockedWallet.id}_${transaction.transactionId}`,
               tenantId: unlockedWallet.id,
               transactionId: transaction.transactionId,
               fee: transaction.fee,
+              // outgoing messages start as pending until confirmed on chain
+              status: isFromMeMessage ? "pending" : "confirmed",
             };
 
             await repositories.messageRepository.saveMessage(message);
@@ -1477,6 +1489,52 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       console.log("self stash created successfully:", txId);
       return txId;
+    },
+
+    updateMessageStatus: async (
+      transactionId,
+      status,
+      repositories,
+      existingMessage
+    ) => {
+      if (!repositories || !transactionId || !existingMessage) {
+        console.warn("Message status update failure: missing props");
+        return;
+      }
+
+      try {
+        // update status in db
+        await repositories.messageRepository.saveMessage({
+          ...existingMessage,
+          status,
+        });
+
+        // update in-memory state
+        set((state) => {
+          const updatedConversations = state.oneOnOneConversations.map(
+            (oooc) => ({
+              ...oooc,
+              events: oooc.events.map((event) => {
+                if (
+                  event.__type === "message" &&
+                  event.transactionId === transactionId
+                ) {
+                  return { ...event, status };
+                }
+                return event;
+              }),
+            })
+          );
+
+          return { oneOnOneConversations: updatedConversations };
+        });
+      } catch (error) {
+        // message might not exist yet (incoming from network) - that's ok
+        console.debug(
+          `Could not update message status for ${transactionId}:`,
+          error
+        );
+      }
     },
   };
 });

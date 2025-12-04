@@ -15,6 +15,7 @@ export type DbMessage = {
   createdAt: Date;
   transactionId: TransactionId;
   contactId: string;
+  status: "pending" | "confirmed" | "failed";
   /**
    * encrypted data shaped as `json(MessageBag)`
    */
@@ -191,6 +192,7 @@ export class MessageRepository {
       conversationId: message.conversationId,
       createdAt: message.createdAt,
       contactId: message.contactId,
+      status: message.status,
       encryptedData: encryptXChaCha20Poly1305(
         JSON.stringify({
           fileData: message.fileData,
@@ -217,6 +219,7 @@ export class MessageRepository {
       conversationId: dbMessage.conversationId,
       createdAt: dbMessage.createdAt,
       transactionId: dbMessage.transactionId,
+      status: dbMessage.status,
       fee: messageBag.fee,
       fileData: messageBag.fileData,
       amount: messageBag.amount,
