@@ -1,5 +1,6 @@
 import { encryptXChaCha20Poly1305, decryptXChaCha20Poly1305 } from "kaspa-wasm";
 import { TransactionId } from "../../types/transactions";
+import { TransactionStatus } from "../../types/all";
 import { DBNotFoundException, KasiaDB } from "./db";
 
 export type DbMessage = {
@@ -15,7 +16,7 @@ export type DbMessage = {
   createdAt: Date;
   transactionId: TransactionId;
   contactId: string;
-  status: "pending" | "confirmed" | "failed";
+  status: TransactionStatus;
   /**
    * encrypted data shaped as `json(MessageBag)`
    */

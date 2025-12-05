@@ -109,9 +109,8 @@ export class BlockProcessorService extends EventEmitter<{
       const messageType = parsed.type;
 
       /*
-       * Temp hacky solution to mark out pending messages as confirmed
-       * This is planned to be unified with a single pending set so we can
-       * align with broadcast message update below
+       * Temp solution to mark out pending messages and payments as confirmed
+       * This is planned to be refactored once there are some node updates
        * We should wait until kaspa core finally implements vccv2, taking them ages
        */
       if (
@@ -123,7 +122,6 @@ export class BlockProcessorService extends EventEmitter<{
         if (unlockedWallet && repositories) {
           const eventId = `${unlockedWallet.id}_${txId}`;
           try {
-            // try message first, fallback to payment
             let existingEvent;
             switch (messageType) {
               case "comm":
@@ -156,8 +154,7 @@ export class BlockProcessorService extends EventEmitter<{
       }
       /*
        * Temp hacky solution to mark out pending broadcasts as confirmed
-       * This is planned to be unified with a single pending set so we can extend
-       * the same functionality to outgoing chat messages too
+       * Currently only updates in memory broadcasts
        */
       const broadcastStore = useBroadcastStore.getState();
       const existingPendingMessage = broadcastStore.findMessageByTxId(txId);

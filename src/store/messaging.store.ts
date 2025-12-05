@@ -3,6 +3,7 @@ import {
   KasiaConversationEvent,
   KasiaTransaction,
   OneOnOneConversation,
+  TransactionStatus,
 } from "../types/all";
 import { Contact } from "./repository/contact.repository";
 import {
@@ -129,7 +130,7 @@ interface MessagingState {
   // Message status management
   updateEventStatus: (
     transactionId: string,
-    status: "pending" | "confirmed" | "failed",
+    status: TransactionStatus,
     repositories: Repositories,
     existingMessage: Message | Payment
   ) => Promise<void>;
