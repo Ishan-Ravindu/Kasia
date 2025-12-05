@@ -127,11 +127,11 @@ interface MessagingState {
   hydrateOneonOneConversations: () => Promise<void>;
 
   // Message status management
-  updateMessageStatus: (
+  updateEventStatus: (
     transactionId: string,
     status: "pending" | "confirmed" | "failed",
     repositories: Repositories,
-    existingMessage: Message
+    existingMessage: Message | Payment
   ) => Promise<void>;
 }
 
@@ -805,6 +805,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               tenantId: unlockedWallet.id,
               transactionId: transaction.transactionId,
               fee: transaction.fee,
+              status: "pending",
             };
 
             await repositories.paymentRepository.savePayment(payment);
@@ -1491,23 +1492,31 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       return txId;
     },
 
-    updateMessageStatus: async (
+    updateEventStatus: async (
       transactionId,
       status,
       repositories,
-      existingMessage
+      existingEvent
     ) => {
-      if (!repositories || !transactionId || !existingMessage) {
+      if (!repositories || !transactionId || !existingEvent) {
         console.warn("Message status update failure: missing props");
         return;
       }
-
       try {
-        // update status in db
-        await repositories.messageRepository.saveMessage({
-          ...existingMessage,
-          status,
-        });
+        switch (existingEvent.__type) {
+          case "message":
+            await repositories.messageRepository.saveMessage({
+              ...existingEvent,
+              status,
+            });
+            break;
+          case "payment":
+            await repositories.paymentRepository.savePayment({
+              ...existingEvent,
+              status,
+            });
+            break;
+        }
 
         // update in-memory state
         set((state) => {
@@ -1516,7 +1525,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               ...oooc,
               events: oooc.events.map((event) => {
                 if (
-                  event.__type === "message" &&
+                  event.__type === existingEvent.__type &&
                   event.transactionId === transactionId
                 ) {
                   return { ...event, status };

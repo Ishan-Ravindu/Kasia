@@ -260,7 +260,7 @@ export const openDatabase = async (): Promise<KasiaDB> => {
       }
 
       if (oldVersion <= 3) {
-        // Migration to v4: Add status field to existing messages
+        // Migration to v4: Add status field to existing messages and payments
         const messagesStore = transaction.objectStore("messages");
         let cursor = await messagesStore.openCursor();
 
@@ -274,7 +274,22 @@ export const openDatabase = async (): Promise<KasiaDB> => {
           cursor = await cursor.continue();
         }
 
-        console.log("[DB] - Migrated to v4: Added status field to messages");
+        const paymentsStore = transaction.objectStore("payments");
+        let paymentCursor = await paymentsStore.openCursor();
+
+        while (paymentCursor) {
+          const payment = paymentCursor.value;
+          // add default status to existing payments that don't have it
+          if (!payment.status) {
+            payment.status = "confirmed";
+            await paymentCursor.update(payment);
+          }
+          paymentCursor = await paymentCursor.continue();
+        }
+
+        console.log(
+          "[DB] - Migrated to v4: Added status field to messages and payments"
+        );
       }
       if (oldVersion <= 4) {
         // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1

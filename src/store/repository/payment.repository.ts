@@ -15,6 +15,7 @@ export type DbPayment = {
   createdAt: Date;
   transactionId: TransactionId;
   contactId: string;
+  status: "pending" | "confirmed" | "failed";
   /**
    * encrypted data shaped as `json(PaymentBag)`
    */
@@ -180,6 +181,7 @@ export class PaymentRepository {
       conversationId: payment.conversationId,
       createdAt: payment.createdAt,
       contactId: payment.contactId,
+      status: payment.status,
       encryptedData: encryptXChaCha20Poly1305(
         JSON.stringify({
           amount: payment.amount,
@@ -204,6 +206,7 @@ export class PaymentRepository {
       contactId: dbPayment.contactId,
       conversationId: dbPayment.conversationId,
       createdAt: dbPayment.createdAt,
+      status: dbPayment.status,
       transactionId: dbPayment.transactionId,
       fee: paymentBag.fee,
       amount: paymentBag.amount,

@@ -104,6 +104,9 @@ export class BlockProcessorService extends EventEmitter<{
 
       // mark as processed optimistically
       this.processedTransactionIds.add(txId);
+      const parsed = parseKaspaMessagePayload(tx.payload);
+
+      const messageType = parsed.type;
 
       /*
        * Temp hacky solution to mark out pending messages as confirmed
@@ -111,7 +114,6 @@ export class BlockProcessorService extends EventEmitter<{
        * align with broadcast message update below
        * We should wait until kaspa core finally implements vccv2, taking them ages
        */
-
       if (
         await useDBStore.getState().repositories.doesKasiaEventExistsById(txId)
       ) {
@@ -119,27 +121,39 @@ export class BlockProcessorService extends EventEmitter<{
         const unlockedWallet = useWalletStore.getState().unlockedWallet;
         const repositories = useDBStore.getState().repositories;
         if (unlockedWallet && repositories) {
-          const messageId = `${unlockedWallet.id}_${txId}`;
+          const eventId = `${unlockedWallet.id}_${txId}`;
           try {
-            const existingMessage =
-              await repositories.messageRepository.getMessage(messageId);
-            if (existingMessage.status === "pending") {
+            // try message first, fallback to payment
+            let existingEvent;
+            switch (messageType) {
+              case "comm":
+                existingEvent =
+                  await repositories.messageRepository.getMessage(eventId);
+                break;
+              case "payment":
+                existingEvent =
+                  await repositories.paymentRepository.getPayment(eventId);
+                break;
+              default:
+                console.error(`Unknown message type: ${messageType}`);
+                return;
+            }
+            if (existingEvent?.status === "pending") {
               await useMessagingStore
                 .getState()
-                .updateMessageStatus(
+                .updateEventStatus(
                   txId,
                   "confirmed",
                   repositories,
-                  existingMessage
+                  existingEvent
                 );
             }
-          } catch {
-            console.log("Error updating direct status to 'confirmed'");
+          } catch (e) {
+            console.log("Error updating direct status to 'confirmed':", e);
           }
         }
         return;
       }
-      //TO DO: Payments as well
       /*
        * Temp hacky solution to mark out pending broadcasts as confirmed
        * This is planned to be unified with a single pending set so we can extend
@@ -166,10 +180,6 @@ export class BlockProcessorService extends EventEmitter<{
       // try to resolve sender
       const resolvedSenderData = await this.saars.askResolution(txId);
       const resolvedSenderAddress = resolvedSenderData.sender.toString();
-
-      const parsed = parseKaspaMessagePayload(tx.payload);
-
-      const messageType = parsed.type;
       const targetAlias = parsed.alias;
 
       const isCommForUs =
