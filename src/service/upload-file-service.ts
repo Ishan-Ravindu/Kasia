@@ -38,6 +38,7 @@ export async function prepareFileForUpload(
   compressOptions: CompressImageOptions = {},
   onStatus?: (status: string) => void
 ): Promise<PrepareFileResult> {
+  // Note: We now pass maxSize directly to compressImageToFit which validates actual payload size
   const rawTarget = Math.floor(((maxSize - JSON_WRAP_LEN) * 3) / 4);
   {
     /*default return for NON images */
@@ -51,7 +52,8 @@ export async function prepareFileForUpload(
   let wasCompressed = false;
   if (file.size > rawTarget) {
     onStatus?.("Large Image - Compressing...");
-    candidate = await compressImageToFit(file, rawTarget, compressOptions);
+    // Pass maxSize instead of rawTarget to validate actual JSON payload size
+    candidate = await compressImageToFit(file, maxSize, compressOptions);
     wasCompressed = !!candidate && candidate !== file;
   }
 
@@ -89,22 +91,77 @@ export async function prepareFileForUpload(
   }
 }
 
-// Try multiple times to compress. reduce the quality for the first half of attempts, then reduce both for the remaining
+// Constants for compression logic matching ImageCompressionModal
+const MIN_DIMENSION = 150;
+const MIN_QUALITY = 0.3;
+const MAX_QUALITY = 0.95;
+const QUALITY_STEP = 0.05;
+
+// Helper to calculate actual JSON payload size for a file
+async function getActualPayloadSize(file: File): Promise<number> {
+  const content = await toDataURL(file);
+  const fileMessage = JSON.stringify({
+    type: "file",
+    name: file.name,
+    size: file.size,
+    mimeType: file.type,
+    content,
+  });
+  return new Blob([fileMessage]).size;
+}
+
+// Calculate target dimensions maintaining aspect ratio
+function calculateTargetDimensions(
+  targetMaxDimension: number,
+  originalWidth: number,
+  originalHeight: number,
+  minDimension: number
+): { width: number; height: number } {
+  const aspectRatio = originalWidth / originalHeight;
+  const clampedMax = Math.max(minDimension, targetMaxDimension);
+
+  if (aspectRatio >= 1) {
+    const width = Math.min(clampedMax, originalWidth);
+    const height = Math.max(minDimension, Math.round(width / aspectRatio));
+    return { width, height };
+  }
+
+  const height = Math.min(clampedMax, originalHeight);
+  const width = Math.max(minDimension, Math.round(height * aspectRatio));
+  return { width, height };
+}
+
+// Generate quality levels from min to max
+function generateQualityLevels(
+  minQuality: number,
+  maxQuality: number
+): number[] {
+  const qualities: number[] = [];
+  for (let q = maxQuality; q >= minQuality; q -= QUALITY_STEP) {
+    qualities.push(Math.round(q * 100) / 100);
+  }
+  if (qualities[qualities.length - 1] !== minQuality) {
+    qualities.push(minQuality);
+  }
+  return qualities.reverse(); // Start from minimum quality
+}
+
+// New compression logic: preserve original size, only shrink when necessary
 async function compressImageToFit(
   file: File,
   rawTarget: number,
   options: CompressImageOptions
 ): Promise<File | null> {
   const {
-    maxWidth = 350,
-    maxHeight = 350,
-    minWidth = 100,
-    minHeight = 100,
-    maxQuality = 1.0,
-    minQuality = 0.4,
-    maxAttempts = 20,
+    minWidth = MIN_DIMENSION,
+    minHeight = MIN_DIMENSION,
+    maxQuality = MAX_QUALITY,
+    minQuality = MIN_QUALITY,
   } = options;
 
+  const minDimension = Math.max(minWidth, minHeight, MIN_DIMENSION);
+
+  // Load original image
   const img = await new Promise<HTMLImageElement>((res, rej) => {
     const image = new Image();
     image.onload = () => res(image);
@@ -112,61 +169,183 @@ async function compressImageToFit(
     image.src = URL.createObjectURL(file);
   });
 
-  let width = img.width;
-  let height = img.height;
-  let quality = maxQuality;
+  const originalWidth = img.width;
+  const originalHeight = img.height;
+  const maxOriginalDimension = Math.max(originalWidth, originalHeight);
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  // Step 1: Binary search to find maximum dimension that fits at minimum quality
+  const DIMENSION_THRESHOLD = 25; // Stop when range is smaller than this
+  console.log(
+    `[compressImageToFit] Step 1: Binary search for max dimension at quality ${minQuality}, maxPayload=${rawTarget} bytes`
+  );
+
+  let lowerBound = minDimension;
+  let upperBound = Math.round(maxOriginalDimension);
+  let chosenDimension: number | null = null;
+  let bestDataSize = 0;
+
+  // First check if even the minimum dimension fits
+  const minTarget = calculateTargetDimensions(
+    minDimension,
+    originalWidth,
+    originalHeight,
+    minDimension
+  );
+  canvas.width = minTarget.width;
+  canvas.height = minTarget.height;
+  ctx.drawImage(img, 0, 0, minTarget.width, minTarget.height);
+  const minCompressed = await tryCompress(canvas, file, minQuality, rawTarget);
+
+  if (!minCompressed) {
     console.log(
-      `[compressImageToFit] attempt ${attempt + 1}/${maxAttempts}: ` +
-        `quality=${quality.toFixed(2)}, width=${width}, height=${height}, ` +
-        `targetSize=${rawTarget} bytes`
+      `[compressImageToFit] ✗ Even minimum dimension ${minDimension}px (${minTarget.width}x${minTarget.height}) is too large`
     );
-    if (width > maxWidth || height > maxHeight) {
-      const ratio = Math.min(maxWidth / width, maxHeight / height);
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
-    }
+    return null;
+  }
 
-    canvas.width = width;
-    canvas.height = height;
-    ctx.drawImage(img, 0, 0, width, height);
+  const minPayloadSize = await getActualPayloadSize(minCompressed);
+  console.log(
+    `[compressImageToFit] ✓ Minimum dimension ${minDimension}px (${minTarget.width}x${minTarget.height}) | Quality: ${minQuality} | Payload: ${minPayloadSize} bytes`
+  );
+  chosenDimension = minDimension;
+  bestDataSize = minPayloadSize;
 
-    const compressed = await tryCompress(canvas, file, quality, rawTarget);
+  // Binary search for optimal dimension
+  while (upperBound - lowerBound > DIMENSION_THRESHOLD) {
+    const midDimension = Math.round((lowerBound + upperBound) / 2);
 
-    if (compressed) return compressed;
+    const target = calculateTargetDimensions(
+      midDimension,
+      originalWidth,
+      originalHeight,
+      minDimension
+    );
 
-    quality = Math.max(minQuality, quality - 0.05);
+    canvas.width = target.width;
+    canvas.height = target.height;
+    ctx.drawImage(img, 0, 0, target.width, target.height);
 
-    if (attempt > maxAttempts / 2) {
-      width = Math.max(minWidth, Math.round(width * 0.95));
-      height = Math.max(minHeight, Math.round(height * 0.95));
+    const compressed = await tryCompress(canvas, file, minQuality, rawTarget);
+
+    if (compressed) {
+      const payloadSize = await getActualPayloadSize(compressed);
+      console.log(
+        `[compressImageToFit] ✓ Dimension ${midDimension}px (${target.width}x${target.height}) | Quality: ${minQuality} | Payload: ${payloadSize} bytes | Range: [${lowerBound}, ${upperBound}]`
+      );
+      chosenDimension = midDimension;
+      bestDataSize = payloadSize;
+      lowerBound = midDimension; // Try larger
+    } else {
+      console.log(
+        `[compressImageToFit] ✗ Dimension ${midDimension}px (${target.width}x${target.height}) | Quality: ${minQuality} | Too large | Range: [${lowerBound}, ${upperBound}]`
+      );
+      upperBound = midDimension; // Try smaller
     }
   }
-  return null;
+
+  if (!chosenDimension) {
+    console.log(
+      "[compressImageToFit] No dimension fits even at minimum quality"
+    );
+    return null;
+  }
+
+  console.log(
+    `[compressImageToFit] Binary search complete: chosen dimension ${chosenDimension}px | Payload: ${bestDataSize} bytes`
+  );
+
+  // Step 2: For chosen dimension, find maximum quality that fits
+  const qualities = generateQualityLevels(minQuality, maxQuality);
+  let bestResult: File | null = null;
+
+  const targetDims = calculateTargetDimensions(
+    chosenDimension,
+    originalWidth,
+    originalHeight,
+    minDimension
+  );
+
+  console.log(
+    `[compressImageToFit] Step 2: Finding max quality for ${targetDims.width}x${targetDims.height}`
+  );
+
+  canvas.width = targetDims.width;
+  canvas.height = targetDims.height;
+  ctx.drawImage(img, 0, 0, targetDims.width, targetDims.height);
+
+  let bestQuality = minQuality;
+  for (const quality of qualities) {
+    const compressed = await tryCompress(canvas, file, quality, rawTarget);
+    if (!compressed) {
+      if (bestResult) {
+        console.log(
+          `[compressImageToFit] ✗ Quality ${quality.toFixed(2)} | Too large`
+        );
+        break; // Previous quality was the max that fits
+      }
+      console.log(
+        `[compressImageToFit] ✗ Quality ${quality.toFixed(2)} | Too large`
+      );
+      continue;
+    }
+    bestResult = compressed;
+    bestQuality = quality;
+    const payloadSize = await getActualPayloadSize(compressed);
+    console.log(
+      `[compressImageToFit] ✓ Quality ${quality.toFixed(2)} | Payload: ${payloadSize} bytes`
+    );
+  }
+
+  if (bestResult) {
+    const finalPayloadSize = await getActualPayloadSize(bestResult);
+    console.log(
+      `[compressImageToFit] Final result: ${targetDims.width}x${targetDims.height} @ quality ${bestQuality.toFixed(2)} | Payload: ${finalPayloadSize} bytes`
+    );
+  }
+
+  return bestResult;
 }
 
-// Compresses once with given params
+// Compresses once with given params and validates against actual payload size
 async function tryCompress(
   canvas: HTMLCanvasElement,
   original: File,
   quality: number,
-  rawTarget: number
+  maxPayloadSize: number
 ): Promise<File | null> {
   for (const type of ["image/webp", "image/jpeg"]) {
     const blob: Blob | null = await new Promise((res) =>
       canvas.toBlob(res, type, quality)
     );
-    if (blob && blob.size <= rawTarget)
-      return new File(
-        [blob],
-        original.name.replace(/\.[^.]+$/, `.${type.split("/")[1]}`),
-        { type }
-      );
+
+    if (!blob) continue;
+
+    // Create file and check actual JSON-wrapped base64 size (same as final validation)
+    const file = new File(
+      [blob],
+      original.name.replace(/\.[^.]+$/, `.${type.split("/")[1]}`),
+      { type }
+    );
+
+    // Convert to base64 and wrap in JSON like prepareFileForUpload does
+    const content = await toDataURL(file);
+    const fileMessage = JSON.stringify({
+      type: "file",
+      name: file.name,
+      size: file.size,
+      mimeType: file.type,
+      content,
+    });
+
+    const actualPayloadSize = new Blob([fileMessage]).size;
+
+    if (actualPayloadSize <= maxPayloadSize) {
+      return file;
+    }
   }
   return null;
 }

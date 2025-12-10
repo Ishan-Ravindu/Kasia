@@ -25,7 +25,6 @@ import {
   useFeatureFlagsStore,
   FeatureFlags,
 } from "../../../../store/featureflag.store";
-import { ImageCompressionModal } from "../../../Modals/ImageCompressionModal";
 
 export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const attachment = useComposerSlice((s) => s.attachment);
@@ -78,7 +77,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   };
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   // check message length and trim if over limit
   useEffect(() => {
@@ -111,15 +109,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    // If it's an image, show compression modal
-    if (file.type.startsWith("image/")) {
-      setPendingImageFile(file);
-    } else {
-      // For non-images, attach directly
-      await attach(file, "File");
-    }
-
+    await attach(file, "File");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -134,7 +124,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
       if (item.type.startsWith("image/")) {
         event.preventDefault();
         const file = item.getAsFile();
-        if (file) setPendingImageFile(file);
+        if (file) await attach(file, "Pasted Image");
         break;
       }
     }
@@ -156,14 +146,7 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
     setIsDragOver(false);
     if (!guardReady()) return;
     const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      const file = files[0];
-      if (file.type.startsWith("image/")) {
-        setPendingImageFile(file);
-      } else {
-        await attach(file, "Dropped File");
-      }
-    }
+    if (files.length > 0) await attach(files[0], "Dropped File");
   };
 
   const handleDraftChange = (value: string) => {
@@ -175,23 +158,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
   const onSend = async () => {
     if (!guardReady() || !conversation || !canCompose) return;
     await send(conversation.myAlias);
-  };
-
-  const handleImageCompressionConfirm = (fileMessage: string, file: File) => {
-    // Manually set the attachment with the compressed image
-    useComposerStore.getState().setAttachment({
-      type: "image",
-      name: file.name,
-      mimeType: file.type,
-      content: fileMessage,
-      size: file.size,
-    });
-    toast.success("Image attached successfully!");
-    setPendingImageFile(null);
-  };
-
-  const handleImageCompressionCancel = () => {
-    setPendingImageFile(null);
   };
 
   return (
@@ -320,15 +286,6 @@ export const DirectComposer = ({ recipient }: { recipient?: string }) => {
         onChange={handleFileUpload}
         className="hidden"
       />
-
-      {pendingImageFile && (
-        <ImageCompressionModal
-          file={pendingImageFile}
-          onConfirm={handleImageCompressionConfirm}
-          onCancel={handleImageCompressionCancel}
-          estimatedBaseFee={feeState.value ? BigInt(feeState.value) : BigInt(0)}
-        />
-      )}
     </div>
   );
 };
