@@ -10,6 +10,7 @@ import { MnemonicEntry } from "../MnemonicEntry";
 import { Button } from "../Common/Button";
 import { WalletFlowErrorMessage } from "./WalletFlowErrorMessage";
 import { PasswordField } from "../Common/PasswordField";
+import { WarningBlock } from "../Common/WarningBlock";
 
 type ImportWalletProps = {
   onSuccess: () => void;
@@ -63,7 +64,13 @@ export const Import = ({ onSuccess, onBack }: ImportWalletProps) => {
   return (
     <>
       <h2 className="text-center text-lg font-bold">Import Wallet</h2>
-
+      <WarningBlock
+        title={"Import at your own risk"}
+        children={
+          "For security reasons, ideally create a new wallet and transfer a small amount of funds. Import an existing wallet only if absolutely necessary and only when it holds a low balance."
+        }
+        className="my-2 py-2!"
+      />
       <div className="mb-3">
         <label className="mb-3 block text-base font-semibold text-[var(--text-primary)]">
           Wallet Name
