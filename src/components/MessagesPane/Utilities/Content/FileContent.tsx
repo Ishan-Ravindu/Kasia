@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { Paperclip } from "lucide-react";
 import type { FileData } from "../../../../store/repository/message.repository";
+import { downloadFile } from "../../../../utils/file-download";
 
 type FileContentProps = {
   fileData: FileData | null;
@@ -32,12 +33,7 @@ export const FileContent: FC<FileContentProps> = ({ fileData }) => {
       </div>
       <button
         className="cursor-pointer rounded border bg-[var(--button-primary)] px-3 py-1 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--button-primary)]/80"
-        onClick={() => {
-          const link = document.createElement("a");
-          link.href = fileData.content;
-          link.download = fileData.name;
-          link.click();
-        }}
+        onClick={() => downloadFile(fileData.content, fileData.name)}
       >
         Download
       </button>

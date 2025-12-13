@@ -91,7 +91,7 @@ export async function prepareFileForUpload(
   }
 }
 
-// Constants for compression logic matching ImageCompressionModal
+// Constants for compression logic
 const MIN_DIMENSION = 150;
 const MIN_QUALITY = 0.3;
 const MAX_QUALITY = 0.95;
