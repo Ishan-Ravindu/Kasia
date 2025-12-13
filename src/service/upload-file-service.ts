@@ -29,6 +29,21 @@ const JSON_WRAP_LEN = // we need this to gauge how much we space we need beyond 
   JSON.stringify({ type: "file", name: "", size: 0, mimeType: "", content: "" })
     .length + 23;
 
+// Helper: create file message and return its payload size
+function createFilePayload(
+  file: File,
+  content: string
+): { message: string; size: number } {
+  const message = JSON.stringify({
+    type: "file",
+    name: file.name,
+    size: file.size,
+    mimeType: file.type,
+    content,
+  });
+  return { message, size: new Blob([message]).size };
+}
+
 /**
  * prepare a file for upload: compresses if needed, encodes as base64, returns JSON message or error.
  */
@@ -64,15 +79,10 @@ export async function prepareFileForUpload(
 
   try {
     const content = await toDataURL(candidate);
-    const fileMessage = JSON.stringify({
-      type: "file",
-      name: candidate.name,
-      size: candidate.size,
-      mimeType: candidate.type,
-      content,
-    });
-
-    const byteLen = new Blob([fileMessage]).size;
+    const { message: fileMessage, size: byteLen } = createFilePayload(
+      candidate,
+      content
+    );
     if (byteLen > maxSize) {
       return {
         error:
@@ -100,14 +110,7 @@ const QUALITY_STEP = 0.05;
 // Helper to calculate actual JSON payload size for a file
 async function getActualPayloadSize(file: File): Promise<number> {
   const content = await toDataURL(file);
-  const fileMessage = JSON.stringify({
-    type: "file",
-    name: file.name,
-    size: file.size,
-    mimeType: file.type,
-    content,
-  });
-  return new Blob([fileMessage]).size;
+  return createFilePayload(file, content).size;
 }
 
 // Calculate target dimensions maintaining aspect ratio
@@ -333,15 +336,7 @@ async function tryCompress(
 
     // Convert to base64 and wrap in JSON like prepareFileForUpload does
     const content = await toDataURL(file);
-    const fileMessage = JSON.stringify({
-      type: "file",
-      name: file.name,
-      size: file.size,
-      mimeType: file.type,
-      content,
-    });
-
-    const actualPayloadSize = new Blob([fileMessage]).size;
+    const actualPayloadSize = createFilePayload(file, content).size;
 
     if (actualPayloadSize <= maxPayloadSize) {
       return file;
