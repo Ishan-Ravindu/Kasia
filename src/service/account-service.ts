@@ -8,7 +8,7 @@ import {
   GeneratorSummary,
   sompiToKaspaString,
   kaspaToSompi,
-  PrivateKeyGenerator,
+  PrivateKey,
   Generator,
   RpcClient,
 } from "kaspa-wasm";
@@ -309,21 +309,15 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
     generator: Generator,
     postTransactionCallback?: () => Promise<void>
   ): Promise<string> {
-    const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-      this.unlockedWallet,
-      this.pwd
-    );
+    const privateKey = WalletStorageService.getPrivateKey(this.unlockedWallet);
 
-    if (!privateKeyGenerator) {
-      throw new Error("Failed to generate private key");
+    if (!privateKey) {
+      throw new Error("Failed to get private key");
     }
 
     let pending: PendingTransaction | null;
     while ((pending = await generator.next())) {
-      const txid = await this.signAndSubmitTransaction(
-        pending,
-        privateKeyGenerator
-      );
+      const txid = await this.signAndSubmitTransaction(pending, privateKey);
       if (postTransactionCallback) {
         await postTransactionCallback();
       }
@@ -334,7 +328,7 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
 
   private async signAndSubmitTransaction(
     pendingTransaction: PendingTransaction,
-    privateKeyGenerator: PrivateKeyGenerator
+    privateKey: PrivateKey
   ): Promise<string> {
     // Validate transaction fee (to make sure its not super high!) before proceeding
     this.validateTransactionFee(pendingTransaction.feeAmount);
@@ -348,14 +342,10 @@ export class AccountService extends EventEmitter<AccountServiceEvents> {
       console.log(`  Address ${i + 1}: ${addr.toString()}`);
     });
 
-    // Always use receive key for all addresses since we only use primary address
+    // use the same private key for all inputs (single address wallet)
     const privateKeys = pendingTransaction.addresses().map(() => {
       console.log("Using primary address key for signing");
-      const key = privateKeyGenerator.receiveKey(0);
-      if (!key) {
-        throw new Error("Failed to generate private key for signing");
-      }
-      return key;
+      return privateKey;
     });
 
     // Sign the transaction

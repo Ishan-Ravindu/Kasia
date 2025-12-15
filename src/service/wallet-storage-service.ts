@@ -2,8 +2,8 @@ import {
   decryptXChaCha20Poly1305,
   encryptXChaCha20Poly1305,
   Mnemonic,
+  PrivateKey,
   PrivateKeyGenerator,
-  PublicKeyGenerator,
   XPrv,
 } from "kaspa-wasm";
 import { v4 as uuidv4 } from "uuid";
@@ -19,18 +19,18 @@ export class WalletStorageService {
     }
   }
 
-  static getPrivateKeyGenerator(
-    wallet: Pick<UnlockedWallet, "encryptedXPrv">,
-    password: string
-  ): PrivateKeyGenerator {
+  static getPrivateKey(
+    wallet: Pick<UnlockedWallet, "encryptedPrivateKey" | "password">
+  ): PrivateKey {
     try {
-      // First decrypt the mnemonic phrase
-      const seed = decryptXChaCha20Poly1305(wallet.encryptedXPrv, password);
-      const xprv = new XPrv(seed);
-
-      return new PrivateKeyGenerator(xprv, false, BigInt(0));
+      // decrypt the private key hex string
+      const privateKeyHex = decryptXChaCha20Poly1305(
+        wallet.encryptedPrivateKey,
+        wallet.password
+      );
+      return new PrivateKey(privateKeyHex);
     } catch (error) {
-      console.error("Error getting private key generator:", error);
+      console.error("Error getting private key:", error);
       throw new Error("Invalid password");
     }
   }
@@ -78,27 +78,30 @@ export class WalletStorageService {
         );
       }
 
-      // Generate the seed with passphrase and extended private key
+      // Generate the seed with passphrase and create master extended private key
       const seed = mnemonic.toSeed(passphrase);
-      const extendedKey = new XPrv(seed);
+      const masterXPrv = new XPrv(seed);
 
-      const publicKeyGenerator = PublicKeyGenerator.fromMasterXPrv(
-        extendedKey,
+      // get the receive private key for address 0
+      const receivePrivateKey = new PrivateKeyGenerator(
+        masterXPrv,
         false,
         BigInt(0)
+      ).receiveKey(0);
+
+      const receivePublicKey = receivePrivateKey.toPublicKey();
+
+      // encrypt the private key hex string
+      const encryptedPrivateKey = encryptXChaCha20Poly1305(
+        receivePrivateKey.toString(),
+        password
       );
 
-      const encryptedXPrv = encryptXChaCha20Poly1305(seed, password);
-
-      const receivePublicKey = publicKeyGenerator.receivePubkey(0);
-
-      // Create the unlocked wallet with the encrypted seed
       return {
         id: wallet.id,
         name: wallet.name,
         activeAccount: 1,
-        encryptedXPrv: encryptedXPrv,
-        publicKeyGenerator,
+        encryptedPrivateKey,
         password,
         receivePublicKey,
         passphrase: passphrase || undefined,
@@ -144,7 +147,7 @@ export class WalletStorageService {
     const updatedWallets = wallets.filter((w) => w.id !== walletId);
     localStorage.setItem(this._storageKey, JSON.stringify(updatedWallets));
 
-    // clean up messaging-related localStorage keys
+    // clean-up messaging-related localStorage keys
     localStorage.removeItem(`kasia_last_opened_contact_${walletId}`);
     localStorage.removeItem(`kasia_last_opened_channel_${walletId}`);
     localStorage.removeItem(`metadata_${walletId}`);

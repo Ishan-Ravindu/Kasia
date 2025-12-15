@@ -1,4 +1,4 @@
-import { PublicKey, PublicKeyGenerator } from "wasm/kaspa";
+import { PublicKey } from "wasm/kaspa";
 
 export type Wallet = {
   id: string;
@@ -10,8 +10,7 @@ export type UnlockedWallet = {
   id: string;
   name: string;
   activeAccount: 1;
-  publicKeyGenerator: PublicKeyGenerator;
-  encryptedXPrv: string;
+  encryptedPrivateKey: string;
   password: string;
   receivePublicKey: PublicKey;
   passphrase?: string;
