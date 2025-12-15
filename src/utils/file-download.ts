@@ -1,26 +1,39 @@
 /**
+ * Convert a data URL to a Blob
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const parts = dataUrl.split(",");
+  const mime = parts[0].match(/:(.*?);/)?.[1] || "";
+  const bstr = atob(parts[1]);
+  const n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    u8arr[i] = bstr.charCodeAt(i);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+/**
  * Safely trigger a file download that works across browsers including iOS Safari.
  *
- * The key difference from a simple link.click() is that we:
- * 1. Append the link to the DOM before triggering (required for iOS)
- * 2. Remove it after a delay to ensure the download starts
- * 3. This prevents iOS Safari from navigating to the link and reloading the page
+ * Uses blob URLs instead of data URLs directly to avoid Safari tab navigation issues.
+ * Creates an object URL from the blob, triggers download, then cleans up the URL.
  */
 export function downloadFile(dataUrl: string, fileName: string): void {
-  const link = document.createElement("a");
-  link.href = dataUrl;
-  link.download = fileName;
+  // Convert data URL to blob and create object URL
+  const blob = dataUrlToBlob(dataUrl);
+  const url = URL.createObjectURL(blob);
 
-  // Required for iOS Safari - link must be in DOM
-  link.style.display = "none";
-  document.body.appendChild(link);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
 
   // Trigger download
   link.click();
 
-  // Clean up after a short delay to ensure download starts
+  // Clean up object URL to free memory
   setTimeout(() => {
-    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }, 100);
 }
 

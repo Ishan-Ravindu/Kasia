@@ -1,12 +1,17 @@
 export interface CompressImageOptions {
-  maxWidth?: number;
-  maxHeight?: number;
   minWidth?: number;
   minHeight?: number;
   maxQuality?: number;
   minQuality?: number;
-  maxAttempts?: number;
+  qualityStep?: number;
 }
+const DEFAULT_COMPRESSION_CONFIG: CompressImageOptions = {
+  minWidth: 150,
+  minHeight: 150,
+  maxQuality: 0.95,
+  minQuality: 0.3,
+  qualityStep: 0.05,
+};
 
 export interface PrepareFileResult {
   fileMessage?: string;
@@ -50,7 +55,7 @@ function createFilePayload(
 export async function prepareFileForUpload(
   file: File,
   maxSize: number,
-  compressOptions: CompressImageOptions = {},
+  compressOptions: CompressImageOptions = DEFAULT_COMPRESSION_CONFIG,
   onStatus?: (status: string) => void
 ): Promise<PrepareFileResult> {
   // Note: We now pass maxSize directly to compressImageToFit which validates actual payload size
@@ -101,12 +106,6 @@ export async function prepareFileForUpload(
   }
 }
 
-// Constants for compression logic
-const MIN_DIMENSION = 150;
-const MIN_QUALITY = 0.3;
-const MAX_QUALITY = 0.95;
-const QUALITY_STEP = 0.05;
-
 // Helper to calculate actual JSON payload size for a file
 async function getActualPayloadSize(file: File): Promise<number> {
   const content = await toDataURL(file);
@@ -137,10 +136,11 @@ function calculateTargetDimensions(
 // Generate quality levels from min to max
 function generateQualityLevels(
   minQuality: number,
-  maxQuality: number
+  maxQuality: number,
+  qualityStep: number
 ): number[] {
   const qualities: number[] = [];
-  for (let q = maxQuality; q >= minQuality; q -= QUALITY_STEP) {
+  for (let q = maxQuality; q >= minQuality; q -= qualityStep) {
     qualities.push(Math.round(q * 100) / 100);
   }
   if (qualities[qualities.length - 1] !== minQuality) {
@@ -156,13 +156,14 @@ async function compressImageToFit(
   options: CompressImageOptions
 ): Promise<File | null> {
   const {
-    minWidth = MIN_DIMENSION,
-    minHeight = MIN_DIMENSION,
-    maxQuality = MAX_QUALITY,
-    minQuality = MIN_QUALITY,
+    minWidth = DEFAULT_COMPRESSION_CONFIG.minWidth!,
+    minHeight = DEFAULT_COMPRESSION_CONFIG.minHeight!,
+    maxQuality = DEFAULT_COMPRESSION_CONFIG.maxQuality!,
+    minQuality = DEFAULT_COMPRESSION_CONFIG.minQuality!,
+    qualityStep = DEFAULT_COMPRESSION_CONFIG.qualityStep!,
   } = options;
 
-  const minDimension = Math.max(minWidth, minHeight, MIN_DIMENSION);
+  const minDimension = Math.max(minWidth, minHeight);
 
   // Load original image
   const img = await new Promise<HTMLImageElement>((res, rej) => {
@@ -262,7 +263,7 @@ async function compressImageToFit(
   );
 
   // Step 2: For chosen dimension, find maximum quality that fits
-  const qualities = generateQualityLevels(minQuality, maxQuality);
+  const qualities = generateQualityLevels(minQuality, maxQuality, qualityStep);
   let bestResult: File | null = null;
 
   const targetDims = calculateTargetDimensions(
