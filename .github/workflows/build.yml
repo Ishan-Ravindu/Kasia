@@ -583,6 +583,45 @@ jobs:
           path: ./src-tauri/target/release/bundle/nsis/
           retention-days: 1
 
+  deploy-vercel-staging:
+    runs-on: ubuntu-latest
+    needs: build-web-app
+    if: (github.ref_name == 'staging') && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download built web artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: kasia-build-${{ env.SUFFIX }}
+          path: dist
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Pin to Vercel project
+        run: |
+          mkdir -p .vercel
+          cat > .vercel/project.json << 'JSON'
+          {
+            "orgId": "${{ secrets.VERCEL_ORG_ID }}",
+            "projectId": "${{ secrets.VERCEL_PROJECT_ID }}"
+          }
+          JSON
+
+      - name: Prepare prebuilt output
+        run: |
+          rm -rf .vercel/output
+          mkdir -p .vercel/output/static
+          cp -R dist/. .vercel/output/static/
+          echo '{ "version": 3 }' > .vercel/output/config.json
+
+      - name: Deploy as production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_STAGING_TOKEN }}
+        run: |
+          vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
+
   # @TODO: waiting for Apple Developer Program membership to build iOS app
   # build-ios-app:
   #   runs-on: macos-14

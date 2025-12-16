@@ -10,6 +10,7 @@ import {
   resetCustomColors,
 } from "./config/custom-theme-applier";
 import { useOrchestrator } from "./hooks/useOrchestrator";
+import { cleanupLegacyLocalStorage } from "./utils/storage-cleanup";
 import { core } from "@tauri-apps/api";
 import { listen } from "@tauri-apps/api/event";
 
@@ -25,6 +26,9 @@ const App: React.FC = () => {
   useEffect(() => {
     const asyncDefer = async () => {
       await connect();
+
+      // clean up legacy localStorage keys that stored wallet addresses
+      cleanupLegacyLocalStorage();
 
       if (core.isTauri()) {
         // on pause and on resume registering

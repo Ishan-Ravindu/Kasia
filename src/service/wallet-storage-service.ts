@@ -143,6 +143,11 @@ export class WalletStorageService {
     const wallets = JSON.parse(walletsString) as StoredWallet[];
     const updatedWallets = wallets.filter((w) => w.id !== walletId);
     localStorage.setItem(this._storageKey, JSON.stringify(updatedWallets));
+
+    // clean up messaging-related localStorage keys
+    localStorage.removeItem(`kasia_last_opened_contact_${walletId}`);
+    localStorage.removeItem(`kasia_last_opened_channel_${walletId}`);
+    localStorage.removeItem(`metadata_${walletId}`);
   }
 
   isInitialized() {

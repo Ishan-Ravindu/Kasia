@@ -6,12 +6,15 @@ import {
   HandshakeResponse,
   SelfStashResponse,
 } from "./indexer/generated";
+import { isIndexerDisabled } from "../utils/indexer-settings";
 
 /**
  * Handles historical events
  */
 export class HistoricalSyncer {
-  private DISABLED = import.meta.env.VITE_DISABLE_INDEXER === "true";
+  private get DISABLED(): boolean {
+    return isIndexerDisabled();
+  }
 
   constructor(readonly address: string) {}
 

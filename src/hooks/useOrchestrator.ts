@@ -9,6 +9,7 @@ import { UnlockedWallet } from "../types/wallet.type";
 import { useLiveStore } from "../store/live.store";
 import { useBroadcastStore } from "../store/broadcast.store";
 import { useFeatureFlagsStore, FeatureFlags } from "../store/featureflag.store";
+import { getEffectiveIndexerUrl } from "../utils/indexer-settings";
 
 export type ConnectOpts = {
   networkType?: NetworkType;
@@ -43,11 +44,10 @@ export const useOrchestrator = () => {
     const baseNetwork = networkStore.network;
 
     // update indexer base url
+    const network =
+      (opts?.networkType ?? baseNetwork) === "mainnet" ? "mainnet" : "testnet";
     indexerClient.setConfig({
-      baseUrl:
-        (opts?.networkType ?? baseNetwork) === "mainnet"
-          ? import.meta.env.VITE_INDEXER_MAINNET_URL
-          : import.meta.env.VITE_INDEXER_TESTNET_URL,
+      baseUrl: getEffectiveIndexerUrl(network),
     });
 
     if (opts?.networkType) {
@@ -114,8 +114,6 @@ export const useOrchestrator = () => {
     const receivedAddressString = unlockedWallet.receivePublicKey
       .toAddress(networkStore.network)
       .toString();
-
-    await dbStore.migrateStorage(receivedAddressString);
 
     // Clear old conversations and related state before loading new wallet data to prevent flash
     useMessagingStore.setState({

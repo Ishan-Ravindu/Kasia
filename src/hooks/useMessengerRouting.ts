@@ -15,12 +15,8 @@ export const useMessengerRouting = () => {
 
   const messageStore = useMessagingStore();
   const walletStore = useWalletStore();
-  const {
-    isBroadcastMode,
-    selectedChannelName,
-    setSelectedChannel,
-    setIsBroadcastMode,
-  } = useBroadcastStore();
+  const { selectedChannelName, setSelectedChannel, setIsBroadcastMode } =
+    useBroadcastStore();
 
   // determine if we're in broadcast mode based on url
   const isCurrentlyInBroadcastMode = location.pathname.includes("/broadcasts");
@@ -46,23 +42,20 @@ export const useMessengerRouting = () => {
   // get the actual channel name from the url parameter
   const channelName = channelId ? getChannelNameFromId(channelId) : null;
 
-  // effect to sync broadcast mode with url
   useEffect(() => {
-    if (isCurrentlyInBroadcastMode !== isBroadcastMode) {
-      setIsBroadcastMode(isCurrentlyInBroadcastMode);
-    }
-  }, [isCurrentlyInBroadcastMode, isBroadcastMode, setIsBroadcastMode]);
+    setIsBroadcastMode(isCurrentlyInBroadcastMode);
+  }, [isCurrentlyInBroadcastMode, setIsBroadcastMode]);
 
   // effect to sync selected contact with url and save to localstorage
   useEffect(() => {
     if (contactAddress && contactAddress !== messageStore.openedRecipient) {
       messageStore.setOpenedRecipient(contactAddress);
 
-      // save to localstorage for persistence (store contactid, not address)
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress && contactId) {
+      // save to localstorage for persistence using wallet id (not address for privacy)
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId && contactId) {
         localStorage.setItem(
-          `kasia_last_opened_contact_id_${walletAddress}`,
+          `kasia_last_opened_contact_${unlockedWalletId}`,
           contactId
         );
       }
@@ -74,7 +67,7 @@ export const useMessengerRouting = () => {
     contactId,
     messageStore.openedRecipient,
     messageStore,
-    walletStore.address,
+    walletStore.unlockedWallet?.id,
   ]);
 
   // effect to sync selected channel with url
@@ -141,15 +134,15 @@ export const useMessengerRouting = () => {
   // effect to save selected channel id to localstorage for persistence
   useEffect(() => {
     if (channelId && selectedChannelName) {
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId) {
         localStorage.setItem(
-          `kasia_last_opened_channel_id_${walletAddress}`,
+          `kasia_last_opened_channel_${unlockedWalletId}`,
           channelId
         );
       }
     }
-  }, [channelId, selectedChannelName, walletStore.address]);
+  }, [channelId, selectedChannelName, walletStore.unlockedWallet?.id]);
 
   const onContactClicked = (contact: Contact) => {
     if (!walletStore.address) {
@@ -162,11 +155,11 @@ export const useMessengerRouting = () => {
   };
 
   const onModeChange = (isBroadcastMode: boolean) => {
+    setIsBroadcastMode(isBroadcastMode);
+
     if (isBroadcastMode) {
-      // navigate to broadcast mode
       navigate(`/${walletId}/broadcasts`);
     } else {
-      // navigate to direct messages mode
       navigate(`/${walletId}/directs`);
     }
   };

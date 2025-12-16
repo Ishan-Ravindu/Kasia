@@ -62,42 +62,13 @@ export const MessengerProvider: FC = () => {
       messageStore.oneOnOneConversations.length > 0 &&
       !isCurrentlyInBroadcastMode // only for direct messages
     ) {
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
-        // helper function to find contact id from address
-        const getContactIdFromAddress = (address: string): string | null => {
-          const contact = messageStore.oneOnOneConversations.find(
-            (oooc) => oooc.contact.kaspaAddress === address
-          );
-          return contact?.contact.id || null;
-        };
-
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId) {
         // get the last opened contact id from localstorage
         try {
-          let lastOpenedContactId = localStorage.getItem(
-            `kasia_last_opened_contact_id_${walletAddress}`
+          const lastOpenedContactId = localStorage.getItem(
+            `kasia_last_opened_contact_${unlockedWalletId}`
           );
-
-          // fallback: try to migrate from old address-based storage
-          if (!lastOpenedContactId) {
-            const lastOpenedAddress = localStorage.getItem(
-              `kasia_last_opened_recipient_${walletAddress}`
-            );
-            if (lastOpenedAddress) {
-              lastOpenedContactId = getContactIdFromAddress(lastOpenedAddress);
-              if (lastOpenedContactId) {
-                // migrate to new storage format
-                localStorage.setItem(
-                  `kasia_last_opened_contact_id_${walletAddress}`,
-                  lastOpenedContactId
-                );
-                // clean up old storage
-                localStorage.removeItem(
-                  `kasia_last_opened_recipient_${walletAddress}`
-                );
-              }
-            }
-          }
 
           if (lastOpenedContactId) {
             // check if the contact still exists
@@ -131,6 +102,7 @@ export const MessengerProvider: FC = () => {
     messageStore.oneOnOneConversations,
     walletStore.isAccountServiceRunning,
     walletStore.address,
+    walletStore.unlockedWallet?.id,
     isMobile,
     isCurrentlyInBroadcastMode,
     navigate,
@@ -147,12 +119,12 @@ export const MessengerProvider: FC = () => {
       isCurrentlyInBroadcastMode &&
       useBroadcastStore.getState().channels.length > 0
     ) {
-      const walletAddress = walletStore.address?.toString();
-      if (walletAddress) {
+      const unlockedWalletId = walletStore.unlockedWallet?.id;
+      if (unlockedWalletId) {
         try {
           // get the last opened channel id from localstorage
           const lastOpenedChannelId = localStorage.getItem(
-            `kasia_last_opened_channel_id_${walletAddress}`
+            `kasia_last_opened_channel_${unlockedWalletId}`
           );
 
           if (lastOpenedChannelId) {
@@ -190,7 +162,7 @@ export const MessengerProvider: FC = () => {
     channelId,
     isCurrentlyInBroadcastMode,
     walletStore.isAccountServiceRunning,
-    walletStore.address,
+    walletStore.unlockedWallet?.id,
     isMobile,
     navigate,
     walletId,
