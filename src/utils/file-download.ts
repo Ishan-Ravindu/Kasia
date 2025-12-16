@@ -39,15 +39,16 @@ export function downloadFile(dataUrl: string, fileName: string): void {
 
 /**
  * Extract file extension from a data URL
+ * Generally format will be webp as thats what we compress to in `upload-file-service`
  */
 function getExtensionFromDataUrl(dataUrl: string): string {
+  if (dataUrl.startsWith("data:image/webp")) return "webp";
   if (dataUrl.startsWith("data:image/png")) return "png";
   if (
     dataUrl.startsWith("data:image/jpeg") ||
     dataUrl.startsWith("data:image/jpg")
   )
     return "jpg";
-  if (dataUrl.startsWith("data:image/webp")) return "webp";
   if (dataUrl.startsWith("data:image/gif")) return "gif";
   return "png"; // default
 }
