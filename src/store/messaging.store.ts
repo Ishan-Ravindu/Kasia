@@ -149,12 +149,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       const unlockedWallet = useWalletStore.getState().unlockedWallet;
       if (!unlockedWallet) return;
 
-      const privateKeyString = WalletStorageService.getPrivateKeyGenerator(
-        unlockedWallet,
-        unlockedWallet.password
-      )
-        .receiveKey(0)
-        .toString();
+      const privateKeyString =
+        WalletStorageService.getPrivateKey(unlockedWallet).toString();
 
       const aliasesToFetch = new Set<string>(aliases);
       if (!aliasesToFetch.size && oooc.conversation.theirAlias) {
@@ -483,11 +479,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       }
 
       // cannot use `walletStore.address` because it is not always already populated
-      const address = WalletStorageService.getPrivateKeyGenerator(
-        unlockedWallet,
-        unlockedWallet.password
-      )
-        .receiveKey(0)
+      const address = WalletStorageService.getPrivateKey(unlockedWallet)
         .toAddress(useWalletStore.getState().selectedNetwork)
         .toString();
 
@@ -928,8 +920,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       const network = useNetworkStore.getState().network;
 
-      const receiveAddress = unlockedWallet.publicKeyGenerator
-        .receiveAddress(network, 0)
+      const receiveAddress = unlockedWallet.receivePublicKey
+        .toAddress(network)
         .toString();
 
       // 1. Clear last opened contact for this wallet
@@ -1363,12 +1355,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
         );
       }
 
-      const privateKeyGenerator = WalletStorageService.getPrivateKeyGenerator(
-        unlockedWallet,
-        unlockedWallet.password
-      );
-
-      const privateKey = privateKeyGenerator.receiveKey(0);
+      const privateKey = WalletStorageService.getPrivateKey(unlockedWallet);
 
       const decryptedContent = decrypt_message(
         new EncryptedMessage(tx.parsedPayload.encryptedHex),
@@ -1437,11 +1424,9 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
       }
 
       // get our own address for encryption and transaction
-      const address = WalletStorageService.getPrivateKeyGenerator(
-        walletStore.unlockedWallet,
-        walletStore.unlockedWallet.password
+      const address = WalletStorageService.getPrivateKey(
+        walletStore.unlockedWallet
       )
-        .receiveKey(0)
         .toAddress(walletStore.selectedNetwork)
         .toString();
 

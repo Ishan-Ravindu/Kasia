@@ -41,12 +41,8 @@ export const historicalLoader_loadSendAndReceivedHandshake = async (
   if (!unlockedWallet) {
     throw new Error("Wallet not unlocked");
   }
-  const privateKeyString = WalletStorageService.getPrivateKeyGenerator(
-    unlockedWallet,
-    unlockedWallet.password
-  )
-    .receiveKey(0)
-    .toString();
+  const privateKeyString =
+    WalletStorageService.getPrivateKey(unlockedWallet).toString();
 
   const ooocs = currentOneOnOneConversations;
   const ooocsByAddress: Map<string, OneOnOneConversation> = new Map();
