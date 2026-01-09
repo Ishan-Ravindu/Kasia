@@ -133,6 +133,11 @@ export const useBlocklistStore = create<BlocklistState>((set, get) => ({
           ),
         }));
 
+        // clear conversation manager's in-memory (non db) state for this address
+        const conversationManager =
+          useMessagingStore.getState().conversationManager;
+        conversationManager?.clearConversationByAddress(address);
+
         console.log(
           `Blocked address and deleted all data for contact: ${address}`
         );

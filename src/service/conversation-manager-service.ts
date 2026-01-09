@@ -350,6 +350,33 @@ export class ConversationManagerService {
     return true;
   }
 
+  // clears in-memory (non db) state for a conversation by address
+  // needed edge case of blocking > ublocking and tryint to re add contact
+  public clearConversationByAddress(address: string): boolean {
+    const conversationId = this.addressToConversation.get(address);
+    if (!conversationId) return false;
+
+    const conversationWithContact =
+      this.conversationWithContactByConversationId.get(conversationId);
+    if (!conversationWithContact) {
+      // just clear the address mapping if conversation not found
+      this.addressToConversation.delete(address);
+      return true;
+    }
+
+    const { conversation } = conversationWithContact;
+
+    // clear all in-memory maps
+    this.conversationWithContactByConversationId.delete(conversationId);
+    this.addressToConversation.delete(address);
+    this.aliasToConversation.delete(conversation.myAlias);
+    if (conversation.theirAlias) {
+      this.aliasToConversation.delete(conversation.theirAlias);
+    }
+
+    return true;
+  }
+
   public async updateConversation(
     conversation: Pick<Conversation, "id"> & Partial<Conversation>
   ) {
