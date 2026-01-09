@@ -98,7 +98,7 @@ export const BlockList: React.FC = () => {
             {blocklistStore.blockedAddressList.map((blocked) => (
               <div
                 key={blocked.id}
-                className="bg-primary-bg/50 border-primary-border flex items-center justify-between rounded-lg border p-3"
+                className="border-primary-border flex items-center justify-between rounded-lg border bg-[var(--secondary-bg)]/70 p-3"
               >
                 <div className="flex-1 overflow-hidden">
                   <div className="cursor-text text-xs break-all text-[var(--text-primary)] select-text">
