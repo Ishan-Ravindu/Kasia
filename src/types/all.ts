@@ -6,7 +6,7 @@ import { Handshake } from "../store/repository/handshake.repository";
 import { Payment } from "../store/repository/payment.repository";
 import { TransactionId } from "./transactions";
 
-export type NetworkType = "mainnet" | "testnet-10" | "testnet-11" | "devnet";
+export type NetworkType = "mainnet" | "testnet-10" | "testnet-12" | "devnet";
 
 export interface BlockAddedData {
   type: string;
