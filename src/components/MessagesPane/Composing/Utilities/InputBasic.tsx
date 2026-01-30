@@ -52,9 +52,9 @@ export const InputBasic = forwardRef<HTMLTextAreaElement, InputBasicProps>(
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       let newValue = e.target.value;
 
-      // add markdown prefix if markdown is enabled
+      // add markdown prefix if markdown is enabled and there's real content
       if (markdownEnabled) {
-        newValue = MARKDOWN_PREFIX + newValue;
+        newValue = newValue.trim().length > 0 ? MARKDOWN_PREFIX + newValue : "";
       }
 
       onChange(newValue);
