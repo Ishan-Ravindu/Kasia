@@ -238,18 +238,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleNameChange = async () => {
     if (!selectedWalletId) {
-      setNameChangeError("No wallet selected");
+      setNameChangeError("No account selected");
       return;
     }
 
     // Basic validation (real-time validation handles most cases)
     if (!newWalletName.trim()) {
-      setNameChangeError("Please enter a wallet name");
+      setNameChangeError("Please enter an account name");
       return;
     }
 
     if (newWalletName.trim().length < 2) {
-      setNameChangeError("Wallet name must be at least 2 characters long");
+      setNameChangeError("Account name must be at least 2 characters long");
       return;
     }
 
@@ -272,7 +272,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }, 2000);
     } catch (error) {
       setNameChangeError(
-        error instanceof Error ? error.message : "Failed to change wallet name"
+        error instanceof Error ? error.message : "Failed to change account name"
       );
     } finally {
       setIsChangingName(false);
@@ -346,7 +346,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const currentWallet = wallets.find((w) => w.id === selectedWalletId);
     if (currentWallet && newWalletName.trim() === currentWallet.name) {
-      setNameChangeError("This is already your current wallet name");
+      setNameChangeError("This is already your current account name");
       return;
     }
 
@@ -358,7 +358,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     );
 
     if (nameExists) {
-      setNameChangeError("A wallet with this name already exists");
+      setNameChangeError("An account with this name already exists");
       return;
     }
 
@@ -480,7 +480,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                       )}
 
-                      {/* Change Wallet Name */}
+                      {/* Change Account Name */}
                       <button
                         onClick={initializeNameChange}
                         className="bg-primary-bg hover:bg-primary-bg/50 border-primary-border flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-all duration-200 active:rounded-4xl"
@@ -488,10 +488,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <Edit3 className="h-5 w-5" />
                         <div className="text-left">
                           <div className="text-sm font-medium">
-                            Change Wallet Name
+                            Change Account Name
                           </div>
                           <div className="text-muted-foreground text-xs">
-                            Update your wallet's display name
+                            Update your accounts's display name
                           </div>
                         </div>
                       </button>
@@ -541,7 +541,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <ArrowLeft className="h-5 w-5" />
                       </button>
                       <h3 className="text-lg font-medium">
-                        Change Wallet Name
+                        Change Account Name
                       </h3>
                     </div>
 
@@ -549,29 +549,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       {nameChangeSuccess ? (
                         <div className="border-primary-border rounded-lg border p-4 text-center">
                           <div className="mb-2 text-green-500">
-                            Wallet name changed successfully!
+                            Account name changed successfully!
                           </div>
                           <div className="text-muted-foreground text-sm">
-                            Your wallet name has been updated.
+                            Your account name has been updated.
                           </div>
                         </div>
                       ) : (
                         <form onSubmit={handleNameChange} className="space-y-4">
-                          {/* Wallet Name Input */}
+                          {/* Account Name Input */}
                           <div>
                             <label
-                              htmlFor="wallet-name"
+                              htmlFor="account-name"
                               className="mb-2 block text-sm font-medium"
                             >
-                              Wallet Name
+                              Account Name
                             </label>
                             <input
                               type="text"
-                              id="wallet-name"
+                              id="account-name"
                               value={newWalletName}
                               onChange={(e) => setNewWalletName(e.target.value)}
                               className="border-primary-border bg-primary-bg text-primary focus:ring-kas-secondary/80 w-full rounded-lg border p-3 text-base focus:ring-2 focus:outline-none sm:text-sm"
-                              placeholder="Enter wallet name"
+                              placeholder="Enter account name"
                               disabled={isChangingName}
                               maxLength={50}
                             />
@@ -812,9 +812,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <>
                     <h3 className="mb-4 text-lg font-medium">Security</h3>
                     <div className="space-y-2">
-                      {/* Wallet Security */}
-                      <WarningBlock title="Wallet Security">
-                        Your wallet is protected by your password. Keep your
+                      {/* Account Security */}
+                      <WarningBlock title="Account Security">
+                        Your account is protected by your password. Keep your
                         password and seed phrase secure.
                       </WarningBlock>
 
@@ -829,7 +829,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             Change Password
                           </div>
                           <div className="text-muted-foreground text-xs">
-                            Update the password used to unlock your wallet
+                            Update the password used to unlock your account
                           </div>
                         </div>
                       </button>
@@ -846,7 +846,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className="text-left">
                           <div className="text-sm font-medium">Seed Phrase</div>
                           <div className="text-muted-foreground text-xs">
-                            View Your Wallets Seed Phrase
+                            View Your Accounts Seed Phrase
                           </div>
                         </div>
                       </button>
@@ -871,7 +871,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             Password changed successfully!
                           </div>
                           <div className="text-muted-foreground text-sm">
-                            Your wallet password has been updated.
+                            Your account password has been updated.
                           </div>
                         </div>
                       ) : (

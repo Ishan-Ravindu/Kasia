@@ -229,7 +229,7 @@ export const WalletWithdrawal: FC = () => {
             variant="secondary"
             className="!w-full sm:w-auto"
           >
-            Back to Wallet
+            Back to Account
           </Button>
 
           <Button
