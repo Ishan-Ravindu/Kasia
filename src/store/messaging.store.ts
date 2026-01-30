@@ -794,6 +794,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                 paymentContent = "";
               }
             }
+            const paymentStatus = isFromMe ? "pending" : "confirmed";
             const payment: Payment = {
               __type: "payment",
               amount: transaction.amount,
@@ -806,7 +807,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               tenantId: unlockedWallet.id,
               transactionId: transaction.transactionId,
               fee: transaction.fee,
-              status: "pending",
+              status: paymentStatus,
             };
 
             await repositories.paymentRepository.savePayment(payment);
