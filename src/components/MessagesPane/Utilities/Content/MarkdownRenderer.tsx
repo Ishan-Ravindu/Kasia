@@ -10,6 +10,25 @@ interface MarkdownRendererProps {
   enableMdImages?: boolean;
 }
 
+const isSafeHref = (href?: string) => {
+  if (!href) return false;
+  const normalized = href.trim().toLowerCase();
+  return (
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("mailto:") ||
+    normalized.startsWith("www.")
+  );
+};
+
+const normalizeHref = (href?: string) => {
+  if (!href) return undefined;
+  const trimmed = href.trim();
+  return trimmed.toLowerCase().startsWith("www.")
+    ? `https://${trimmed}`
+    : trimmed;
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   enableMdLinks = false,
@@ -21,23 +40,29 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       components={{
         a: ({ href, children, ...props }) =>
           enableMdLinks ? (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => {
-                if (
-                  !confirm(
-                    `You are navigating away from Kasia to ${href}. Continue?`
-                  )
-                ) {
-                  e.preventDefault();
-                }
-              }}
-              {...props}
-            >
-              {children}
-            </a>
+            isSafeHref(href) ? (
+              <a
+                href={normalizeHref(href)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (
+                    !confirm(
+                      `You are navigating away from Kasia to ${normalizeHref(href)}. Continue?`
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                {...props}
+              >
+                {children}
+              </a>
+            ) : (
+              <span {...props}>
+                UNSAFE LINK | Link Text: {children} | Link: {href}
+              </span>
+            )
           ) : (
             <span {...props}>
               KASIA PERMISSION - Links Not Enabled | Link Text: {children} |
