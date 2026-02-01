@@ -347,27 +347,224 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
     }
   };
 
-  if (showConfirmation) {
-    let recipientDisplay;
-    if (
-      detectedRecipientInputValueFormat === "kns" &&
-      resolvedRecipientAddress
-    ) {
-      recipientDisplay = (
-        <div className="mb-2 inline">
-          <span>{recipientInputValue}</span>
-          <div className="flex justify-start break-all">
-            <KaspaAddress address={resolvedRecipientAddress} />
-          </div>
-        </div>
-      );
-    } else {
-      recipientDisplay = <KaspaAddress address={knsRecipientAddress} />;
-    }
+  // helper function for smooth transitions
+  const blockVisible = (hidden: boolean) =>
+    clsx(
+      "transition-all duration-300 ease-in-out",
+      hidden
+        ? "pointer-events-none max-h-0 overflow-hidden opacity-0"
+        : "pointer-events-auto max-h-screen opacity-100"
+    );
 
-    return (
-      <>
-        <h3 className="m-0 mb-5 text-[1.2rem] font-bold">Confirm Handshake</h3>
+  let recipientDisplay;
+  if (detectedRecipientInputValueFormat === "kns" && resolvedRecipientAddress) {
+    recipientDisplay = (
+      <div className="mb-2 inline">
+        <span>{recipientInputValue}</span>
+        <div className="flex justify-start break-all">
+          <KaspaAddress address={resolvedRecipientAddress} />
+        </div>
+      </div>
+    );
+  } else {
+    recipientDisplay = <KaspaAddress address={knsRecipientAddress} />;
+  }
+
+  return (
+    <>
+      {/* Form Section */}
+      <div className={blockVisible(showConfirmation)}>
+        <h3 className="mb-5 text-base font-semibold">Start New Conversation</h3>
+        <form onSubmit={handleSubmit}>
+          <div className={"mb-5"}>
+            <label
+              className="mb-[5px] block text-[14px] font-bold"
+              htmlFor="recipientAddress"
+            >
+              Recipient Address
+            </label>
+            <div className="relative">
+              <Textarea
+                ref={recipientInputRef}
+                className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-24 text-base text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
+                rows={3}
+                id="recipientAddress"
+                value={recipientInputValue}
+                onChange={(e) =>
+                  setRecipientInputValue(e.target.value.toLowerCase())
+                }
+                placeholder="Kaspa address or KNS domain"
+                disabled={isLoading}
+                required
+                autoComplete="off"
+              />
+              <div className="absolute right-2 bottom-2 flex gap-1 pb-1">
+                <button
+                  type="button"
+                  onClick={handlePaste}
+                  className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border px-1.5 py-1 transition-colors"
+                  title="Paste from clipboard"
+                  disabled={isLoading}
+                >
+                  <Clipboard size={16} />
+                </button>
+                {cameraEnabled && (
+                  <button
+                    type="button"
+                    className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
+                    onClick={handleQrScan}
+                    title="Scan QR code"
+                    disabled={isLoading}
+                  >
+                    <QrCode className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {isResolvingKns && detectedRecipientInputValueFormat === "kns" && (
+              <div className="font-italic mt-1.5 text-xs text-[rgba(255,255,255,0.6)]">
+                Resolving KNS domain...
+              </div>
+            )}
+            {resolvedRecipientAddress &&
+              detectedRecipientInputValueFormat === "kns" &&
+              !isResolvingKns &&
+              !knsError && (
+                <div className="mt-2 mb-4 flex justify-start break-all">
+                  <KaspaAddress address={resolvedRecipientAddress} />
+                  <StringCopy
+                    text={resolvedRecipientAddress}
+                    alertText="Address Copied"
+                    titleText="Copy Address"
+                    className="ml-2"
+                  />
+                </div>
+              )}
+            {knsError &&
+              detectedRecipientInputValueFormat === "kns" &&
+              !isResolvingKns && (
+                <div className="mt-2 mb-4 rounded-lg border border-[rgba(255,68,68,0.3)] bg-[rgba(255,68,68,0.1)] p-2.5 text-sm text-[var(--accent-red)]">
+                  {knsError}
+                </div>
+              )}
+            {isCheckingRecipient && (
+              <div className="font-italic mt-1.5 text-xs text-[rgba(255,255,255,0.6)]">
+                Checking recipient balance...
+              </div>
+            )}
+            {recipientWarning && (
+              <div className="text-accent-yellow mt-2 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-2 text-[13px] leading-[1.4]">
+                {recipientWarning}
+              </div>
+            )}
+          </div>
+
+          <div className={"mb-5"}>
+            <label
+              className="mb-[5px] block text-[14px] font-bold"
+              htmlFor="handshakeAmount"
+            >
+              Handshake Amount (KAS)
+            </label>
+            <input
+              className="border-primary-border focus:ring-kas-secondary/80 bg-input-bg mb-2 box-border flex h-10 w-full items-center rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
+              type="text"
+              id="handshakeAmount"
+              value={handshakeAmount}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              placeholder="0.2"
+              disabled={isLoading}
+            />
+            <div className="mb-2.5 flex gap-2">
+              <button
+                type="button"
+                className={clsx(
+                  "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-3xl border border-[var(--button-primary)] bg-[var(--button-primary)]/20 px-2 py-1 text-sm font-medium transition-all duration-200 ease-in-out hover:-translate-y-px hover:border-[var(--button-primary)]/60 hover:bg-[var(--button-primary)]/30 disabled:transform-none disabled:cursor-not-allowed disabled:border-[var(--button-primary)]/20 disabled:bg-[var(--button-primary)]/10 disabled:text-[var(--button-primary)]/30",
+                  {
+                    "border-[var(--button-primary)] !bg-[var(--button-primary)] text-[var(--text-primary)]":
+                      handshakeAmount === "0.2",
+                  }
+                )}
+                style={{
+                  color:
+                    handshakeAmount !== "0.2"
+                      ? "var(--button-primary)"
+                      : undefined,
+                }}
+                onClick={() => handleQuickAmount("0.2")}
+                disabled={isLoading}
+              >
+                0.2
+              </button>
+              <button
+                type="button"
+                className={clsx(
+                  "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-3xl border border-[var(--button-primary)] bg-[var(--button-primary)]/20 px-2 py-1 text-sm font-medium transition-all duration-200 ease-in-out hover:-translate-y-px hover:border-[var(--button-primary)]/60 hover:bg-[var(--button-primary)]/30 disabled:transform-none disabled:cursor-not-allowed disabled:border-[var(--button-primary)]/20 disabled:bg-[var(--button-primary)]/10 disabled:text-[var(--button-primary)]/30",
+                  {
+                    "border-[var(--button-primary)] !bg-[var(--button-primary)] text-[var(--text-primary)]":
+                      handshakeAmount === "0.5",
+                  }
+                )}
+                style={{
+                  color:
+                    handshakeAmount !== "0.5"
+                      ? "var(--button-primary)"
+                      : undefined,
+                }}
+                onClick={() => handleQuickAmount("0.5")}
+                disabled={isLoading}
+              >
+                0.5
+              </button>
+              <button
+                type="button"
+                className={clsx(
+                  "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-3xl border border-[var(--button-primary)] bg-[var(--button-primary)]/20 px-2 py-1 text-sm font-medium transition-all duration-200 ease-in-out hover:-translate-y-px hover:border-[var(--button-primary)]/60 hover:bg-[var(--button-primary)]/30 disabled:transform-none disabled:cursor-not-allowed disabled:border-[var(--button-primary)]/20 disabled:bg-[var(--button-primary)]/10 disabled:text-[var(--button-primary)]/30",
+                  {
+                    "border-[var(--button-primary)] !bg-[var(--button-primary)] text-[var(--text-primary)]":
+                      handshakeAmount === "1",
+                  }
+                )}
+                style={{
+                  color:
+                    handshakeAmount !== "1"
+                      ? "var(--button-primary)"
+                      : undefined,
+                }}
+                onClick={() => handleQuickAmount("1")}
+                disabled={isLoading}
+              >
+                1
+              </button>
+            </div>
+            <div className="mt-4 text-xs text-[var(--text-secondary)]">
+              Default: 0.2 KAS. Higher amounts help recipients respond even if
+              they have no KAS. This creates a better experience for newcomers
+              to Kasia.
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-4 rounded-lg border border-[rgba(255,68,68,0.3)] bg-[rgba(255,68,68,0.1)] p-2.5 text-sm break-all text-[var(--accent-red)]">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
+            <Button type="submit" disabled={isLoading} variant="primary">
+              {isLoading ? "Initiating..." : "Start Chat"}
+            </Button>
+            <Button onClick={onClose} disabled={isLoading} variant="secondary">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* Confirmation Section */}
+      <div className={blockVisible(!showConfirmation)}>
+        <h3 className="m-0 mb-5 text-base font-semibold">Confirm Handshake</h3>
         <div className="mb-5 text-sm leading-normal">
           <div>
             <strong>Recipient:</strong>
@@ -422,196 +619,7 @@ export const NewChatForm: React.FC<NewChatFormProps> = ({ onClose }) => {
             Back
           </Button>
         </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <h3 className="mb-5 text-base font-semibold">Start New Conversation</h3>
-      <form onSubmit={handleSubmit}>
-        <div className={"mb-5"}>
-          <label
-            className="mb-[5px] block text-[14px] font-bold"
-            htmlFor="recipientAddress"
-          >
-            Recipient Address
-          </label>
-          <div className="relative">
-            <Textarea
-              ref={recipientInputRef}
-              className="bg-primary-bg border-primary-border w-full resize-none rounded-lg border p-2 pr-24 text-base text-[var(--text-primary)] placeholder-gray-400 focus:border-[var(--button-primary)]/80 focus:ring-2 focus:outline-none"
-              rows={3}
-              id="recipientAddress"
-              value={recipientInputValue}
-              onChange={(e) =>
-                setRecipientInputValue(e.target.value.toLowerCase())
-              }
-              placeholder="Kaspa address or KNS domain"
-              disabled={isLoading}
-              required
-              autoComplete="off"
-            />
-            <div className="absolute right-2 bottom-2 flex gap-1 pb-1">
-              <button
-                type="button"
-                onClick={handlePaste}
-                className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border px-1.5 py-1 transition-colors"
-                title="Paste from clipboard"
-                disabled={isLoading}
-              >
-                <Clipboard size={16} />
-              </button>
-              {cameraEnabled && (
-                <button
-                  type="button"
-                  className="bg-kas-secondary/10 border-kas-secondary cursor-pointer rounded-lg border p-1"
-                  onClick={handleQrScan}
-                  title="Scan QR code"
-                  disabled={isLoading}
-                >
-                  <QrCode className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {isResolvingKns && detectedRecipientInputValueFormat === "kns" && (
-            <div className="font-italic mt-1.5 text-xs text-[rgba(255,255,255,0.6)]">
-              Resolving KNS domain...
-            </div>
-          )}
-          {resolvedRecipientAddress &&
-            detectedRecipientInputValueFormat === "kns" &&
-            !isResolvingKns &&
-            !knsError && (
-              <div className="mt-2 mb-4 flex justify-start break-all">
-                <KaspaAddress address={resolvedRecipientAddress} />
-                <StringCopy
-                  text={resolvedRecipientAddress}
-                  alertText="Address Copied"
-                  titleText="Copy Address"
-                  className="ml-2"
-                />
-              </div>
-            )}
-          {knsError &&
-            detectedRecipientInputValueFormat === "kns" &&
-            !isResolvingKns && (
-              <div className="mt-2 mb-4 rounded-lg border border-[rgba(255,68,68,0.3)] bg-[rgba(255,68,68,0.1)] p-2.5 text-sm text-[var(--accent-red)]">
-                {knsError}
-              </div>
-            )}
-          {isCheckingRecipient && (
-            <div className="font-italic mt-1.5 text-xs text-[rgba(255,255,255,0.6)]">
-              Checking recipient balance...
-            </div>
-          )}
-          {recipientWarning && (
-            <div className="text-accent-yellow mt-2 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-2 text-[13px] leading-[1.4]">
-              {recipientWarning}
-            </div>
-          )}
-        </div>
-
-        <div className={"mb-5"}>
-          <label
-            className="mb-[5px] block text-[14px] font-bold"
-            htmlFor="handshakeAmount"
-          >
-            Handshake Amount (KAS)
-          </label>
-          <input
-            className="border-primary-border focus:ring-kas-secondary/80 bg-input-bg mb-2 box-border flex h-10 w-full items-center rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
-            type="text"
-            id="handshakeAmount"
-            value={handshakeAmount}
-            onChange={(e) => handleAmountChange(e.target.value)}
-            placeholder="0.2"
-            disabled={isLoading}
-          />
-          <div className="mb-2.5 flex gap-2">
-            <button
-              type="button"
-              className={clsx(
-                "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-3xl border border-[var(--button-primary)] bg-[var(--button-primary)]/20 px-2 py-1 text-sm font-medium transition-all duration-200 ease-in-out hover:-translate-y-px hover:border-[var(--button-primary)]/60 hover:bg-[var(--button-primary)]/30 disabled:transform-none disabled:cursor-not-allowed disabled:border-[var(--button-primary)]/20 disabled:bg-[var(--button-primary)]/10 disabled:text-[var(--button-primary)]/30",
-                {
-                  "border-[var(--button-primary)] !bg-[var(--button-primary)] text-[var(--text-primary)]":
-                    handshakeAmount === "0.2",
-                }
-              )}
-              style={{
-                color:
-                  handshakeAmount !== "0.2"
-                    ? "var(--button-primary)"
-                    : undefined,
-              }}
-              onClick={() => handleQuickAmount("0.2")}
-              disabled={isLoading}
-            >
-              0.2
-            </button>
-            <button
-              type="button"
-              className={clsx(
-                "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-3xl border border-[var(--button-primary)] bg-[var(--button-primary)]/20 px-2 py-1 text-sm font-medium transition-all duration-200 ease-in-out hover:-translate-y-px hover:border-[var(--button-primary)]/60 hover:bg-[var(--button-primary)]/30 disabled:transform-none disabled:cursor-not-allowed disabled:border-[var(--button-primary)]/20 disabled:bg-[var(--button-primary)]/10 disabled:text-[var(--button-primary)]/30",
-                {
-                  "border-[var(--button-primary)] !bg-[var(--button-primary)] text-[var(--text-primary)]":
-                    handshakeAmount === "0.5",
-                }
-              )}
-              style={{
-                color:
-                  handshakeAmount !== "0.5"
-                    ? "var(--button-primary)"
-                    : undefined,
-              }}
-              onClick={() => handleQuickAmount("0.5")}
-              disabled={isLoading}
-            >
-              0.5
-            </button>
-            <button
-              type="button"
-              className={clsx(
-                "flex h-9 flex-1 cursor-pointer items-center justify-center rounded-3xl border border-[var(--button-primary)] bg-[var(--button-primary)]/20 px-2 py-1 text-sm font-medium transition-all duration-200 ease-in-out hover:-translate-y-px hover:border-[var(--button-primary)]/60 hover:bg-[var(--button-primary)]/30 disabled:transform-none disabled:cursor-not-allowed disabled:border-[var(--button-primary)]/20 disabled:bg-[var(--button-primary)]/10 disabled:text-[var(--button-primary)]/30",
-                {
-                  "border-[var(--button-primary)] !bg-[var(--button-primary)] text-[var(--text-primary)]":
-                    handshakeAmount === "1",
-                }
-              )}
-              style={{
-                color:
-                  handshakeAmount !== "1" ? "var(--button-primary)" : undefined,
-              }}
-              onClick={() => handleQuickAmount("1")}
-              disabled={isLoading}
-            >
-              1
-            </button>
-          </div>
-          <div className="mt-4 text-xs text-[var(--text-secondary)]">
-            Default: 0.2 KAS. Higher amounts help recipients respond even if
-            they have no KAS. This creates a better experience for newcomers to
-            Kasia.
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-4 rounded-lg border border-[rgba(255,68,68,0.3)] bg-[rgba(255,68,68,0.1)] p-2.5 text-sm text-[#ff4444]">
-            {error}
-          </div>
-        )}
-
-        <div className="flex flex-col justify-center gap-2 sm:flex-row-reverse sm:gap-4">
-          <Button type="submit" disabled={isLoading} variant="primary">
-            {isLoading ? "Initiating..." : "Start Chat"}
-          </Button>
-          <Button onClick={onClose} disabled={isLoading} variant="secondary">
-            Cancel
-          </Button>
-        </div>
-      </form>
+      </div>
     </>
   );
 };

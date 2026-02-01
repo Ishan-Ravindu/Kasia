@@ -7,14 +7,16 @@ import { Wallet } from "../Modals/Wallet";
 import { WalletSeedRetreiveDisplay } from "../Modals/WalletSeedRetreiveDisplay";
 import { WalletWithdrawal } from "../Modals/WalletWithdrawal";
 import { LockedSettingsModal } from "../Modals/LockedSettingsModal";
+import { SettingsModal } from "../Modals/SettingsModal";
 import { ContactInfoModal } from "../Modals/ContactInfoModal";
 import { NewChatForm } from "../Modals/NewChatForm";
 import { LoaderCircle } from "lucide-react";
 import { ImagePresenter } from "../Modals/ImagePresenter";
-import { BroadcastParticipantInfo } from "../Modals/BroadcastParticipantInfo";
+import { BroadcastParticipantInfoModal } from "../Modals/BroadcastParticipantInfoModal";
 import { QrScannerModal } from "../Modals/QrScannerModal";
 import { OffChainHandshakeModal } from "../Modals/OffChainHandshakeModal";
 import { DeleteWalletModal } from "../Modals/DeleteWalletModal";
+import { ConfirmationModal } from "../Modals/ConfirmationModal";
 import { useBroadcastStore } from "../../store/broadcast.store";
 import { KASPA_DONATION_ADDRESS } from "../../config/constants";
 
@@ -93,6 +95,14 @@ export const ModalHost = () => {
         </Modal>
       )}
 
+      {/* Unlocked Settings Modal */}
+      {modals["settings-unlocked"] && (
+        <SettingsModal
+          isOpen={true}
+          onClose={() => closeModal("settings-unlocked")}
+        />
+      )}
+
       {/* Contact Info Modal */}
       {modals["contact-info-modal"] && oneOnOneConversation && (
         <Modal
@@ -133,13 +143,9 @@ export const ModalHost = () => {
             setSelectedParticipant(null);
           }}
         >
-          <BroadcastParticipantInfo
+          <BroadcastParticipantInfoModal
             address={broadcastParticipant.address}
             nickname={broadcastParticipant.nickname}
-            onClose={() => {
-              closeModal("broadcast-participant-info");
-              setSelectedParticipant(null);
-            }}
           />
         </Modal>
       )}
@@ -161,6 +167,14 @@ export const ModalHost = () => {
         <DeleteWalletModal
           isOpen={modals.delete || false}
           onClose={() => closeModal("delete")}
+        />
+      )}
+
+      {/* Confirmation Modal */}
+      {modals.confirm && (
+        <ConfirmationModal
+          isOpen={modals.confirm || false}
+          onClose={() => closeModal("confirm")}
         />
       )}
     </>
