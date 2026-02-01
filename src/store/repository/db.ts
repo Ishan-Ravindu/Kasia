@@ -23,7 +23,7 @@ import {
 } from "./broadcast-channel.repository";
 import { MetaRespository } from "./meta.repository";
 
-const CURRENT_DB_VERSION = 3;
+const CURRENT_DB_VERSION = 4;
 
 export class DBNotFoundException extends Error {
   constructor() {
@@ -117,7 +117,7 @@ export type KasiaDB = IDBPDatabase<KasiaDBSchema>;
 
 export const openDatabase = async (): Promise<KasiaDB> => {
   return openDB<KasiaDBSchema>("kasia-db", CURRENT_DB_VERSION, {
-    upgrade(db, oldVersion, newVersion, transaction) {
+    async upgrade(db, oldVersion, newVersion, transaction) {
       console.log(
         `[DB] - Identity database upgrade from version ${oldVersion} to ${newVersion}`
       );
@@ -260,9 +260,40 @@ export const openDatabase = async (): Promise<KasiaDB> => {
       }
 
       if (oldVersion <= 3) {
+        // Migration to v4: Add status field to existing messages and payments
+        const messagesStore = transaction.objectStore("messages");
+        let cursor = await messagesStore.openCursor();
+
+        while (cursor) {
+          const message = cursor.value;
+          // add default status to existing messages that don't have it
+          if (!message.status) {
+            message.status = "confirmed";
+            await cursor.update(message);
+          }
+          cursor = await cursor.continue();
+        }
+
+        const paymentsStore = transaction.objectStore("payments");
+        let paymentCursor = await paymentsStore.openCursor();
+
+        while (paymentCursor) {
+          const payment = paymentCursor.value;
+          // add default status to existing payments that don't have it
+          if (!payment.status) {
+            payment.status = "confirmed";
+            await paymentCursor.update(payment);
+          }
+          paymentCursor = await paymentCursor.continue();
+        }
+
+        console.log(
+          "[DB] - Migrated to v4: Added status field to messages and payments"
+        );
+      }
+      if (oldVersion <= 4) {
         // HERE next migration, first increase CURRENT_DB_VERSION then implement with oldVersion <= CURRENT_DB_VERSION - 1
         // add more if branching for each next version
-        // BROADCAST CHANNELS
       }
     },
   });

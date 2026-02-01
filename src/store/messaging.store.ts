@@ -3,6 +3,7 @@ import {
   KasiaConversationEvent,
   KasiaTransaction,
   OneOnOneConversation,
+  TransactionStatus,
 } from "../types/all";
 import { Contact } from "./repository/contact.repository";
 import {
@@ -125,6 +126,14 @@ interface MessagingState {
 
   // Hydration
   hydrateOneonOneConversations: () => Promise<void>;
+
+  // Message status management
+  updateEventStatus: (
+    transactionId: string,
+    status: TransactionStatus,
+    repositories: Repositories,
+    existingMessage: Message | Payment
+  ) => Promise<void>;
 }
 
 export const useMessagingStore = create<MessagingState>((set, g) => {
@@ -785,6 +794,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
                 paymentContent = "";
               }
             }
+            const paymentStatus = isFromMe ? "pending" : "confirmed";
             const payment: Payment = {
               __type: "payment",
               amount: transaction.amount,
@@ -797,6 +807,7 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               tenantId: unlockedWallet.id,
               transactionId: transaction.transactionId,
               fee: transaction.fee,
+              status: paymentStatus,
             };
 
             await repositories.paymentRepository.savePayment(payment);
@@ -821,6 +832,8 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               transaction.content.indexOf(":") + 1
             );
 
+            const isFromMeMessage =
+              transaction.senderAddress === address.toString();
             const message: Message = {
               __type: "message",
               amount: transaction.amount,
@@ -828,11 +841,13 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
               conversationId: existingConversationWithContact.conversation.id,
               content: decryptedContent ?? "",
               createdAt: transaction.createdAt,
-              fromMe: transaction.senderAddress === address.toString(),
+              fromMe: isFromMeMessage,
               id: `${unlockedWallet.id}_${transaction.transactionId}`,
               tenantId: unlockedWallet.id,
               transactionId: transaction.transactionId,
               fee: transaction.fee,
+              // outgoing messages start as pending until confirmed on chain
+              status: isFromMeMessage ? "pending" : "confirmed",
             };
 
             await repositories.messageRepository.saveMessage(message);
@@ -1477,6 +1492,60 @@ export const useMessagingStore = create<MessagingState>((set, g) => {
 
       console.log("self stash created successfully:", txId);
       return txId;
+    },
+
+    updateEventStatus: async (
+      transactionId,
+      status,
+      repositories,
+      existingEvent
+    ) => {
+      if (!repositories || !transactionId || !existingEvent) {
+        console.warn("Message status update failure: missing props");
+        return;
+      }
+      try {
+        switch (existingEvent.__type) {
+          case "message":
+            await repositories.messageRepository.saveMessage({
+              ...existingEvent,
+              status,
+            });
+            break;
+          case "payment":
+            await repositories.paymentRepository.savePayment({
+              ...existingEvent,
+              status,
+            });
+            break;
+        }
+
+        // update in-memory state
+        set((state) => {
+          const updatedConversations = state.oneOnOneConversations.map(
+            (oooc) => ({
+              ...oooc,
+              events: oooc.events.map((event) => {
+                if (
+                  event.__type === existingEvent.__type &&
+                  event.transactionId === transactionId
+                ) {
+                  return { ...event, status };
+                }
+                return event;
+              }),
+            })
+          );
+
+          return { oneOnOneConversations: updatedConversations };
+        });
+      } catch (error) {
+        // message might not exist yet (incoming from network) - that's ok
+        console.debug(
+          `Could not update message status for ${transactionId}:`,
+          error
+        );
+      }
     },
   };
 });
