@@ -38,7 +38,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <ReactMarkdown
       remarkPlugins={[remarkBreaks]}
       components={{
-        a: ({ href, children, ...props }) =>
+        a: ({
+          href,
+          children,
+          ...props
+        }: React.AnchorHTMLAttributes<HTMLAnchorElement>) =>
           enableMdLinks ? (
             isSafeHref(href) ? (
               <a
@@ -60,16 +64,21 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               </a>
             ) : (
               <span {...props}>
-                UNSAFE LINK | Link Text: {children} | Link: {href}
+                Kasia Safety Guard - Not Standard Link | Link Text: {children} |
+                Link: {href}
               </span>
             )
           ) : (
             <span {...props}>
-              KASIA PERMISSION - Links Not Enabled | Link Text: {children} |
+              Kasia Safety Guard - Links Not Enabled | Link Text: {children} |
               Link: {href}
             </span>
           ),
-        img: ({ src, alt, ...props }) =>
+        img: ({
+          src,
+          alt,
+          ...props
+        }: React.ImgHTMLAttributes<HTMLImageElement>) =>
           enableMdImages ? (
             <img src={src} alt={alt} {...props} />
           ) : (
