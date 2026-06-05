@@ -172,6 +172,22 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
     return buckets;
   }, [feeEstimate]);
 
+  const baseFeeRate = dynamicFeeBuckets[0]?.feerate ?? 1;
+
+  const formatFeeRateLabel = (feerate?: number) => {
+    if (feerate == null || baseFeeRate <= 0) {
+      return "Base fee";
+    }
+
+    const normalizedRate = feerate / baseFeeRate;
+
+    if (Math.abs(normalizedRate - 1) < 0.001) {
+      return "Base fee";
+    }
+
+    return `${normalizedRate.toFixed(2)}x fee rate`;
+  };
+
   const handleFeeSelect = (bucket: FeeBucket) => {
     const newFee: PriorityFeeConfig = {
       amount: BigInt(0), // Let WASM calculate the amount
@@ -361,9 +377,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
                     )}
                   </div>
                   <div className="text-sm whitespace-nowrap text-[var(--accent-green)]">
-                    {bucket.feerate === 1
-                      ? "Base fee"
-                      : `${bucket.feerate?.toFixed(2)}x fee rate`}
+                    {formatFeeRateLabel(bucket.feerate)}
                   </div>
                 </button>
               ))}
