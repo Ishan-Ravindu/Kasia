@@ -193,18 +193,18 @@ export const useWalletStore = create<WalletState>((set, get) => {
         const mockCongestion = {
           estimate: {
             priorityBucket: {
-              feerate: 3, // 3x base rate
+              feerate: 300, // 3x Toccata base rate
               estimatedSeconds: 0.005,
             },
             normalBuckets: [
               {
-                feerate: 2, // 2x base rate
+                feerate: 200, // 2x Toccata base rate
                 estimatedSeconds: 0.01,
               },
             ],
             lowBuckets: [
               {
-                feerate: 1, // Base rate
+                feerate: 100, // Toccata base rate
                 estimatedSeconds: 0.02,
               },
             ],

@@ -40,34 +40,10 @@ export class TransactionGeneratorService {
       ? []
       : [new PaymentOutput(destinationAddress, amount)];
 
-    // Calculate additional fee based on fee rate difference
-    let additionalFee = BigInt(0);
-
-    if (priorityFee?.feerate && priorityFee.feerate > 1) {
-      // Estimate transaction mass (typical message transaction ~2500-3000 grams)
-      // TO DO: Fix this.
-      const estimatedMass = 2800; // grams - rough estimate for message transaction
-      const baseFeeRate = 1; // sompi per gram
-      const additionalFeeRate = priorityFee.feerate - baseFeeRate;
-      additionalFee = BigInt(Math.floor(additionalFeeRate * estimatedMass));
-
-      console.log("Calculated additional priority fee:", {
-        selectedFeeRate: priorityFee.feerate,
-        baseFeeRate,
-        additionalFeeRate,
-        estimatedMass,
-        additionalFeeSompi: additionalFee.toString(),
-        additionalFeeKAS: Number(additionalFee) / 100_000_000,
-      });
-    } else if (priorityFee?.amount && priorityFee.amount > 0) {
-      additionalFee = priorityFee.amount;
-      console.log(
-        "Using explicit priority fee amount:",
-        additionalFee.toString()
-      );
-    }
-
-    console.log("Final priority fee for Generator:", additionalFee.toString());
+    const outboundPriorityFee = priorityFee ?? {
+      amount: BigInt(0),
+      source: FeeSource.SenderPays,
+    };
 
     const settings: IGeneratorSettingsObject = {
       changeAddress: receiveAddress,
@@ -75,7 +51,8 @@ export class TransactionGeneratorService {
       outputs: outputs,
       payload,
       networkId,
-      priorityFee: additionalFee,
+      feeRate: priorityFee?.feerate,
+      priorityFee: outboundPriorityFee,
     };
 
     return new Generator(settings);
