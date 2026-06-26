@@ -10,6 +10,7 @@ on:
 env:
   HUSKY: 0
   SUFFIX: ${{ github.ref_name == 'master' && 'production' || 'staging' }}
+  KASPA_WASM_VERSION: v2.0.1
 
 jobs:
   build-cipher-wasm:
@@ -79,9 +80,9 @@ jobs:
       - name: Download Kaspa WASM Files
         uses: dsaltares/fetch-gh-release-asset@1.1.2
         with:
-          repo: "IzioDev/rusty-kaspa"
-          version: "tags/v1.0.1-beta1"
-          file: "kaspa-wasm32-sdk-v1.0.1-beta1.zip"
+          repo: "kaspanet/rusty-kaspa"
+          version: "tags/${{ env.KASPA_WASM_VERSION }}"
+          file: "kaspa-wasm32-sdk-${{ env.KASPA_WASM_VERSION }}.zip"
           target: "kaspa-wasm32-sdk.zip"
 
       - name: Unzip Kaspa WASM Files & Move /web/kaspa to /wasm
