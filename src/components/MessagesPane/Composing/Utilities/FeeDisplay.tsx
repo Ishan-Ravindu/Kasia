@@ -8,22 +8,21 @@ import { useWalletStore } from "../../../../store/wallet.store";
 import { WaitDisplay } from "./WaitDisplay";
 
 // fee levels for color coding
-// need to extract this and make it setable from the settings
 const FEE_LEVELS = [
   {
-    limit: 0.00002,
+    limit: 0.006,
     classes: "text-[var(--accent-green)] border-[var(--accent-green)]",
   },
   {
-    limit: 0.00005,
+    limit: 0.012,
     classes: "text-[var(--accent-blue)] border-[var(--accent-blue)]",
   },
   {
-    limit: 0.0005,
+    limit: 0.03,
     classes: "text-[var(--accent-yellow)] border-[var(--accent-yellow)]",
   },
   {
-    limit: 0.001,
+    limit: 0.06,
     classes: "text-[var(--accent-orange)] border-[var(--accent-orange)]",
   },
   {

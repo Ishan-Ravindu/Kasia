@@ -8,7 +8,11 @@ import { useWalletStore } from "../store/wallet.store";
 import { Button } from "./Common/Button";
 import { toast } from "../utils/toast-helper";
 import { Input } from "@headlessui/react";
-import { DEFAULT_FEE_BUCKETS, MAX_PRIORITY_FEE } from "../config/constants";
+import {
+  BASE_FEE_RATE,
+  DEFAULT_FEE_BUCKETS,
+  MAX_PRIORITY_FEE,
+} from "../config/constants";
 import { useFeatureFlagsStore } from "../store/featureflag.store";
 import { Switch } from "@headlessui/react";
 
@@ -100,7 +104,8 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
       const defaultFee: PriorityFeeConfig = {
         amount: BigInt(0),
         source: FeeSource.SenderPays,
-        feerate: feeEstimate?.estimate?.lowBuckets?.[0]?.feerate || 1,
+        feerate:
+          feeEstimate?.estimate?.lowBuckets?.[0]?.feerate ?? BASE_FEE_RATE,
         estimatedSeconds:
           feeEstimate?.estimate?.lowBuckets?.[0]?.estimatedSeconds,
       };
@@ -126,8 +131,8 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
     buckets.push({
       label: "Low",
       description: "Standard processing time.",
-      amount: BigInt(0), // Low priority = no additional fee
-      feerate: estimate.lowBuckets?.[0]?.feerate || 1,
+      amount: BigInt(0),
+      feerate: estimate.lowBuckets?.[0]?.feerate ?? BASE_FEE_RATE,
       estimatedSeconds: estimate.lowBuckets?.[0]?.estimatedSeconds,
     });
 
@@ -146,7 +151,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
         label: "Normal",
         description: "Faster during busy times",
         amount: BigInt(0),
-        feerate: 1, // Default to 1 sompi/gram when no estimate
+        feerate: BASE_FEE_RATE,
       });
     }
 
@@ -165,12 +170,26 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
         label: "Priority",
         description: "Fastest processing",
         amount: BigInt(0),
-        feerate: 1, // Default to 1 sompi/gram when no estimate
+        feerate: BASE_FEE_RATE,
       });
     }
 
     return buckets;
   }, [feeEstimate]);
+
+  const formatFeeRateLabel = (feerate?: number) => {
+    if (feerate == null) {
+      return "Fee rate unavailable";
+    }
+
+    if (feerate === BASE_FEE_RATE) {
+      return "Base fee";
+    }
+
+    const normalizedRate = feerate / BASE_FEE_RATE;
+
+    return `${normalizedRate.toFixed(2)}x fee rate`;
+  };
 
   const handleFeeSelect = (bucket: FeeBucket) => {
     const newFee: PriorityFeeConfig = {
@@ -361,9 +380,7 @@ export const PriorityFeeSelector: FC<PriorityFeeSelectorProps> = ({
                     )}
                   </div>
                   <div className="text-sm whitespace-nowrap text-[var(--accent-green)]">
-                    {bucket.feerate === 1
-                      ? "Base fee"
-                      : `${bucket.feerate?.toFixed(2)}x fee rate`}
+                    {formatFeeRateLabel(bucket.feerate)}
                   </div>
                 </button>
               ))}

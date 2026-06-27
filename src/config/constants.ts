@@ -6,6 +6,9 @@ export const ONE_MINUTE_IN_MS = 60 * 1000;
 
 export const FEE_ESTIMATE_POLLING_INTERVAL_IN_MS = 3 * 1000;
 
+// Toccata minimum fee rate, in sompi per gram.
+export const BASE_FEE_RATE = 100;
+
 export const ALIAS_LENGTH = 6; // 6 bytes = 12 hex characters
 
 // Placeholder alias for fee estimation and testing (12 hex chars = 6 bytes)

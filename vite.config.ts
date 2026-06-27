@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
-import { defineConfig, PluginOption } from "vite";
+import { PluginOption } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { sri } from "vite-plugin-sri3";
 import { VitePWA } from "vite-plugin-pwa";
